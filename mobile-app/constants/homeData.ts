@@ -1,3 +1,5 @@
+import { PIECES } from './inventoryData';
+
 export const STATS = [
   { label: 'members', value: '122' },
   { label: 'sections', value: '9' },
@@ -25,10 +27,15 @@ export const CATALOGUE = [
   { label: 'Combo 05', sub: 'Concert' },
 ];
 
-export const INVENTORY = [
-  { piece: 'Jacket', sizes: 'Sizes 32–52', qty: 148, condition: 'Good' as const },
-  { piece: 'Bibbers', sizes: 'Sizes 28–44', qty: 150, condition: 'Good' as const },
-  { piece: 'Shako', sizes: 'Sizes S–XL', qty: 140, condition: 'Repair (6)' as const, warn: true },
-  { piece: 'Gloves', sizes: 'Sizes S–XL', qty: 200, condition: 'Good' as const },
-  { piece: 'Plume', sizes: 'One size', qty: 140, condition: 'Repair (3)' as const, warn: true },
-];
+export const INVENTORY = PIECES.map((piece) => ({
+  piece: piece.name,
+  sizes: piece.colorsLabel,
+  qty: piece.qty,
+  condition:
+    piece.repairCount > 0
+      ? `Repair (${piece.repairCount})`
+      : piece.dirtyCount > 0
+        ? `Dirty (${piece.dirtyCount})`
+        : 'Good',
+  warn: piece.repairCount > 0 || piece.dirtyCount > 0,
+}));

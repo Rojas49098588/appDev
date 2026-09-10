@@ -1,6 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import {
-  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,11 +10,14 @@ import {
   View,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { INSTRUMENTS } from '../constants/instruments';
+import { colors } from '../constants/colors';
+import { fonts } from '../constants/fonts';
+import TapeGutter from '../components/TapeGutter';
+import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -64,114 +66,122 @@ export default function ProfileScreen({ navigation, route }: Props) {
     navigation.reset({ index: 0, routes: [{ name: 'SignUp' }] });
   };
 
-  // Log Out is the only way back to Sign Up — block the Android hardware back button too.
-  useFocusEffect(
-    useCallback(() => {
-      const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
-      return () => subscription.remove();
-    }, [])
-  );
-
   const hasHeight = profile.heightFeet !== '' || profile.heightInches !== '';
+  const initials = `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`.toUpperCase();
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>User Profile</Text>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flexOne}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.appBody}>
+          <TapeGutter />
 
-        <Ionicons name="person-circle" size={100} color="#ccc" style={styles.icon} />
-
-        <Text style={styles.roleBadge}>{route.params.role}</Text>
-
-        {TEXT_FIELDS.slice(0, 2).map((field) => (
-          <ProfileField
-            key={field.key}
-            label={field.label}
-            value={profile[field.key]}
-            editing={isEditing}
-            onChangeText={(text) => updateField(field.key, text)}
-          />
-        ))}
-
-        {TEXT_FIELDS.slice(2, 4).map((field) => (
-          <ProfileField
-            key={field.key}
-            label={field.label}
-            value={profile[field.key]}
-            editing={isEditing}
-            keyboardType={field.keyboardType}
-            onChangeText={(text) => updateField(field.key, text)}
-          />
-        ))}
-
-        <Text style={styles.label}>Instrument</Text>
-        {isEditing ? (
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={profile.instrument}
-              onValueChange={(value) => updateField('instrument', value)}
-            >
-              {INSTRUMENTS.map((option) => (
-                <Picker.Item key={option} label={option} value={option} />
-              ))}
-            </Picker>
-          </View>
-        ) : (
-          <Text style={styles.value}>{profile.instrument}</Text>
-        )}
-
-        <View style={styles.fieldWrapper}>
-          <Text style={styles.label}>Height</Text>
-          {isEditing ? (
-            <View style={styles.heightRow}>
-              <TextInput
-                style={styles.heightInput}
-                value={profile.heightFeet}
-                onChangeText={(text) => updateField('heightFeet', digitsOnly(text).slice(0, 1))}
-                keyboardType="number-pad"
-                maxLength={1}
-              />
-              <Text style={styles.heightUnit}>'</Text>
-              <TextInput
-                style={styles.heightInput}
-                value={profile.heightInches}
-                onChangeText={(text) => updateField('heightInches', digitsOnly(text).slice(0, 2))}
-                keyboardType="number-pad"
-                maxLength={2}
-              />
-              <Text style={styles.heightUnit}>"</Text>
+          <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+            <View style={styles.header}>
+              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <BackChevronIcon color={colors.ink} />
+              </Pressable>
+              <Text style={styles.pageTitle}>User Profile</Text>
+              <View style={styles.headerSideButton} />
             </View>
-          ) : (
-            <Text style={styles.value}>
-              {hasHeight ? `${profile.heightFeet}' ${profile.heightInches}"` : ''}
-            </Text>
-          )}
+
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+
+            <Text style={styles.roleBadge}>{route.params.role}</Text>
+
+            {TEXT_FIELDS.slice(0, 2).map((field) => (
+              <ProfileField
+                key={field.key}
+                label={field.label}
+                value={profile[field.key]}
+                editing={isEditing}
+                onChangeText={(text) => updateField(field.key, text)}
+              />
+            ))}
+
+            {TEXT_FIELDS.slice(2, 4).map((field) => (
+              <ProfileField
+                key={field.key}
+                label={field.label}
+                value={profile[field.key]}
+                editing={isEditing}
+                keyboardType={field.keyboardType}
+                onChangeText={(text) => updateField(field.key, text)}
+              />
+            ))}
+
+            <Text style={styles.label}>Instrument</Text>
+            {isEditing ? (
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={profile.instrument}
+                  onValueChange={(value) => updateField('instrument', value)}
+                >
+                  {INSTRUMENTS.map((option) => (
+                    <Picker.Item key={option} label={option} value={option} />
+                  ))}
+                </Picker>
+              </View>
+            ) : (
+              <Text style={styles.value}>{profile.instrument}</Text>
+            )}
+
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>Height</Text>
+              {isEditing ? (
+                <View style={styles.heightRow}>
+                  <TextInput
+                    style={styles.heightInput}
+                    value={profile.heightFeet}
+                    onChangeText={(text) =>
+                      updateField('heightFeet', digitsOnly(text).slice(0, 1))
+                    }
+                    keyboardType="number-pad"
+                    maxLength={1}
+                  />
+                  <Text style={styles.heightUnit}>'</Text>
+                  <TextInput
+                    style={styles.heightInput}
+                    value={profile.heightInches}
+                    onChangeText={(text) =>
+                      updateField('heightInches', digitsOnly(text).slice(0, 2))
+                    }
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                  <Text style={styles.heightUnit}>"</Text>
+                </View>
+              ) : (
+                <Text style={styles.value}>
+                  {hasHeight ? `${profile.heightFeet}' ${profile.heightInches}"` : ''}
+                </Text>
+              )}
+            </View>
+
+            <ProfileField
+              label="Weight"
+              value={profile.weight}
+              editing={isEditing}
+              keyboardType="number-pad"
+              maxLength={3}
+              onChangeText={(text) => updateField('weight', digitsOnly(text).slice(0, 3))}
+            />
+
+            <Pressable style={styles.actionButton} onPress={() => setIsEditing((prev) => !prev)}>
+              <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
+            </Pressable>
+
+            <Pressable style={styles.logOutButton} onPress={handleLogOut}>
+              <Text style={styles.logOutButtonText}>Log Out</Text>
+            </Pressable>
+          </ScrollView>
         </View>
-
-        <ProfileField
-          label="Weight"
-          value={profile.weight}
-          editing={isEditing}
-          keyboardType="number-pad"
-          maxLength={3}
-          onChangeText={(text) => updateField('weight', digitsOnly(text).slice(0, 3))}
-        />
-
-        <Pressable
-          style={styles.actionButton}
-          onPress={() => setIsEditing((prev) => !prev)}
-        >
-          <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
-        </Pressable>
-
-        <Pressable style={styles.logOutButton} onPress={handleLogOut}>
-          <Text style={styles.logOutButtonText}>Log Out</Text>
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -209,26 +219,61 @@ function ProfileField({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.paper,
   },
-  scrollContent: {
+  flexOne: {
+    flex: 1,
+  },
+  appBody: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  content: {
     alignItems: 'center',
-    padding: 20,
+    paddingTop: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 28,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 6,
+    marginBottom: 10,
   },
-  icon: {
+  headerSideButton: {
+    width: 30,
+    height: 30,
+  },
+  pageTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: fonts.wordmark,
+    fontSize: 18,
+    color: colors.ink,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 4,
   },
+  avatarText: {
+    fontFamily: fonts.wordmark,
+    fontSize: 36,
+    color: colors.paper,
+  },
   roleBadge: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007AFF',
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: colors.ink,
     textTransform: 'uppercase',
     marginBottom: 20,
   },
@@ -236,30 +281,35 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    fontSize: 14,
-    color: '#888',
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    color: colors.inkSoft,
     marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   value: {
-    fontSize: 16,
-    minHeight: 22,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    minHeight: 20,
     width: '100%',
   },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    fontSize: 16,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
   },
   pickerWrapper: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
   },
   heightRow: {
     flexDirection: 'row',
@@ -269,37 +319,44 @@ const styles = StyleSheet.create({
   heightInput: {
     width: 56,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    fontSize: 16,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
     textAlign: 'center',
   },
   heightUnit: {
-    fontSize: 16,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
   },
   actionButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    width: '100%',
+    backgroundColor: colors.ink,
+    paddingVertical: 14,
+    alignItems: 'center',
     marginTop: 24,
   },
   actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.paper,
   },
   logOutButton: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    marginTop: 12,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 10,
   },
   logOutButtonText: {
-    color: '#FF3B30',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.ink,
   },
 });

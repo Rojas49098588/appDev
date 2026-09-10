@@ -46,10 +46,18 @@ export function ChevronDownIcon({
   );
 }
 
-export function SmallChevronRightIcon({ color, size = 9 }: { color: string; size?: number }) {
+export function SmallChevronRightIcon({
+  color,
+  size = 9,
+  strokeWidth = 3,
+}: {
+  color: string;
+  size?: number;
+  strokeWidth?: number;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M9 6l6 6-6 6" stroke={color} strokeWidth={3} fill="none" />
+      <Path d="M9 6l6 6-6 6" stroke={color} strokeWidth={strokeWidth} fill="none" />
     </Svg>
   );
 }

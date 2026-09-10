@@ -67,7 +67,7 @@ export default function InventoryScreen({ navigation }: Props) {
   }, [searchText, activeFilters]);
 
   const handleFlagPress = (piece: Piece, kind: 'repair' | 'dirty') => {
-    Alert.alert('Coming soon', `Viewing ${kind} items for ${piece.name} isn't available yet.`);
+    navigation.navigate('Sections', { piece: piece.name, status: kind });
   };
 
   const handleAddPress = () => {

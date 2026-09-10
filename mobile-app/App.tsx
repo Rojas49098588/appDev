@@ -48,11 +48,7 @@ export default function App() {
           <Stack.Navigator>
             <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="Profile"
-              component={ProfileScreen}
-              options={{ title: 'User Profile', headerBackVisible: false, gestureEnabled: false }}
-            />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
       </View>
