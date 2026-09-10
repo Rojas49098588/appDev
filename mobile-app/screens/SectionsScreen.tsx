@@ -30,6 +30,14 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const filterStatus = route.params?.status;
   const isFiltered = !!(filterPiece && filterStatus);
 
+  const handleSearchChange = (text: string) => {
+    setSearchText(text);
+    if (text.trim() !== '') {
+      setSectionFilter(null);
+      setStatusFilters(new Set());
+    }
+  };
+
   const toggleStatus = (key: StatusKey) => {
     setStatusFilters((prev) => {
       const next = new Set(prev);
@@ -148,7 +156,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   placeholder="Search members"
                   placeholderTextColor={colors.inkFaint}
                   value={searchText}
-                  onChangeText={setSearchText}
+                  onChangeText={handleSearchChange}
                 />
               </View>
 
