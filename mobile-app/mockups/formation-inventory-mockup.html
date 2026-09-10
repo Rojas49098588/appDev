@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Formation — Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:   #E8E6E0;
+    --surface: #F6F5F1;
+    --ink:     #22201D;
+    --ink-soft:#6E6960;
+    --ink-faint:#9A9488;
+    --line:    #D2CDC2;
+    --line-soft:#DEDACF;
+    --rust:    #AC4A2E;
+    --rust-tint:#F1E1DA;
+    --wash:    #3F6E82;
+    --wash-tint:#DDE6E7;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ -webkit-font-smoothing:antialiased; }
+
+  body{
+    margin:0;
+    background:#C9C5BB;
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    font-size:14px;
+    line-height:1.45;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 12px;
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .device{
+    width:390px; height:844px;
+    background:var(--ink);
+    border-radius:46px;
+    padding:14px;
+    box-shadow:0 30px 60px rgba(0,0,0,0.28);
+    flex:0 0 auto;
+  }
+  .screen{
+    width:100%; height:100%;
+    background:var(--paper);
+    border-radius:34px;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+  .statusbar{
+    height:46px; flex:0 0 auto;
+    display:flex; align-items:flex-end; justify-content:space-between;
+    padding:0 26px 6px;
+    font-family:'IBM Plex Mono', monospace; font-size:12px;
+  }
+  .statusbar .icons{ display:flex; gap:5px; }
+  .notch{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:120px; height:26px; background:var(--ink);
+    border-radius:0 0 16px 16px; z-index:5;
+  }
+
+  .app-body{ flex:1; display:flex; overflow:hidden; }
+
+  .tape{
+    width:26px; flex:0 0 26px;
+    border-right:1px solid var(--line);
+    position:relative;
+  }
+  .tape .tick{
+    position:absolute; left:0; right:0;
+    display:flex; justify-content:flex-end; align-items:center; gap:4px;
+    color:var(--ink-faint);
+    font-family:'IBM Plex Mono', monospace; font-size:8.5px;
+  }
+  .tape .tick span.mark{ width:6px; height:1px; background:var(--ink-faint); display:block; }
+  .tape .tick.major span.mark{ width:10px; background:var(--ink-soft); }
+  .tape .tick.major{ color:var(--ink-soft); }
+
+  .content{ flex:1; overflow-y:auto; padding:16px 18px 28px; }
+  .content::-webkit-scrollbar{ display:none; }
+
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:14px;
+  }
+  .back-btn{ width:30px; height:30px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .back-btn svg{ width:19px; height:19px; }
+  .page-title{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px; margin:0; }
+  .add-btn{
+    width:30px; height:30px; border-radius:50%;
+    background:var(--ink); color:var(--paper);
+    display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .add-btn svg{ width:15px; height:15px; }
+
+  .search{
+    display:flex; align-items:center; gap:8px;
+    border:1px solid var(--line); background:var(--surface);
+    padding:9px 12px; margin-bottom:12px;
+  }
+  .search svg{ width:15px; height:15px; color:var(--ink-faint); flex:0 0 auto; }
+  .search span{ color:var(--ink-faint); font-size:13px; }
+
+  .chips{
+    display:flex; gap:7px; overflow-x:auto;
+    margin:0 -18px 18px; padding:0 18px 2px;
+  }
+  .chips::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex:0 0 auto; font-size:12px; padding:6px 12px;
+    border:1px solid var(--line); color:var(--ink-soft); white-space:nowrap;
+  }
+  .chip.active{ background:var(--ink); border-color:var(--ink); color:var(--paper); }
+  .chip.flag-chip{ color:var(--rust); border-color:var(--rust); }
+  .chip.flag-chip.active{ background:var(--rust); border-color:var(--rust); color:var(--paper); }
+  .chip.wash-chip{ color:var(--wash); border-color:var(--wash); }
+  .chip.wash-chip.active{ background:var(--wash); border-color:var(--wash); color:var(--paper); }
+
+  .summary-line{ font-size:11.5px; color:var(--ink-soft); margin-bottom:12px; }
+  .summary-line b{ color:var(--ink); font-weight:500; }
+
+  /* piece card */
+  .piece{ border:1px solid var(--line); background:var(--surface); margin-bottom:8px; }
+  .piece-row{ display:flex; align-items:center; justify-content:space-between; padding:13px 14px; }
+  .piece-name{ font-size:13.5px; font-weight:500; }
+  .piece-sub{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+  .piece-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+  .piece-qty{ font-family:'IBM Plex Mono', monospace; font-size:13.5px; text-align:right; }
+  .piece-status{ font-size:10.5px; margin-top:2px; text-align:right; }
+  .piece-status.warn{ color:var(--rust); }
+  .piece-status.dirty{ color:var(--wash); }
+  .piece-status.ok{ color:var(--ink-soft); }
+  .status-tags{ display:flex; gap:6px; justify-content:flex-end; margin-top:3px; }
+  .flag-btn{
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:10.5px; padding:3px 7px;
+    border:1px solid; white-space:nowrap; cursor:pointer;
+  }
+  .flag-btn svg{ width:9px; height:9px; }
+  .flag-btn.repair{ color:var(--rust); border-color:var(--rust); background:var(--rust-tint); }
+  .flag-btn.dirty{ color:var(--wash); border-color:var(--wash); background:var(--wash-tint); }
+  .chevron{ width:14px; height:14px; color:var(--ink-faint); flex:0 0 auto; }
+  .chevron.open{ transform:rotate(180deg); }
+
+  .breakdown{ border-top:1px solid var(--line); padding:12px 14px 14px; }
+
+  /* color group with size-run chip strip (100-299 sizing, ~1 unit per size) */
+  .color-group{ margin-bottom:14px; }
+  .color-group:last-child{ margin-bottom:0; }
+  .color-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:7px;
+  }
+  .color-name{ font-size:12.5px; font-weight:500; }
+  .color-meta{ font-size:10.5px; color:var(--ink-soft); }
+  .color-meta b{ color:var(--rust); font-weight:500; }
+  .chip-strip{
+    display:flex; gap:6px; overflow-x:auto;
+    margin:0 -14px; padding:0 14px 3px;
+  }
+  .chip-strip::-webkit-scrollbar{ display:none; }
+  .size-chip{
+    flex:0 0 auto; font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    padding:5px 8px; border:1px solid var(--line); color:var(--ink-soft);
+  }
+  .size-chip.warn{ border-color:var(--rust); background:var(--rust-tint); color:var(--rust); }
+  .size-chip.dirty{ border-color:var(--wash); background:var(--wash-tint); color:var(--wash); }
+  .note{
+    display:flex; gap:5px; background:var(--rust-tint); color:var(--ink);
+    font-size:10.5px; padding:7px 9px; margin-top:6px;
+  }
+  .note b{ color:var(--rust); font-weight:500; }
+  .note.dirty{ background:var(--wash-tint); }
+  .note.dirty b{ color:var(--wash); }
+
+  /* unsized style rows (ties, one-size accessories) */
+  .style-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 0; border-bottom:1px solid var(--line-soft);
+  }
+  .style-row:last-of-type{ border-bottom:none; }
+  .style-name{ font-size:12.5px; }
+  .style-right{ text-align:right; }
+  .style-qty{ font-family:'IBM Plex Mono', monospace; font-size:12px; }
+  .style-tag{ font-size:10.5px; color:var(--ink-soft); margin-top:2px; }
+  .style-tag.warn{ color:var(--rust); }
+  .style-tag.dirty{ color:var(--wash); }
+
+  /* bottom nav */
+  nav.tabbar{ flex:0 0 auto; display:flex; border-top:1px solid var(--line); background:var(--surface); padding:9px 6px 4px; }
+  .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--ink-faint); }
+  .tab.active{ color:var(--ink); }
+  .tab svg{ width:19px; height:19px; }
+  .tab .tab-label{ font-size:9.5px; }
+  .home-indicator{ width:120px; height:4px; background:var(--ink); border-radius:2px; opacity:0.6; margin:6px auto 2px; }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="screen">
+    <div class="notch"></div>
+
+    <div class="statusbar">
+      <span>9:41</span>
+      <div class="icons"><span>◈</span><span>◉</span><span>▮</span></div>
+    </div>
+
+    <div class="app-body">
+
+      <div class="tape">
+        <div class="tick major" style="top:2%"><span>40</span><span class="mark"></span></div>
+        <div class="tick" style="top:24%"><span>30</span><span class="mark"></span></div>
+        <div class="tick major" style="top:46%"><span>20</span><span class="mark"></span></div>
+        <div class="tick" style="top:68%"><span>10</span><span class="mark"></span></div>
+        <div class="tick major" style="top:90%"><span>0</span><span class="mark"></span></div>
+      </div>
+
+      <div class="content">
+
+        <header class="top">
+          <div class="back-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></div>
+          <h1 class="page-title">Inventory</h1>
+          <div class="add-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+        </header>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>
+          <span>Search pieces</span>
+        </div>
+
+        <div class="chips">
+          <div class="chip">All pieces</div>
+          <div class="chip">Good</div>
+          <div class="chip flag-chip active">Needs repair</div>
+          <div class="chip wash-chip active">Dirty</div>
+          <div class="chip">Retired</div>
+        </div>
+
+        <div class="summary-line"><b>6</b> piece types flagged — <b>7</b> need repair · <b>5</b> need cleaning</div>
+
+        <!-- COATS — expanded, sized 100-299, ~1 unit per size -->
+        <div class="piece">
+          <div class="piece-row">
+            <div>
+              <div class="piece-name">Coats</div>
+              <div class="piece-sub">Blue, Red, Purple, Candy</div>
+            </div>
+            <div class="piece-right">
+              <div>
+                <div class="piece-qty">58</div>
+                <div class="status-tags">
+                  <div class="flag-btn repair">Repair · 3<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <div class="flag-btn dirty">Dirty · 2<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+              </div>
+              <svg class="chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="breakdown">
+
+            <div class="color-group">
+              <div class="color-head">
+                <span class="color-name">Blue</span>
+                <span class="color-meta">17 in stock · 104–232</span>
+              </div>
+              <div class="chip-strip">
+                <span class="size-chip">104</span><span class="size-chip">112</span><span class="size-chip">120</span>
+                <span class="size-chip">128</span><span class="size-chip">136</span><span class="size-chip">144</span>
+                <span class="size-chip">152</span><span class="size-chip">160</span><span class="size-chip">168</span>
+                <span class="size-chip">176</span><span class="size-chip">184</span><span class="size-chip">192</span>
+                <span class="size-chip">200</span><span class="size-chip">208</span><span class="size-chip">216</span>
+                <span class="size-chip">224</span><span class="size-chip">232</span>
+              </div>
+            </div>
+
+            <div class="color-group">
+              <div class="color-head">
+                <span class="color-name">Red</span>
+                <span class="color-meta">15 in stock · 108–220</span>
+              </div>
+              <div class="chip-strip">
+                <span class="size-chip">108</span><span class="size-chip">116</span><span class="size-chip">124</span>
+                <span class="size-chip">132</span><span class="size-chip">140</span><span class="size-chip">148</span>
+                <span class="size-chip">156</span><span class="size-chip">164</span><span class="size-chip">172</span>
+                <span class="size-chip">180</span><span class="size-chip">188</span><span class="size-chip">196</span>
+                <span class="size-chip">204</span><span class="size-chip">212</span><span class="size-chip">220</span>
+              </div>
+            </div>
+
+            <div class="color-group">
+              <div class="color-head">
+                <span class="color-name">Purple</span>
+                <span class="color-meta">14 in stock · 112–216</span>
+              </div>
+              <div class="chip-strip">
+                <span class="size-chip">112</span><span class="size-chip">120</span><span class="size-chip">128</span>
+                <span class="size-chip">136</span><span class="size-chip">144</span><span class="size-chip">152</span>
+                <span class="size-chip">160</span><span class="size-chip">168</span><span class="size-chip">176</span>
+                <span class="size-chip">184</span><span class="size-chip">192</span><span class="size-chip">200</span>
+                <span class="size-chip">208</span><span class="size-chip">216</span>
+              </div>
+            </div>
+
+            <div class="color-group">
+              <div class="color-head">
+                <span class="color-name">Candy</span>
+                <span class="color-meta">12 in stock · 116–204</span>
+              </div>
+              <div class="chip-strip">
+                <span class="size-chip">116</span><span class="size-chip">124</span><span class="size-chip">132</span>
+                <span class="size-chip">140</span><span class="size-chip">148</span><span class="size-chip">156</span>
+                <span class="size-chip">164</span><span class="size-chip">172</span><span class="size-chip">180</span>
+                <span class="size-chip">188</span><span class="size-chip">196</span><span class="size-chip">204</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- VESTS — collapsed -->
+        <div class="piece">
+          <div class="piece-row">
+            <div>
+              <div class="piece-name">Vests</div>
+              <div class="piece-sub">Candy, Red</div>
+            </div>
+            <div class="piece-right">
+              <div>
+                <div class="piece-qty">56</div>
+                <div class="status-tags">
+                  <div class="flag-btn dirty">Dirty · 1<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+              </div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- BIBBERS — collapsed -->
+        <div class="piece">
+          <div class="piece-row">
+            <div>
+              <div class="piece-name">Bibbers</div>
+              <div class="piece-sub">Blue, White</div>
+            </div>
+            <div class="piece-right">
+              <div>
+                <div class="piece-qty">64</div>
+                <div class="status-tags">
+                  <div class="flag-btn repair">Repair · 2<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+              </div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANTS — collapsed -->
+        <div class="piece">
+          <div class="piece-row">
+            <div>
+              <div class="piece-name">Pants</div>
+              <div class="piece-sub">Blue, White</div>
+            </div>
+            <div class="piece-right">
+              <div>
+                <div class="piece-qty">60</div>
+                <div class="status-tags">
+                  <div class="flag-btn dirty">Dirty · 1<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+              </div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- TIES — expanded, NOT graded-sized, so a plain style list instead of a chip strip -->
+        <div class="piece">
+          <div class="piece-row">
+            <div>
+              <div class="piece-name">Ties</div>
+              <div class="piece-sub">One size per style</div>
+            </div>
+            <div class="piece-right">
+              <div>
+                <div class="piece-qty">138</div>
+                <div class="status-tags">
+                  <div class="flag-btn repair">Repair · 1<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                  <div class="flag-btn dirty">Dirty · 1<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+              </div>
+              <svg class="chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+          <div class="breakdown">
+            <div class="style-row">
+              <span class="style-name">Blue</span>
+              <div class="style-qty">40</div>
+            </div>
+            <div class="style-row">
+              <span class="style-name">Red</span>
+              <div class="style-qty">36</div>
+            </div>
+            <div class="style-row">
+              <span class="style-name">Purple</span>
+              <div class="style-qty">18</div>
+            </div>
+            <div class="style-row">
+              <span class="style-name">Blue bows</span>
+              <div class="style-qty">24</div>
+            </div>
+            <div class="style-row">
+              <span class="style-name">Red bows</span>
+              <div class="style-qty">20</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BELTS — collapsed -->
+        <div class="piece">
+          <div class="piece-row">
+            <div>
+              <div class="piece-name">Belts</div>
+              <div class="piece-sub">Red, Blue</div>
+            </div>
+            <div class="piece-right">
+              <div>
+                <div class="piece-qty">80</div>
+                <div class="status-tags">
+                  <div class="flag-btn repair">Repair · 1<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+              </div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <div class="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11L12 4l8 7"/><path d="M6 10v9h12v-9"/></svg>
+        <span class="tab-label">Home</span>
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>
+        <span class="tab-label">Sections</span>
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>
+        <span class="tab-label">Catalogue</span>
+      </div>
+      <div class="tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 6h14M5 12h14M5 18h9"/></svg>
+        <span class="tab-label">Inventory</span>
+      </div>
+    </nav>
+    <div class="home-indicator"></div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -11,7 +11,7 @@ The repository root contains standalone scratch files with no build system conne
 
 ## mobile-app/ (Expo React Native app)
 
-`mobile-app/` is a separate Expo project (TypeScript, blank template) targeting Android and iOS. It runs on Expo SDK 54 (pinned to match the Expo Go app version available for testing on-device — see `mobile-app/AGENTS.md`, which points to versioned Expo docs that must be checked before writing Expo code, since the API surface has changed across versions).
+`mobile-app/` is a separate Expo project (TypeScript, blank template) targeting Android and iOS. It runs on Expo SDK 57 (pinned to match the Expo Go app version available for testing on-device — see `mobile-app/AGENTS.md`, which points to versioned Expo docs that must be checked before writing Expo code, since the API surface has changed across versions).
 
 Commands (run from `mobile-app/`):
 - `npm start` — start the Expo dev server (Metro + QR code for Expo Go)
