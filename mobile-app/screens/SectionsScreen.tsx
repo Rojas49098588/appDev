@@ -10,6 +10,7 @@ import { SECTIONS } from '../constants/homeData';
 import TapeGutter from '../components/TapeGutter';
 import MemberRow from '../components/MemberRow';
 import { BackChevronIcon, PlusIcon, SearchIcon } from '../components/icons';
+import { useFlags } from '../context/FlagsContext';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Sections'>;
 
@@ -25,6 +26,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const [searchText, setSearchText] = useState('');
   const [sectionFilter, setSectionFilter] = useState<string | null>(null);
   const [statusFilters, setStatusFilters] = useState<Set<StatusKey>>(new Set());
+  const { flags } = useFlags();
 
   const filterPiece = route.params?.piece;
   const filterStatus = route.params?.status;
@@ -64,9 +66,10 @@ export default function SectionsScreen({ navigation, route }: Props) {
 
   const filteredMembers = useMemo(() => {
     if (isFiltered) {
-      return MEMBERS.filter(
-        (member) => member.item?.piece === filterPiece && member.item?.status === filterStatus
-      );
+      return MEMBERS.filter((member) => {
+        const flag = flags.find((f) => f.memberName === member.name);
+        return flag?.piece === filterPiece && flag?.status === filterStatus;
+      });
     }
 
     const query = searchText.trim().toLowerCase();
@@ -81,13 +84,14 @@ export default function SectionsScreen({ navigation, route }: Props) {
       if (!matchesSection) return false;
 
       if (statusFilters.size === 0) return true;
+      const flag = flags.find((f) => f.memberName === member.name);
       return (
-        (statusFilters.has('good') && !member.item) ||
-        (statusFilters.has('repair') && member.item?.status === 'repair') ||
-        (statusFilters.has('dirty') && member.item?.status === 'dirty')
+        (statusFilters.has('good') && !flag) ||
+        (statusFilters.has('repair') && flag?.status === 'repair') ||
+        (statusFilters.has('dirty') && flag?.status === 'dirty')
       );
     });
-  }, [isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters]);
+  }, [isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters, flags]);
 
   const resultLabel = useMemo(() => {
     const count = filteredMembers.length;
@@ -247,7 +251,12 @@ export default function SectionsScreen({ navigation, route }: Props) {
           <Text style={styles.resultCount}>{resultLabel}</Text>
 
           {filteredMembers.map((member) => (
-            <MemberRow key={member.name} member={member} onPress={handleRowPress} />
+            <MemberRow
+              key={member.name}
+              member={member}
+              flag={flags.find((f) => f.memberName === member.name)}
+              onPress={handleRowPress}
+            />
           ))}
         </ScrollView>
       </View>

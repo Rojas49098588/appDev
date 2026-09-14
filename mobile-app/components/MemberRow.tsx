@@ -2,16 +2,25 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { Member } from '../constants/membersData';
+import type { Flag } from '../constants/flagsData';
 import { SmallChevronRightIcon } from './icons';
 
-export default function MemberRow({ member, onPress }: { member: Member; onPress: () => void }) {
+export default function MemberRow({
+  member,
+  flag,
+  onPress,
+}: {
+  member: Member;
+  flag?: Flag;
+  onPress: () => void;
+}) {
   const initials = member.name
     .split(' ')
     .map((part) => part.charAt(0))
     .join('')
     .toUpperCase();
 
-  const itemColor = member.item?.status === 'repair' ? colors.rust : colors.wash;
+  const itemColor = flag?.status === 'repair' ? colors.rust : colors.wash;
 
   return (
     <Pressable style={styles.row} onPress={onPress}>
@@ -21,11 +30,11 @@ export default function MemberRow({ member, onPress }: { member: Member; onPress
       <View style={styles.info}>
         <Text style={styles.name}>{member.name}</Text>
         <Text style={styles.section}>{member.section}</Text>
-        {member.item && (
+        {flag && (
           <View style={styles.itemRow}>
             <View style={[styles.dot, { backgroundColor: itemColor }]} />
             <Text style={[styles.itemText, { color: itemColor }]}>
-              {member.item.piece} — {member.item.color} — {member.item.size}
+              {flag.piece} — {flag.color} — {flag.size}
             </Text>
           </View>
         )}

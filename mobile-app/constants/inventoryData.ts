@@ -8,8 +8,6 @@ export type Piece = {
   name: string;
   colorsLabel: string;
   qty: number;
-  repairCount: number;
-  dirtyCount: number;
   retired?: boolean;
   breakdown: PieceBreakdown;
 };
@@ -27,8 +25,6 @@ export const PIECES: Piece[] = [
     name: 'Coats',
     colorsLabel: 'Blue, Red, Purple, Candy',
     qty: 58,
-    repairCount: 3,
-    dirtyCount: 2,
     breakdown: {
       type: 'graded',
       groups: [
@@ -43,8 +39,6 @@ export const PIECES: Piece[] = [
     name: 'Vests',
     colorsLabel: 'Candy, Red',
     qty: 56,
-    repairCount: 0,
-    dirtyCount: 1,
     breakdown: {
       type: 'graded',
       groups: [
@@ -57,8 +51,6 @@ export const PIECES: Piece[] = [
     name: 'Bibbers',
     colorsLabel: 'Blue, White',
     qty: 64,
-    repairCount: 2,
-    dirtyCount: 0,
     breakdown: {
       type: 'graded',
       groups: [
@@ -71,8 +63,6 @@ export const PIECES: Piece[] = [
     name: 'Pants',
     colorsLabel: 'Blue, White',
     qty: 60,
-    repairCount: 0,
-    dirtyCount: 1,
     breakdown: {
       type: 'graded',
       groups: [
@@ -85,8 +75,6 @@ export const PIECES: Piece[] = [
     name: 'Ties',
     colorsLabel: 'One size per style',
     qty: 138,
-    repairCount: 1,
-    dirtyCount: 1,
     breakdown: {
       type: 'style',
       rows: [
@@ -102,8 +90,6 @@ export const PIECES: Piece[] = [
     name: 'Belts',
     colorsLabel: 'Red, Blue',
     qty: 80,
-    repairCount: 1,
-    dirtyCount: 0,
     breakdown: {
       type: 'style',
       rows: [

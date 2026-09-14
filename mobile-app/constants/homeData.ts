@@ -1,4 +1,5 @@
 import { PIECES } from './inventoryData';
+import { FLAGS } from './flagsData';
 
 export const STATS = [
   { label: 'members', value: '122' },
@@ -27,15 +28,16 @@ export const CATALOGUE = [
   { label: 'Combo 05', sub: 'Concert' },
 ];
 
-export const INVENTORY = PIECES.map((piece) => ({
-  piece: piece.name,
-  sizes: piece.colorsLabel,
-  qty: piece.qty,
-  condition:
-    piece.repairCount > 0
-      ? `Repair (${piece.repairCount})`
-      : piece.dirtyCount > 0
-        ? `Dirty (${piece.dirtyCount})`
-        : 'Good',
-  warn: piece.repairCount > 0 || piece.dirtyCount > 0,
-}));
+export const INVENTORY = PIECES.map((piece) => {
+  const pieceFlags = FLAGS.filter((f) => f.piece === piece.name);
+  const repairCount = pieceFlags.filter((f) => f.status === 'repair').length;
+  const dirtyCount = pieceFlags.filter((f) => f.status === 'dirty').length;
+  return {
+    piece: piece.name,
+    sizes: piece.colorsLabel,
+    qty: piece.qty,
+    condition:
+      repairCount > 0 ? `Repair (${repairCount})` : dirtyCount > 0 ? `Dirty (${dirtyCount})` : 'Good',
+    warn: repairCount > 0 || dirtyCount > 0,
+  };
+});

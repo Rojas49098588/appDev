@@ -7,9 +7,13 @@ import { ChevronDownIcon, SmallChevronRightIcon } from './icons';
 
 export default function PieceCard({
   piece,
+  repairCount,
+  dirtyCount,
   onFlagPress,
 }: {
   piece: Piece;
+  repairCount: number;
+  dirtyCount: number;
   onFlagPress: (piece: Piece, kind: 'repair' | 'dirty') => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,20 +28,20 @@ export default function PieceCard({
         <View style={styles.pieceRight}>
           <View>
             <Text style={styles.pieceQty}>{piece.qty}</Text>
-            {(piece.repairCount > 0 || piece.dirtyCount > 0) && (
+            {(repairCount > 0 || dirtyCount > 0) && (
               <View style={styles.statusTags}>
-                {piece.repairCount > 0 && (
+                {repairCount > 0 && (
                   <Pressable
                     style={styles.flagBtnRepair}
                     onPress={() => onFlagPress(piece, 'repair')}
                   >
-                    <Text style={styles.flagBtnTextRepair}>Repair · {piece.repairCount}</Text>
+                    <Text style={styles.flagBtnTextRepair}>Repair · {repairCount}</Text>
                     <SmallChevronRightIcon color={colors.rust} />
                   </Pressable>
                 )}
-                {piece.dirtyCount > 0 && (
+                {dirtyCount > 0 && (
                   <Pressable style={styles.flagBtnDirty} onPress={() => onFlagPress(piece, 'dirty')}>
-                    <Text style={styles.flagBtnTextDirty}>Dirty · {piece.dirtyCount}</Text>
+                    <Text style={styles.flagBtnTextDirty}>Dirty · {dirtyCount}</Text>
                     <SmallChevronRightIcon color={colors.wash} />
                   </Pressable>
                 )}
