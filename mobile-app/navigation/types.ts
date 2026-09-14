@@ -10,6 +10,7 @@ export type UserParams = {
 export type RootStackParamList = {
   SignUp: undefined;
   MainTabs: UserParams;
+  MemberTabs: UserParams;
   Profile: UserParams;
 };
 
@@ -17,5 +18,11 @@ export type MainTabParamList = {
   Home: undefined;
   Sections: { piece?: string; status?: 'repair' | 'dirty' } | undefined;
   Catalogue: undefined;
+  Inventory: undefined;
+};
+
+export type MemberTabParamList = {
+  GameDay: undefined;
+  Sizes: undefined;
   Inventory: undefined;
 };

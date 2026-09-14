@@ -1,6 +1,13 @@
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-export type TabIconName = 'home' | 'sections' | 'catalogue' | 'inventory';
+export type TabIconName =
+  | 'home'
+  | 'sections'
+  | 'catalogue'
+  | 'inventory'
+  | 'gameday'
+  | 'sizes'
+  | 'memberInventory';
 
 export default function TabIcon({
   name,
@@ -41,6 +48,26 @@ export default function TabIcon({
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Path d="M5 6h14M5 12h14M5 18h9" {...common} />
+        </Svg>
+      );
+    case 'gameday':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path d="M6 4v16" {...common} />
+          <Path d="M6 5h12l-3 3.5L18 12H6" {...common} />
+        </Svg>
+      );
+    case 'sizes':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path d="M5 6h14M5 12h14M5 18h9" {...common} />
+        </Svg>
+      );
+    case 'memberInventory':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Rect x={4} y={5} width={16} height={14} {...common} />
+          <Path d="M4 9h16" {...common} />
         </Svg>
       );
   }

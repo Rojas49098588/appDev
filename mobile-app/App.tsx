@@ -14,6 +14,7 @@ import {
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
 import SignUpScreen from './screens/SignUpScreen';
 import MainTabs from './screens/MainTabs';
+import MemberTabs from './screens/MemberTabs';
 import ProfileScreen from './screens/ProfileScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
@@ -50,6 +51,7 @@ export default function App() {
             <Stack.Navigator>
               <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
               <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="MemberTabs" component={MemberTabs} options={{ headerShown: false }} />
               <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
             </Stack.Navigator>
           </NavigationContainer>

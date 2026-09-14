@@ -39,7 +39,10 @@ export default function SignUpScreen({ navigation }: Props) {
     navigation.reset({
       index: 0,
       routes: [
-        { name: 'MainTabs', params: { firstName, lastName, instrument, role: confirmedRole } },
+        {
+          name: confirmedRole === 'Staff' ? 'MainTabs' : 'MemberTabs',
+          params: { firstName, lastName, instrument, role: confirmedRole },
+        },
       ],
     });
   };
