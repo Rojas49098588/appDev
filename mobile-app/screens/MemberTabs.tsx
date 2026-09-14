@@ -7,6 +7,7 @@ import { fonts } from '../constants/fonts';
 import TabIcon, { type TabIconName } from '../components/TabIcon';
 import PlaceholderScreen from './PlaceholderScreen';
 import GameDayScreen from './member/GameDayScreen';
+import MySizesScreen from './member/MySizesScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberTabs'>;
 
@@ -55,7 +56,7 @@ export default function MemberTabs({ navigation, route }: Props) {
           />
         )}
       </Tab.Screen>
-      <Tab.Screen name="Sizes">{() => <PlaceholderScreen title="Sizes" />}</Tab.Screen>
+      <Tab.Screen name="Sizes" component={MySizesScreen} />
       <Tab.Screen name="Inventory">{() => <PlaceholderScreen title="Inventory" />}</Tab.Screen>
     </Tab.Navigator>
   );
