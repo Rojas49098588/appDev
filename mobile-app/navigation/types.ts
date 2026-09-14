@@ -13,6 +13,7 @@ export type RootStackParamList = {
   MemberTabs: UserParams;
   Profile: UserParams;
   MemberAccount: UserParams;
+  FlagItem: { piece: string; color: string; size: string };
 };
 
 export type MainTabParamList = {

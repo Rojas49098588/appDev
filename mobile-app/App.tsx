@@ -16,6 +16,7 @@ import SignUpScreen from './screens/SignUpScreen';
 import MainTabs from './screens/MainTabs';
 import MemberTabs from './screens/MemberTabs';
 import MemberAccountScreen from './screens/member/MemberAccountScreen';
+import FlagItemScreen from './screens/member/FlagItemScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
@@ -54,6 +55,7 @@ export default function App() {
               <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
               <Stack.Screen name="MemberTabs" component={MemberTabs} options={{ headerShown: false }} />
               <Stack.Screen name="MemberAccount" component={MemberAccountScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="FlagItem" component={FlagItemScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
             </Stack.Navigator>
           </NavigationContainer>

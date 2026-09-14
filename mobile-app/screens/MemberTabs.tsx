@@ -5,9 +5,9 @@ import type { MemberTabParamList, RootStackParamList } from '../navigation/types
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TabIcon, { type TabIconName } from '../components/TabIcon';
-import PlaceholderScreen from './PlaceholderScreen';
 import GameDayScreen from './member/GameDayScreen';
 import MySizesScreen from './member/MySizesScreen';
+import MyInventoryScreen from './member/MyInventoryScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberTabs'>;
 
@@ -57,7 +57,7 @@ export default function MemberTabs({ navigation, route }: Props) {
         )}
       </Tab.Screen>
       <Tab.Screen name="Sizes" component={MySizesScreen} />
-      <Tab.Screen name="Inventory">{() => <PlaceholderScreen title="Inventory" />}</Tab.Screen>
+      <Tab.Screen name="Inventory" component={MyInventoryScreen} />
     </Tab.Navigator>
   );
 }
