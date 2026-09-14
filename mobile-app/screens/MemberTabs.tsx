@@ -6,6 +6,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TabIcon, { type TabIconName } from '../components/TabIcon';
 import PlaceholderScreen from './PlaceholderScreen';
+import GameDayScreen from './member/GameDayScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberTabs'>;
 
@@ -23,7 +24,8 @@ const TAB_LABELS: Record<keyof MemberTabParamList, string> = {
   Inventory: 'Inventory',
 };
 
-export default function MemberTabs({}: Props) {
+export default function MemberTabs({ navigation, route }: Props) {
+  const { firstName, lastName, instrument, role } = route.params;
   return (
     <Tab.Navigator
       screenOptions={({ route: tabRoute }) => ({
@@ -41,7 +43,18 @@ export default function MemberTabs({}: Props) {
         ),
       })}
     >
-      <Tab.Screen name="GameDay">{() => <PlaceholderScreen title="Game day" />}</Tab.Screen>
+      <Tab.Screen name="GameDay">
+        {(tabProps) => (
+          <GameDayScreen
+            {...tabProps}
+            firstName={firstName}
+            lastName={lastName}
+            onAvatarPress={() =>
+              navigation.navigate('MemberAccount', { firstName, lastName, instrument, role })
+            }
+          />
+        )}
+      </Tab.Screen>
       <Tab.Screen name="Sizes">{() => <PlaceholderScreen title="Sizes" />}</Tab.Screen>
       <Tab.Screen name="Inventory">{() => <PlaceholderScreen title="Inventory" />}</Tab.Screen>
     </Tab.Navigator>

@@ -12,6 +12,7 @@ export type RootStackParamList = {
   MainTabs: UserParams;
   MemberTabs: UserParams;
   Profile: UserParams;
+  MemberAccount: UserParams;
 };
 
 export type MainTabParamList = {
