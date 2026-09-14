@@ -16,6 +16,7 @@ import SignUpScreen from './screens/SignUpScreen';
 import MainTabs from './screens/MainTabs';
 import ProfileScreen from './screens/ProfileScreen';
 import type { RootStackParamList } from './navigation/types';
+import { FlagsProvider } from './context/FlagsContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,15 +44,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <NavigationContainer>
-          <Stack.Navigator>
-            <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </View>
+      <FlagsProvider>
+        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+          <NavigationContainer>
+            <Stack.Navigator>
+              <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+              <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </View>
+      </FlagsProvider>
     </SafeAreaProvider>
   );
 }
