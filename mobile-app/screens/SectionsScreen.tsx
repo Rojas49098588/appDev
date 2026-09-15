@@ -66,10 +66,11 @@ export default function SectionsScreen({ navigation, route }: Props) {
 
   const filteredMembers = useMemo(() => {
     if (isFiltered) {
-      return MEMBERS.filter((member) => {
-        const flag = flags.find((f) => f.memberName === member.name);
-        return flag?.piece === filterPiece && flag?.status === filterStatus;
-      });
+      return MEMBERS.filter((member) =>
+        flags.some(
+          (f) => f.memberName === member.name && f.piece === filterPiece && f.status === filterStatus
+        )
+      );
     }
 
     const query = searchText.trim().toLowerCase();
@@ -84,11 +85,11 @@ export default function SectionsScreen({ navigation, route }: Props) {
       if (!matchesSection) return false;
 
       if (statusFilters.size === 0) return true;
-      const flag = flags.find((f) => f.memberName === member.name);
+      const memberFlags = flags.filter((f) => f.memberName === member.name);
       return (
-        (statusFilters.has('good') && !flag) ||
-        (statusFilters.has('repair') && flag?.status === 'repair') ||
-        (statusFilters.has('dirty') && flag?.status === 'dirty')
+        (statusFilters.has('good') && memberFlags.length === 0) ||
+        (statusFilters.has('repair') && memberFlags.some((f) => f.status === 'repair')) ||
+        (statusFilters.has('dirty') && memberFlags.some((f) => f.status === 'dirty'))
       );
     });
   }, [isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters, flags]);
@@ -250,14 +251,15 @@ export default function SectionsScreen({ navigation, route }: Props) {
 
           <Text style={styles.resultCount}>{resultLabel}</Text>
 
-          {filteredMembers.map((member) => (
-            <MemberRow
-              key={member.name}
-              member={member}
-              flag={flags.find((f) => f.memberName === member.name)}
-              onPress={handleRowPress}
-            />
-          ))}
+          {filteredMembers.map((member) => {
+            const memberFlags = flags.filter((f) => f.memberName === member.name);
+            const displayFlags = isFiltered
+              ? memberFlags.filter((f) => f.piece === filterPiece && f.status === filterStatus)
+              : memberFlags;
+            return (
+              <MemberRow key={member.name} member={member} flags={displayFlags} onPress={handleRowPress} />
+            );
+          })}
         </ScrollView>
       </View>
     </SafeAreaView>

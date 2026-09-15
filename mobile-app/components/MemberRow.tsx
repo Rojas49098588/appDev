@@ -7,11 +7,11 @@ import { SmallChevronRightIcon } from './icons';
 
 export default function MemberRow({
   member,
-  flag,
+  flags = [],
   onPress,
 }: {
   member: Member;
-  flag?: Flag;
+  flags?: Flag[];
   onPress: () => void;
 }) {
   const initials = member.name
@@ -19,8 +19,6 @@ export default function MemberRow({
     .map((part) => part.charAt(0))
     .join('')
     .toUpperCase();
-
-  const itemColor = flag?.status === 'repair' ? colors.rust : colors.wash;
 
   return (
     <Pressable style={styles.row} onPress={onPress}>
@@ -30,14 +28,17 @@ export default function MemberRow({
       <View style={styles.info}>
         <Text style={styles.name}>{member.name}</Text>
         <Text style={styles.section}>{member.section}</Text>
-        {flag && (
-          <View style={styles.itemRow}>
-            <View style={[styles.dot, { backgroundColor: itemColor }]} />
-            <Text style={[styles.itemText, { color: itemColor }]}>
-              {flag.piece} — {flag.color} — {flag.size}
-            </Text>
-          </View>
-        )}
+        {flags.map((flag) => {
+          const itemColor = flag.status === 'repair' ? colors.rust : colors.wash;
+          return (
+            <View key={flag.id} style={styles.itemRow}>
+              <View style={[styles.dot, { backgroundColor: itemColor }]} />
+              <Text style={[styles.itemText, { color: itemColor }]}>
+                {flag.piece} — {flag.color} — {flag.size}
+              </Text>
+            </View>
+          );
+        })}
       </View>
       <SmallChevronRightIcon color={colors.inkFaint} size={14} strokeWidth={1.8} />
     </Pressable>

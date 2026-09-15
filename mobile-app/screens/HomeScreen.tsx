@@ -1,10 +1,13 @@
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { STATS, SECTIONS, CATALOGUE, INVENTORY } from '../constants/homeData';
+import { STATS, SECTIONS, CATALOGUE } from '../constants/homeData';
+import { PIECES } from '../constants/inventoryData';
+import { useFlags } from '../context/FlagsContext';
 import TapeGutter from '../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
@@ -15,6 +18,23 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const { flags } = useFlags();
+
+  const inventoryPreview = useMemo(() => {
+    return PIECES.map((piece) => {
+      const pieceFlags = flags.filter((f) => f.piece === piece.name);
+      const repairCount = pieceFlags.filter((f) => f.status === 'repair').length;
+      const dirtyCount = pieceFlags.filter((f) => f.status === 'dirty').length;
+      return {
+        piece: piece.name,
+        sizes: piece.colorsLabel,
+        qty: piece.qty,
+        condition:
+          repairCount > 0 ? `Repair (${repairCount})` : dirtyCount > 0 ? `Dirty (${dirtyCount})` : 'Good',
+        warn: repairCount > 0 || dirtyCount > 0,
+      };
+    });
+  }, [flags]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -95,7 +115,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
             </Pressable>
           </View>
           <View style={styles.invList}>
-            {INVENTORY.map((item) => (
+            {inventoryPreview.map((item) => (
               <View key={item.piece} style={styles.invRow}>
                 <View>
                   <Text style={styles.invPiece}>{item.piece}</Text>

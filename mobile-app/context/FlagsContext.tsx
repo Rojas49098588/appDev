@@ -19,8 +19,13 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     AsyncStorage.getItem(STORAGE_KEY)
       .then((saved) => {
-        if (isMounted && saved) {
+        if (!isMounted) return;
+        if (saved) {
           setFlags(JSON.parse(saved) as Flag[]);
+        } else {
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(FLAGS)).catch(() => {
+            // Best-effort — in-memory seed data is already correct either way.
+          });
         }
       })
       .catch(() => {
