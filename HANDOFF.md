@@ -31,18 +31,18 @@ Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced lo
 
 If any of these don't match, that's a real bug that slipped past every review layer — treat it seriously, don't just patch around it blindly; re-read the relevant task in the plan first.
 
-## Parked minor findings (real, not blocking, not yet fixed)
+## Parked minor findings — all fixed 2026-09-15 (commit `e639344`)
 
-From the final whole-branch review — none of these were required to fix, but they're legitimate and worth picking off opportunistically:
+From the final whole-branch review. All 8 were addressed in a follow-up pass; `tsc`/`expo-doctor` re-verified clean (same pre-existing patch-version warning as before, see below). Kept here for reference/history, not as an open TODO list:
 
-1. **`context/FlagsContext.tsx:23`** — `JSON.parse(saved) as Flag[]` has no runtime shape validation. A corrupted/stale AsyncStorage blob would flow unchecked into every consumer.
-2. **`context/FlagsContext.tsx`** — `addFlag`/`updateFlag` aren't `useCallback`'d and the context value object isn't `useMemo`'d, so every render creates new function/object identities. Harmless at this app's scale, but not idiomatic.
-3. **`screens/member/GameDayScreen.tsx`** — two non-null assertions (`COMBOS.find(...)!`) on `CURRENT_GAME.preGameComboId`/`halftimeComboId`. If a future edit to `constants/gamesData.ts` ever references a combo id that doesn't exist in `constants/combosData.ts`, this throws and white-screens the member's landing tab. Consider a fallback or early return.
-4. **`constants/combosData.ts` vs `constants/homeData.ts`'s `CATALOGUE`** — combo label/sub data is now duplicated across two files. `CATALOGUE` should probably become derived from `COMBOS` (e.g. `COMBOS.slice(0, 5).map(({label, sub}) => ({label, sub}))`).
-5. **`constants/combosData.ts`** — `combo-02` through `combo-05`'s `components` arrays are invented filler (never rendered anywhere, since only Home's carousel uses those combos and it only reads label/sub). Harmless but could confuse a future reader into thinking they're real data.
-6. **`components/TabIcon.tsx`** — the `'sizes'` icon case is byte-identical to the pre-existing `'inventory'` case (same SVG path). Intentional (they're never shown in the same tab bar) but worth a shared case if you're in this file anyway.
-7. **`screens/member/FlagItemScreen.tsx`** — the copy "This will show up on your profile in the staff view" is only literally true for Maya Chen, since she's the only member the Member view can act as. Consider softening to "a staff member will see this" (the placeholder text already says this) to avoid over-promising.
-8. **`screens/member/MyInventoryScreen.tsx`** — a flag with an empty comment shows no banner/no visible "this is editable" affordance beyond the row still being tappable. Worth a UX look against the original mockup (`mobile-app/mockups/memberView_myInventory.png`).
+1. **`context/FlagsContext.tsx`** — `JSON.parse(saved)` now runs through a runtime shape validator (`isFlag`/`parseFlags`) before being trusted; a corrupted/stale AsyncStorage blob falls back to seed data instead of flowing into consumers unchecked.
+2. **`context/FlagsContext.tsx`** — `addFlag`/`updateFlag` are now `useCallback`'d (using functional `setFlags` updates, which also fixed a latent stale-closure bug) and the context value is `useMemo`'d.
+3. **`screens/member/GameDayScreen.tsx`** — the two non-null assertions on `COMBOS.find(...)` are gone; each `ComboSection` now renders conditionally only if the combo is found, instead of throwing.
+4. **`constants/homeData.ts`'s `CATALOGUE`** — now derived from `COMBOS` (`COMBOS.slice(0, 5).map(...)`) instead of duplicating label/sub data.
+5. **`constants/combosData.ts`** — `components` is now optional on `Combo`; the invented filler for `combo-02`..`combo-05` (never rendered) was removed, keeping it only on `combo-01`/`combo-14` which Game Day actually renders.
+6. **`components/TabIcon.tsx`** — the `'sizes'` case now shares the `'inventory'` case instead of duplicating the same SVG.
+7. **`screens/member/FlagItemScreen.tsx`** — hint copy softened to "A staff member will see this."
+8. **`screens/member/MyInventoryScreen.tsx`** — the flagged banner now always shows once a piece is flagged, even with an empty comment (falls back to "You flagged this.").
 
 ## Other known outstanding items (pre-existing, unrelated to this feature)
 
