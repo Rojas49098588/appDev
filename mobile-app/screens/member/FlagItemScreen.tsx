@@ -97,7 +97,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
             onChangeText={setComment}
             multiline
           />
-          <Text style={styles.hint}>This will show up on your profile in the staff view.</Text>
+          <Text style={styles.hint}>A staff member will see this.</Text>
         </View>
 
         <View style={styles.footer}>

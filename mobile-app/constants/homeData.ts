@@ -1,3 +1,5 @@
+import { COMBOS } from './combosData';
+
 export const STATS = [
   { label: 'members', value: '122' },
   { label: 'sections', value: '9' },
@@ -17,10 +19,4 @@ export const SECTIONS = [
   { name: 'Drumline', count: 26, fitPercent: 81 },
 ];
 
-export const CATALOGUE = [
-  { label: 'Combo 01', sub: 'Field — home' },
-  { label: 'Combo 02', sub: 'Field — away' },
-  { label: 'Combo 03', sub: 'Parade — formal' },
-  { label: 'Combo 04', sub: 'Parade — summer' },
-  { label: 'Combo 05', sub: 'Concert' },
-];
+export const CATALOGUE = COMBOS.slice(0, 5).map(({ label, sub }) => ({ label, sub }));

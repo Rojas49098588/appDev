@@ -61,9 +61,11 @@ export default function MyInventoryScreen({ navigation }: Props) {
                     <SmallChevronRightIcon color={colors.inkFaint} size={14} strokeWidth={1.8} />
                   </View>
                 </Pressable>
-                {flag && flag.comment !== '' && (
+                {flag && (
                   <View style={styles.commentBanner}>
-                    <Text style={styles.commentText}>You flagged this — {flag.comment}</Text>
+                    <Text style={styles.commentText}>
+                      {flag.comment !== '' ? `You flagged this — ${flag.comment}` : 'You flagged this.'}
+                    </Text>
                     <Pressable
                       onPress={() =>
                         navigation.navigate('FlagItem', {

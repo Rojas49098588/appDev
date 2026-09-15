@@ -16,8 +16,8 @@ type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
 
 export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const preGameCombo = COMBOS.find((c) => c.id === CURRENT_GAME.preGameComboId)!;
-  const halftimeCombo = COMBOS.find((c) => c.id === CURRENT_GAME.halftimeComboId)!;
+  const preGameCombo = COMBOS.find((c) => c.id === CURRENT_GAME.preGameComboId);
+  const halftimeCombo = COMBOS.find((c) => c.id === CURRENT_GAME.halftimeComboId);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -34,8 +34,8 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
             vs. {CURRENT_GAME.opponent} — {CURRENT_GAME.date}
           </Text>
 
-          <ComboSection title="Pre-game" combo={preGameCombo} />
-          <ComboSection title="Halftime" combo={halftimeCombo} />
+          {preGameCombo && <ComboSection title="Pre-game" combo={preGameCombo} />}
+          {halftimeCombo && <ComboSection title="Halftime" combo={halftimeCombo} />}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -54,7 +54,7 @@ function ComboSection({ title, combo }: { title: string; combo: Combo }) {
       </View>
       <Text style={styles.componentsLabel}>Components</Text>
       <View style={styles.chipRow}>
-        {combo.components.map((component) => (
+        {(combo.components ?? []).map((component) => (
           <View key={component} style={styles.chip}>
             <Text style={styles.chipText}>{component}</Text>
           </View>
