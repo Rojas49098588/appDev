@@ -17,7 +17,7 @@ const flag = (
   size: string,
   status: FlagStatus
 ): Flag => ({
-  id: `${memberName}-${piece}`,
+  id: `${memberName}-${piece}-${color}`,
   memberName,
   piece,
   color,

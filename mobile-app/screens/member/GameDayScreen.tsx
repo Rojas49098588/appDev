@@ -36,6 +36,21 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
 
           {preGameCombo && <ComboSection title="Pre-game" combo={preGameCombo} />}
           {halftimeCombo && <ComboSection title="Halftime" combo={halftimeCombo} />}
+
+          <View style={styles.lastSection}>
+            <Text style={styles.sectionTitle}>After-game instructions</Text>
+            <View style={styles.instructionsCard}>
+              <Text style={styles.instructionsText}>{CURRENT_GAME.afterGameInstructions}</Text>
+              <View style={styles.instructionsMeta}>
+                <Text style={styles.instructionsMetaText}>
+                  Posted by {CURRENT_GAME.instructionsPostedBy}
+                </Text>
+                <Text style={styles.instructionsMetaText}>
+                  Updated {CURRENT_GAME.instructionsUpdatedAt}
+                </Text>
+              </View>
+            </View>
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -87,6 +102,7 @@ const styles = StyleSheet.create({
   avatarText: { fontFamily: fonts.wordmark, fontSize: 14, color: colors.paper },
   gameLine: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginBottom: 24 },
   section: { marginBottom: 28 },
+  lastSection: { marginBottom: 4 },
   sectionTitle: { fontFamily: fonts.blockTitle, fontSize: 17, color: colors.ink, marginBottom: 3 },
   sectionSub: { fontFamily: fonts.mono, fontSize: 11.5, color: colors.inkSoft, marginBottom: 12 },
   photoBox: {
@@ -109,4 +125,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
+  instructionsCard: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    padding: 14,
+  },
+  instructionsText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink, lineHeight: 19 },
+  instructionsMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: colors.lineSoft,
+    marginTop: 12,
+    paddingTop: 10,
+  },
+  instructionsMetaText: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
 });

@@ -22,7 +22,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'FlagItem'>;
 export default function FlagItemScreen({ navigation, route }: Props) {
   const { piece, color, size } = route.params;
   const { flags, addFlag, updateFlag } = useFlags();
-  const existingFlag = flags.find((f) => f.memberName === MY_MEMBER_NAME && f.piece === piece);
+  const existingFlag = flags.find(
+    (f) => f.memberName === MY_MEMBER_NAME && f.piece === piece && f.color === color
+  );
 
   const [status, setStatus] = useState<FlagStatus>(existingFlag?.status ?? 'dirty');
   const [comment, setComment] = useState(existingFlag?.comment ?? '');
@@ -32,7 +34,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
       updateFlag(existingFlag.id, status, comment);
     } else {
       addFlag({
-        id: `${MY_MEMBER_NAME}-${piece}`,
+        id: `${MY_MEMBER_NAME}-${piece}-${color}`,
         memberName: MY_MEMBER_NAME,
         piece,
         color,

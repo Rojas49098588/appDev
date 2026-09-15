@@ -25,7 +25,7 @@ export default function MySizesScreen() {
               >
                 <Text style={styles.cellLabel}>{slot.piece}</Text>
                 <Text style={styles.cellValue}>
-                  {slot.color} · {slot.size}
+                  {slot.variants.map((v) => v.color).join(', ')} · {slot.size}
                 </Text>
               </View>
             ))}
