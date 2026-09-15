@@ -14,22 +14,31 @@ Sign up as **Staff** (access code `1234`) → existing 4-tab experience (Home/Se
 
 The Member view's "current member" is hardcoded to **Maya Chen** (`MY_MEMBER_NAME` in `constants/myUniformData.ts`) regardless of what name is typed at sign-up — there's no real accounts system, so this is a deliberate, documented simplification (see spec's Non-goals).
 
+## 2026-09-15 update: after-game instructions + multi-color My Inventory (commit `1055be3`)
+
+The user supplied an updated `mobile-app/mockups/formation-design-handoff.md` plus two new mockup screenshots (`gameday_instructions.png`, `memberView_myInventory_update.png`) and asked for the implementation to catch up. This was scoped and approved via the `superpowers:brainstorming` skill (bounded path — extends existing screens/patterns, no spec file). Two real changes landed:
+
+1. **Game Day** now has a read-only "After-game instructions" card (staff-authored free text + "Posted by / Updated" line) rendered once at the end of the scroll, applying to the whole game rather than a specific combo. Backed by three new fields on `constants/gamesData.ts`'s `Game` type: `afterGameInstructions`, `instructionsPostedBy`, `instructionsUpdatedAt`. There's still no Staff-side "Edit game day" screen — this is read-only, seeded data only, matching how the rest of this app's Staff-authored content works today.
+2. **My Inventory data model changed**: a member now owns **one item per color/style variant of a piece type**, not one item per type (Maya has 4 coats — Blue/Red/Purple/Candy — not 1). `constants/myUniformData.ts`'s `MY_UNIFORM` is now `UniformGroup[]` (`{ piece, size, variants: { color }[] }`), with variants derived from `constants/inventoryData.ts`'s `PIECES` so they can never drift from the Staff-side catalogue. `MyInventoryScreen.tsx` is now expand/collapse per piece type (reusing Staff Inventory's `PieceCard` dual repair/dirty-badge pattern on the collapsed header), and flagging happens per `(piece, color)` — which required changing `Flag.id` from `${memberName}-${piece}` to `${memberName}-${piece}-${color}` (the old scheme would've silently collided/overwritten if a member ever had two different colors of the same piece flagged). `MySizesScreen.tsx` was adapted to show a joined color list per piece type since "one color" is no longer a valid assumption.
+
+`tsc`/`expo-doctor` re-verified clean (same pre-existing patch-version warning, see below). **Not yet verified on-device** — folded into the checklist below.
+
 ## Required: on-device verification (nobody has done this yet)
 
 Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering this feature actually finished:
 
 1. `cd mobile-app && npm start`, open in Expo Go.
 2. Sign up as **Member** → confirm you land on Game Day (not the Staff Home tab).
-3. Game Day: confirm it shows "vs. Lincoln High — Fri, Sep 18", a Pre-game section ("Combo 01 — Field — home") and Halftime section ("Combo 14 — Halftime formation"), each with 6 component chips.
-4. Sizes tab: confirm a 2×3 grid of Maya Chen's 6 pieces (Coats Blue·208, Vests Candy·204, Bibbers Blue·212, Pants Blue·208, Ties Blue·—, Belts Blue·—) plus the advisory note.
-5. Inventory tab: confirm **Coats** shows "Dirty" (pre-seeded) and the other 5 show "Good". Tap a "Good" piece (e.g. Vests) → Flag item → submit "Needs repair" with a comment → back on My Inventory, confirm it now shows "Repair" with your comment in a banner with an "Edit" link.
+3. Game Day: confirm it shows "vs. Lincoln High — Fri, Sep 18", a Pre-game section ("Combo 01 — Field — home") and Halftime section ("Combo 14 — Halftime formation"), each with 6 component chips, and — below both — an "After-game instructions" card with the draped-pieces/bowties/white-shirt copy and "Posted by Coach Reyes" / "Updated Sep 15".
+4. Sizes tab: confirm a 2×3 grid of Maya Chen's 6 piece types, each showing its joined color list + size (Coats "Blue, Red, Purple, Candy · 208", Vests "Candy, Red · 204", Bibbers "Blue, White · 212", Pants "Blue, White · 208", Ties "Blue, Red, Purple, Blue bows, Red bows · —", Belts "Red, Blue · —") plus the advisory note.
+5. Inventory tab: confirm **Coats** is collapsed showing "4 pieces" and a "Dirty · 1" badge (pre-seeded on Blue); other piece types show no badge. Expand Coats → confirm Blue shows "Dirty" with an editable comment banner and Red/Purple/Candy show "Good". Tap Red → Flag item → submit "Needs repair" with a comment → back on My Inventory, confirm Coats' collapsed badge now reads "Repair · 1  Dirty · 1" and Red shows "Repair" with your comment in a banner with an "Edit" link.
 6. Tap the avatar (top-right on Game Day) → Account screen → confirm it shows the name/instrument you entered and "MEMBER" → Log Out → back to Sign Up.
-7. Sign back up as **Staff** (code `1234`): open Sections, browse to Trumpet (Maya's section, no status filter) — confirm her row now shows **both** her Coats (dirty) and Vests (repair) lines, not just one. This is the exact bug the final review caught and the fix round addressed — if you only see one line, something regressed.
-8. Open Inventory: confirm Vests now shows "Repair · 1" and the summary line reflects it.
-9. Go back to Home (the Staff tab): confirm the Inventory preview card *also* shows Vests as flagged — this was Finding #2 from the final review (Home's preview used to be frozen at seed data; it's now supposed to be live).
-10. Fully close and reopen the app (not just Fast Refresh) → confirm the Vests flag persisted (AsyncStorage).
+7. Sign back up as **Staff** (code `1234`): open Sections, browse to Trumpet (Maya's section, no status filter) — confirm her row now shows Coats (dirty), Coats (repair), and Vests (dirty, pre-seeded on Candy is not flagged — check whatever you actually flagged) as separate lines, not collapsed into one. This is the exact bug class the original final review caught (flags overwriting each other) — if you only see one Coats line after flagging a second color, something regressed on the `Flag.id` change.
+8. Open Inventory: confirm Coats now shows both "Repair · 1" and "Dirty · 1" and the summary line reflects it.
+9. Go back to Home (the Staff tab): confirm the Inventory preview card *also* shows Coats as flagged.
+10. Fully close and reopen the app (not just Fast Refresh) → confirm both Coats flags persisted (AsyncStorage) and are still distinct (not merged into one).
 
-If any of these don't match, that's a real bug that slipped past every review layer — treat it seriously, don't just patch around it blindly; re-read the relevant task in the plan first.
+If any of these don't match, that's a real bug — treat it seriously, don't just patch around it blindly; re-read the relevant section above first.
 
 ## Parked minor findings — all fixed 2026-09-15 (commit `e639344`)
 
