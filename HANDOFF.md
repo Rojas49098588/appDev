@@ -23,22 +23,29 @@ The user supplied an updated `mobile-app/mockups/formation-design-handoff.md` pl
 
 `tsc`/`expo-doctor` re-verified clean (same pre-existing patch-version warning, see below). **Not yet verified on-device** — folded into the checklist below.
 
+## 2026-09-16 update: Login → Invite Code → Sign Up flow (commit — this update is itself the latest commit on `master` as of this writing; check `git log` for its hash)
+
+Added a real authentication flow in front of the app: **Login → (Create an account) → Invite code → Sign Up**, backed by a new `context/AuthContext.tsx` that mirrors `FlagsContext`'s AsyncStorage pattern (persist-on-write, runtime-validated read-back on load). This is a genuine behavior change, not just a new screen: previously *every* feature in this app's history landed the user straight on Sign Up on launch, with no real accounts. Now a saved account + persisted session means the app remembers who's logged in — force-closing and reopening skips Login entirely and drops straight back into the signed-in tabs (Staff Home or Member Game Day, matching the account's role), and Log Out (from the avatar → Account screen) clears the session and returns to Login rather than Sign Up.
+
+The invite-code step gates account creation behind a single shared code (`4F2K9`) before Sign Up is reachable at all; Sign Up itself still branches Staff (inline staff access code, no modal) vs. Member exactly as before, now with email/password captured and persisted as the account's credentials for future Logins.
+
+This was scoped via the `superpowers:brainstorming` skill (architectural path — new context, new screens, new navigation states), spec at `docs/superpowers/specs/2026-09-16-auth-flow-design.md`, and implemented via `superpowers:subagent-driven-development` across 7 sequential tasks per the plan at `docs/superpowers/plans/2026-09-16-auth-flow.md`. Each task was independently implemented and reviewed clean; this final task is whole-project `tsc`/`expo-doctor` verification plus this handoff update — same pre-existing patch-version `expo-doctor` warning as always (see below), no new failures.
+
 ## Required: on-device verification (nobody has done this yet)
 
-Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering this feature actually finished:
+Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering the new auth flow actually finished — it supersedes the old Member-View checklist that used to live here, which assumed the app opened straight to Sign Up:
 
-1. `cd mobile-app && npm start`, open in Expo Go.
-2. Sign up as **Member** → confirm you land on Game Day (not the Staff Home tab).
-3. Game Day: confirm it shows "vs. Lincoln High — Fri, Sep 18", a Pre-game section ("Combo 01 — Field — home") and Halftime section ("Combo 14 — Halftime formation"), each with 6 component chips, and — below both — an "After-game instructions" card with the draped-pieces/bowties/white-shirt copy and "Posted by Coach Reyes" / "Updated Sep 15".
-4. Sizes tab: confirm a 2×3 grid of Maya Chen's 6 piece types, each showing its joined color list + size (Coats "Blue, Red, Purple, Candy · 208", Vests "Candy, Red · 204", Bibbers "Blue, White · 212", Pants "Blue, White · 208", Ties "Blue, Red, Purple, Blue bows, Red bows · —", Belts "Red, Blue · —") plus the advisory note.
-5. Inventory tab: confirm **Coats** is collapsed showing "4 pieces" and a "Dirty · 1" badge (pre-seeded on Blue); other piece types show no badge. Expand Coats → confirm Blue shows "Dirty" with an editable comment banner and Red/Purple/Candy show "Good". Tap Red → Flag item → submit "Needs repair" with a comment → back on My Inventory, confirm Coats' collapsed badge now reads "Repair · 1  Dirty · 1" and Red shows "Repair" with your comment in a banner with an "Edit" link.
-6. Tap the avatar (top-right on Game Day) → Account screen → confirm it shows the name/instrument you entered and "MEMBER" → Log Out → back to Sign Up.
-7. Sign back up as **Staff** (code `1234`): open Sections, browse to Trumpet (Maya's section, no status filter) — confirm her row now shows Coats (dirty), Coats (repair), and Vests (dirty, pre-seeded on Candy is not flagged — check whatever you actually flagged) as separate lines, not collapsed into one. This is the exact bug class the original final review caught (flags overwriting each other) — if you only see one Coats line after flagging a second color, something regressed on the `Flag.id` change.
-8. Open Inventory: confirm Coats now shows both "Repair · 1" and "Dirty · 1" and the summary line reflects it.
-9. Go back to Home (the Staff tab): confirm the Inventory preview card *also* shows Coats as flagged.
-10. Fully close and reopen the app (not just Fast Refresh) → confirm both Coats flags persisted (AsyncStorage) and are still distinct (not merged into one).
+1. Fresh install (or clear the app's storage/AsyncStorage) → app opens on **Login**, not Sign Up.
+2. On Login, tap "Create an account" → lands on **Invite code**; entering a wrong code shows an error and stays on that screen; entering the correct code (`4F2K9`) advances to **Sign up**.
+3. Fill out Sign up (including Email/Password) as **Member**, submit → lands on Game Day, same landing behavior as before this feature.
+4. Log out (avatar → Member Account → Log Out) → returns to **Login**, not Sign Up.
+5. On Login, enter that same email/password → lands back on Game Day directly, with no need to re-fill Sign Up.
+6. On Login, enter a wrong password → error alert, stays on Login.
+7. Force-close and reopen the app while still logged in → opens directly to the signed-in tabs, skipping Login entirely — this is the core new behavior this feature adds.
+8. Log out, sign up again as **Staff** with the correct staff access code entered inline (no modal should appear) → lands on Home. Force-close/reopen → returns to Home directly (not Login, not Sign Up).
+9. Log out, sign up as Staff with the *wrong* staff access code → inline error shown, stays on Sign Up, and the previously-saved account is not overwritten.
 
-If any of these don't match, that's a real bug — treat it seriously, don't just patch around it blindly; re-read the relevant section above first.
+If any of these don't match, that's a real bug — treat it seriously, don't just patch around it blindly; re-read `docs/superpowers/specs/2026-09-16-auth-flow-design.md` and `context/AuthContext.tsx` first.
 
 ## Parked minor findings — all fixed 2026-09-15 (commit `e639344`)
 
