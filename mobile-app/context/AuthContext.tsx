@@ -86,16 +86,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(([savedAccount, savedSession]) => {
         if (!isMounted) return;
         if (savedAccount) {
-          const parsed = parseJson(savedAccount, isAccount);
-          if (parsed) setAccount(parsed);
-        }
-        if (savedSession) {
-          const parsed = parseJson(savedSession, isSession);
-          if (parsed) setSession(parsed);
+          const parsedAccount = parseJson(savedAccount, isAccount);
+          // Only trust a saved session if its paired account also parsed
+          // successfully — a session should never outlive a corrupted account,
+          // since logIn requires an account to check credentials against.
+          if (parsedAccount) {
+            setAccount(parsedAccount);
+            if (savedSession) {
+              const parsedSession = parseJson(savedSession, isSession);
+              if (parsedSession) setSession(parsedSession);
+            }
+          }
         }
       })
-      .catch(() => {
+      .catch((error) => {
         // No saved data yet, or storage unavailable — stay logged out.
+        console.warn('AuthContext: failed to read persisted account/session', error);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -110,10 +116,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newSession = toSession(newAccount);
     setSession(newSession);
     try {
+      // Sequential, not Promise.all: a failure between these two writes must
+      // never leave a session persisted without its account (see logIn's
+      // account-required guard).
       await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(newAccount));
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
-    } catch {
+    } catch (error) {
       // Best-effort persistence — in-memory state is already up to date.
+      console.warn('AuthContext: failed to persist account/session during signUp', error);
     }
   }, []);
 
@@ -128,8 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(newSession);
       try {
         await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
-      } catch {
+      } catch (error) {
         // Best-effort persistence — in-memory state is already up to date.
+        console.warn('AuthContext: failed to persist session during logIn', error);
       }
       return account;
     },
@@ -140,8 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     try {
       await AsyncStorage.removeItem(SESSION_KEY);
-    } catch {
+    } catch (error) {
       // Best-effort — in-memory state is already up to date.
+      console.warn('AuthContext: failed to clear persisted session during logOut', error);
     }
   }, []);
 
