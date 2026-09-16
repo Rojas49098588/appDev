@@ -12,6 +12,8 @@ import {
   IBMPlexSans_600SemiBold,
 } from '@expo-google-fonts/ibm-plex-sans';
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
+import LoginScreen from './screens/LoginScreen';
+import InviteCodeScreen from './screens/InviteCodeScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import MainTabs from './screens/MainTabs';
 import MemberTabs from './screens/MemberTabs';
@@ -20,10 +22,58 @@ import FlagItemScreen from './screens/member/FlagItemScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function AppNavigator() {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  const initialRouteName = !session
+    ? 'Login'
+    : session.role === 'Staff'
+      ? 'MainTabs'
+      : 'MemberTabs';
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName={initialRouteName}>
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="InviteCode"
+          component={InviteCodeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="MainTabs"
+          component={MainTabs}
+          options={{ headerShown: false }}
+          initialParams={session && session.role === 'Staff' ? session : undefined}
+        />
+        <Stack.Screen
+          name="MemberTabs"
+          component={MemberTabs}
+          options={{ headerShown: false }}
+          initialParams={session && session.role === 'Member' ? session : undefined}
+        />
+        <Stack.Screen
+          name="MemberAccount"
+          component={MemberAccountScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="FlagItem" component={FlagItemScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -47,20 +97,13 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <FlagsProvider>
-        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-          <NavigationContainer>
-            <Stack.Navigator>
-              <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-              <Stack.Screen name="MemberTabs" component={MemberTabs} options={{ headerShown: false }} />
-              <Stack.Screen name="MemberAccount" component={MemberAccountScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="FlagItem" component={FlagItemScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </View>
-      </FlagsProvider>
+      <AuthProvider>
+        <FlagsProvider>
+          <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+            <AppNavigator />
+          </View>
+        </FlagsProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
