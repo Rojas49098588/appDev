@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -19,6 +18,7 @@ import type { RootStackParamList, Role } from '../navigation/types';
 import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
+import { useAuth } from '../context/AuthContext';
 import TapeGutter from '../components/TapeGutter';
 import InstrumentWheel from '../components/InstrumentWheel';
 
@@ -28,47 +28,31 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 const STAFF_ACCESS_CODE = '1234';
 
 export default function SignUpScreen({ navigation }: Props) {
+  const { signUp } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
   const [role, setRole] = useState<Role>('Member');
-  const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
-  const [accessCode, setAccessCode] = useState('');
+  const [staffCode, setStaffCode] = useState('');
 
-  const goToHome = (confirmedRole: Role) => {
+  const handleSubmit = async () => {
+    if (role === 'Staff' && staffCode !== STAFF_ACCESS_CODE) {
+      Alert.alert('Error', 'Incorrect staff code.');
+      return;
+    }
+
+    await signUp({ email, password, firstName, lastName, instrument, role });
     navigation.reset({
       index: 0,
       routes: [
         {
-          name: confirmedRole === 'Staff' ? 'MainTabs' : 'MemberTabs',
-          params: { firstName, lastName, instrument, role: confirmedRole },
+          name: role === 'Staff' ? 'MainTabs' : 'MemberTabs',
+          params: { firstName, lastName, instrument, role },
         },
       ],
     });
-  };
-
-  const handleSubmit = () => {
-    if (role === 'Staff') {
-      setShowAccessCodeModal(true);
-      return;
-    }
-    goToHome(role);
-  };
-
-  const handleAccessCodeCancel = () => {
-    setShowAccessCodeModal(false);
-    setAccessCode('');
-  };
-
-  const handleAccessCodeConfirm = () => {
-    setShowAccessCodeModal(false);
-    if (accessCode === STAFF_ACCESS_CODE) {
-      setAccessCode('');
-      goToHome('Staff');
-    } else {
-      setAccessCode('');
-      Alert.alert('Error', 'Incorrect access code.');
-    }
   };
 
   return (
@@ -102,6 +86,32 @@ export default function SignUpScreen({ navigation }: Props) {
               </View>
 
               <Text style={styles.intro}>A few details before you join Central High Band.</Text>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Email</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Email"
+                  placeholderTextColor={colors.inkFaint}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Password</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Password"
+                  placeholderTextColor={colors.inkFaint}
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                  secureTextEntry
+                />
+              </View>
 
               <View style={styles.nameRow}>
                 <View style={[styles.field, styles.nameField]}>
@@ -154,6 +164,21 @@ export default function SignUpScreen({ navigation }: Props) {
                   })}
                 </View>
               </View>
+
+              {role === 'Staff' && (
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Staff code</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Staff code"
+                    placeholderTextColor={colors.inkFaint}
+                    value={staffCode}
+                    onChangeText={setStaffCode}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                  />
+                </View>
+              )}
             </ScrollView>
 
             <View style={styles.footer}>
@@ -163,36 +188,6 @@ export default function SignUpScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
-
-        <Modal
-          visible={showAccessCodeModal}
-          transparent
-          animationType="fade"
-          onRequestClose={handleAccessCodeCancel}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Enter Access Code</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Access Code"
-                placeholderTextColor={colors.inkFaint}
-                value={accessCode}
-                onChangeText={setAccessCode}
-                keyboardType="number-pad"
-                secureTextEntry
-              />
-              <View style={styles.modalButtonRow}>
-                <Pressable style={styles.modalCancelButton} onPress={handleAccessCodeCancel}>
-                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
-                </Pressable>
-                <Pressable style={styles.modalConfirmButton} onPress={handleAccessCodeConfirm}>
-                  <Text style={styles.modalConfirmButtonText}>Confirm</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
 
         <StatusBar style="auto" />
       </KeyboardAvoidingView>
@@ -316,64 +311,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitButtonText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: colors.paper,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(34, 32, 29, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalContent: {
-    width: '85%',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 20,
-  },
-  modalTitle: {
-    fontFamily: fonts.blockTitle,
-    fontSize: 18,
-    color: colors.ink,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
-    paddingVertical: 12,
-    paddingHorizontal: 13,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
-    marginBottom: 16,
-  },
-  modalButtonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  modalCancelButtonText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  modalConfirmButton: {
-    flex: 1,
-    backgroundColor: colors.ink,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  modalConfirmButtonText: {
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
     color: colors.paper,
