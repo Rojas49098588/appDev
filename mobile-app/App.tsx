@@ -28,7 +28,7 @@ SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-function AppNavigator() {
+function AppNavigator({ onReady }: { onReady: () => void }) {
   const { session, isLoading } = useAuth();
 
   if (isLoading) {
@@ -42,36 +42,42 @@ function AppNavigator() {
       : 'MemberTabs';
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName={initialRouteName}>
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="InviteCode"
-          component={InviteCodeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="MainTabs"
-          component={MainTabs}
-          options={{ headerShown: false }}
-          initialParams={session && session.role === 'Staff' ? session : undefined}
-        />
-        <Stack.Screen
-          name="MemberTabs"
-          component={MemberTabs}
-          options={{ headerShown: false }}
-          initialParams={session && session.role === 'Member' ? session : undefined}
-        />
-        <Stack.Screen
-          name="MemberAccount"
-          component={MemberAccountScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="FlagItem" component={FlagItemScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1 }} onLayout={onReady}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName={initialRouteName}>
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="InviteCode"
+            component={InviteCodeScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="MainTabs"
+            component={MainTabs}
+            options={{ headerShown: false }}
+            initialParams={session && session.role === 'Staff' ? session : undefined}
+          />
+          <Stack.Screen
+            name="MemberTabs"
+            component={MemberTabs}
+            options={{ headerShown: false }}
+            initialParams={session && session.role === 'Member' ? session : undefined}
+          />
+          <Stack.Screen
+            name="MemberAccount"
+            component={MemberAccountScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="FlagItem"
+            component={FlagItemScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </View>
   );
 }
 
@@ -99,9 +105,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <FlagsProvider>
-          <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-            <AppNavigator />
-          </View>
+          <AppNavigator onReady={onLayoutRootView} />
         </FlagsProvider>
       </AuthProvider>
     </SafeAreaProvider>
