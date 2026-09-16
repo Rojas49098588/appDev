@@ -13,6 +13,7 @@ import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
 import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
@@ -46,6 +47,7 @@ const TEXT_FIELDS: {
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 export default function ProfileScreen({ navigation, route }: Props) {
+  const { logOut } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
     firstName: route.params.firstName,
@@ -63,7 +65,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
   };
 
   const handleLogOut = () => {
-    navigation.reset({ index: 0, routes: [{ name: 'SignUp' }] });
+    logOut();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   const hasHeight = profile.heightFeet !== '' || profile.heightInches !== '';

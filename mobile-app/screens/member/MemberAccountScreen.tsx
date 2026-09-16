@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
+import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import TapeGutter from '../../components/TapeGutter';
@@ -10,11 +11,13 @@ import { BackChevronIcon } from '../../components/icons';
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberAccount'>;
 
 export default function MemberAccountScreen({ navigation, route }: Props) {
+  const { logOut } = useAuth();
   const { firstName, lastName, instrument, role } = route.params;
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   const handleLogOut = () => {
-    navigation.reset({ index: 0, routes: [{ name: 'SignUp' }] });
+    logOut();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   return (
