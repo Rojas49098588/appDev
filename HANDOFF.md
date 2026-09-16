@@ -23,7 +23,7 @@ The user supplied an updated `mobile-app/mockups/formation-design-handoff.md` pl
 
 `tsc`/`expo-doctor` re-verified clean (same pre-existing patch-version warning, see below). **Not yet verified on-device** — folded into the checklist below.
 
-## 2026-09-16 update: Login → Invite Code → Sign Up flow (commit — this update is itself the latest commit on `master` as of this writing; check `git log` for its hash)
+## 2026-09-16 update: Login → Invite Code → Sign Up flow (commit `3ee6e63`)
 
 Added a real authentication flow in front of the app: **Login → (Create an account) → Invite code → Sign Up**, backed by a new `context/AuthContext.tsx` that mirrors `FlagsContext`'s AsyncStorage pattern (persist-on-write, runtime-validated read-back on load). This is a genuine behavior change, not just a new screen: previously *every* feature in this app's history landed the user straight on Sign Up on launch, with no real accounts. Now a saved account + persisted session means the app remembers who's logged in — force-closing and reopening skips Login entirely and drops straight back into the signed-in tabs (Staff Home or Member Game Day, matching the account's role), and Log Out (from the avatar → Account screen) clears the session and returns to Login rather than Sign Up.
 
