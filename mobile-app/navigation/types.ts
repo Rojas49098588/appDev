@@ -8,6 +8,8 @@ export type UserParams = {
 };
 
 export type RootStackParamList = {
+  Login: undefined;
+  InviteCode: undefined;
   SignUp: undefined;
   MainTabs: UserParams;
   MemberTabs: UserParams;
