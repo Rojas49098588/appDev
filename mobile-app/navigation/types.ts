@@ -7,6 +7,17 @@ export type UserParams = {
   role: Role;
 };
 
+export type HeightValue = { feet: string; inches: string };
+
+export type MemberProfileParams = {
+  name: string;
+  section: string;
+  email?: string;
+  phone?: string;
+  height?: HeightValue;
+  weight?: string;
+};
+
 export type RootStackParamList = {
   Login: undefined;
   InviteCode: undefined;
@@ -15,6 +26,7 @@ export type RootStackParamList = {
   MemberTabs: UserParams;
   Profile: UserParams;
   MemberAccount: UserParams;
+  MemberProfile: MemberProfileParams;
   FlagItem: { piece: string; color: string; size: string };
 };
 

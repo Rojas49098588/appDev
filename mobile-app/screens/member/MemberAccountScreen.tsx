@@ -24,6 +24,8 @@ const TEXT_FIELDS: {
   { key: 'phone', label: 'Phone Number', keyboardType: 'phone-pad' },
 ];
 
+const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
+
 export default function MemberAccountScreen({ navigation, route }: Props) {
   const { account, updateAccount, logOut } = useAuth();
   const role = account?.role ?? route.params.role;
@@ -38,6 +40,9 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
     account?.shoeSize.gender ?? "Men's"
   );
   const [shoeSizeValue, setShoeSizeValue] = useState(account?.shoeSize.size ?? '');
+  const [heightFeet, setHeightFeet] = useState(account?.height.feet ?? '');
+  const [heightInches, setHeightInches] = useState(account?.height.inches ?? '');
+  const [weight, setWeight] = useState(account?.weight ?? '');
 
   const fieldValues: Record<'firstName' | 'lastName' | 'email' | 'phone', string> = {
     firstName,
@@ -53,6 +58,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
   };
 
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const hasHeight = heightFeet !== '' || heightInches !== '';
 
   const handleToggleEdit = () => {
     if (isEditing) {
@@ -63,6 +69,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
         phone,
         instrument,
         shoeSize: { gender: shoeGender, size: shoeSizeValue },
+        height: { feet: heightFeet, inches: heightInches },
+        weight,
       });
     }
     setIsEditing((prev) => !prev);
@@ -155,6 +163,50 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
               <Text style={styles.value}>
                 {shoeSizeValue ? `${shoeGender} · ${shoeSizeValue}` : ''}
               </Text>
+            )}
+          </View>
+
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.label}>Height</Text>
+            {isEditing ? (
+              <View style={styles.heightRow}>
+                <TextInput
+                  style={styles.heightInput}
+                  value={heightFeet}
+                  onChangeText={(text) => setHeightFeet(digitsOnly(text).slice(0, 1))}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                />
+                <Text style={styles.heightUnit}>'</Text>
+                <TextInput
+                  style={styles.heightInput}
+                  value={heightInches}
+                  onChangeText={(text) => setHeightInches(digitsOnly(text).slice(0, 2))}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+                <Text style={styles.heightUnit}>"</Text>
+              </View>
+            ) : (
+              <Text style={styles.value}>{hasHeight ? `${heightFeet}' ${heightInches}"` : ''}</Text>
+            )}
+          </View>
+
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.label}>Weight</Text>
+            {isEditing ? (
+              <View style={styles.weightRow}>
+                <TextInput
+                  style={styles.weightInput}
+                  value={weight}
+                  onChangeText={(text) => setWeight(digitsOnly(text).slice(0, 3))}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <Text style={styles.heightUnit}>lbs</Text>
+              </View>
+            ) : (
+              <Text style={styles.value}>{weight ? `${weight}lbs` : ''}</Text>
             )}
           </View>
 
@@ -286,6 +338,33 @@ const styles = StyleSheet.create({
   segmentText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
   segmentTextActive: { color: colors.paper },
   shoeSizeInput: {
+    width: 70,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  heightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heightInput: {
+    width: 56,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  heightUnit: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
+  weightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  weightInput: {
     width: 70,
     borderWidth: 1,
     borderColor: colors.line,

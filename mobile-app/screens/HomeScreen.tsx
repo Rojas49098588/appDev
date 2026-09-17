@@ -25,13 +25,15 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
       const pieceFlags = flags.filter((f) => f.piece === piece.name);
       const repairCount = pieceFlags.filter((f) => f.status === 'repair').length;
       const dirtyCount = pieceFlags.filter((f) => f.status === 'dirty').length;
+      const kind: 'repair' | 'dirty' | 'good' =
+        repairCount > 0 ? 'repair' : dirtyCount > 0 ? 'dirty' : 'good';
       return {
         piece: piece.name,
         sizes: piece.colorsLabel,
         qty: piece.qty,
         condition:
           repairCount > 0 ? `Repair (${repairCount})` : dirtyCount > 0 ? `Dirty (${dirtyCount})` : 'Good',
-        warn: repairCount > 0 || dirtyCount > 0,
+        kind,
       };
     });
   }, [flags]);
@@ -115,23 +117,37 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
             </Pressable>
           </View>
           <View style={styles.invList}>
-            {inventoryPreview.map((item) => (
-              <View key={item.piece} style={styles.invRow}>
-                <View>
-                  <Text style={styles.invPiece}>{item.piece}</Text>
-                  <Text style={styles.invSizes}>{item.sizes}</Text>
-                </View>
-                <View style={styles.invRight}>
-                  <Text style={styles.invQty}>{item.qty}</Text>
-                  <View style={styles.condRow}>
-                    <View style={[styles.dot, item.warn && styles.dotWarn]} />
-                    <Text style={[styles.condText, item.warn && styles.condTextWarn]}>
-                      {item.condition}
-                    </Text>
+            {inventoryPreview.map((item) => {
+              const warnColor = item.kind === 'repair' ? colors.rust : colors.wash;
+              return (
+                <View key={item.piece} style={styles.invRow}>
+                  <View>
+                    <Text style={styles.invPiece}>{item.piece}</Text>
+                    <Text style={styles.invSizes}>{item.sizes}</Text>
+                  </View>
+                  <View style={styles.invRight}>
+                    <Text style={styles.invQty}>{item.qty}</Text>
+                    <View style={styles.condRow}>
+                      <View
+                        style={[
+                          styles.dot,
+                          item.kind !== 'good' && styles.dotWarn,
+                          item.kind !== 'good' && { backgroundColor: warnColor },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.condText,
+                          item.kind !== 'good' && { color: warnColor },
+                        ]}
+                      >
+                        {item.condition}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
         </ScrollView>
@@ -383,7 +399,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   dotWarn: {
-    backgroundColor: colors.rust,
     borderRadius: 1,
     transform: [{ rotate: '45deg' }],
   },
@@ -391,8 +406,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 10.5,
     color: colors.ink,
-  },
-  condTextWarn: {
-    color: colors.rust,
   },
 });

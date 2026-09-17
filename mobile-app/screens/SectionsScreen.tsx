@@ -1,18 +1,25 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../navigation/types';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { MainTabParamList, MemberProfileParams, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { MEMBERS } from '../constants/membersData';
 import { SECTIONS } from '../constants/homeData';
+import { sectionForInstrument } from '../constants/instrumentSections';
 import TapeGutter from '../components/TapeGutter';
 import MemberRow from '../components/MemberRow';
-import { BackChevronIcon, PlusIcon, SearchIcon } from '../components/icons';
+import { BackChevronIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
+import { useAuth } from '../context/AuthContext';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Sections'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Sections'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 type StatusKey = 'good' | 'repair' | 'dirty';
 
@@ -22,15 +29,56 @@ const STATUS_CHIPS: { key: StatusKey; label: string }[] = [
   { key: 'dirty', label: 'Dirty' },
 ];
 
+type RosterMember = {
+  name: string;
+  section: string;
+  email?: string;
+  phone?: string;
+  height?: { feet: string; inches: string };
+  weight?: string;
+};
+
 export default function SectionsScreen({ navigation, route }: Props) {
   const [searchText, setSearchText] = useState('');
   const [sectionFilter, setSectionFilter] = useState<string | null>(null);
   const [statusFilters, setStatusFilters] = useState<Set<StatusKey>>(new Set());
   const { flags } = useFlags();
+  const { members: signedUpMembers } = useAuth();
 
   const filterPiece = route.params?.piece;
   const filterStatus = route.params?.status;
   const isFiltered = !!(filterPiece && filterStatus);
+
+  const roster = useMemo<RosterMember[]>(() => {
+    const matchedEmails = new Set<string>();
+    const fromRoster = MEMBERS.map((member) => {
+      const match = signedUpMembers.find(
+        (a) => `${a.firstName} ${a.lastName}`.trim().toLowerCase() === member.name.toLowerCase()
+      );
+      if (match) matchedEmails.add(match.email.toLowerCase());
+      return {
+        name: member.name,
+        section: member.section,
+        email: match?.email,
+        phone: match?.phone,
+        height: match?.height,
+        weight: match?.weight,
+      };
+    });
+
+    const newSignUps = signedUpMembers
+      .filter((a) => !matchedEmails.has(a.email.toLowerCase()))
+      .map((a) => ({
+        name: `${a.firstName} ${a.lastName}`,
+        section: sectionForInstrument(a.instrument),
+        email: a.email,
+        phone: a.phone,
+        height: a.height,
+        weight: a.weight,
+      }));
+
+    return [...fromRoster, ...newSignUps];
+  }, [signedUpMembers]);
 
   const handleSearchChange = (text: string) => {
     setSearchText(text);
@@ -56,17 +104,21 @@ export default function SectionsScreen({ navigation, route }: Props) {
     navigation.setParams({ piece: undefined, status: undefined });
   };
 
-  const handleRowPress = () => {
-    Alert.alert('Coming soon', 'Member profiles aren’t available yet.');
-  };
-
-  const handleAddPress = () => {
-    Alert.alert('Coming soon', 'Adding a new member isn’t available yet.');
+  const handleRowPress = (member: RosterMember) => {
+    const params: MemberProfileParams = {
+      name: member.name,
+      section: member.section,
+      email: member.email,
+      phone: member.phone,
+      height: member.height,
+      weight: member.weight,
+    };
+    navigation.navigate('MemberProfile', params);
   };
 
   const filteredMembers = useMemo(() => {
     if (isFiltered) {
-      return MEMBERS.filter((member) =>
+      return roster.filter((member) =>
         flags.some(
           (f) => f.memberName === member.name && f.piece === filterPiece && f.status === filterStatus
         )
@@ -74,7 +126,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
     }
 
     const query = searchText.trim().toLowerCase();
-    return MEMBERS.filter((member) => {
+    return roster.filter((member) => {
       const matchesSearch =
         !query ||
         member.name.toLowerCase().includes(query) ||
@@ -92,7 +144,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
         (statusFilters.has('dirty') && memberFlags.some((f) => f.status === 'dirty'))
       );
     });
-  }, [isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters, flags]);
+  }, [roster, isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters, flags]);
 
   const resultLabel = useMemo(() => {
     const count = filteredMembers.length;
@@ -131,13 +183,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
               <View style={styles.headerSideButton} />
             )}
             <Text style={styles.pageTitle}>Members</Text>
-            {isFiltered ? (
-              <View style={styles.headerSideButton} />
-            ) : (
-              <Pressable style={styles.addButton} onPress={handleAddPress}>
-                <PlusIcon color={colors.paper} />
-              </Pressable>
-            )}
+            <View style={styles.headerSideButton} />
           </View>
 
           {isFiltered ? (
@@ -257,7 +303,12 @@ export default function SectionsScreen({ navigation, route }: Props) {
               ? memberFlags.filter((f) => f.piece === filterPiece && f.status === filterStatus)
               : memberFlags;
             return (
-              <MemberRow key={member.name} member={member} flags={displayFlags} onPress={handleRowPress} />
+              <MemberRow
+                key={member.name}
+                member={member}
+                flags={displayFlags}
+                onPress={() => handleRowPress(member)}
+              />
             );
           })}
         </ScrollView>
@@ -301,14 +352,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.wordmark,
     fontSize: 18,
     color: colors.ink,
-  },
-  addButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   search: {
     flexDirection: 'row',

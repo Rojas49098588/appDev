@@ -20,6 +20,7 @@ import MemberTabs from './screens/MemberTabs';
 import MemberAccountScreen from './screens/member/MemberAccountScreen';
 import FlagItemScreen from './screens/member/FlagItemScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import MemberProfileScreen from './screens/MemberProfileScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -75,6 +76,11 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
             options={{ headerShown: false }}
           />
           <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="MemberProfile"
+            component={MemberProfileScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </View>

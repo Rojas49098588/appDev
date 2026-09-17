@@ -99,6 +99,8 @@ export default function SignUpScreen({ navigation }: Props) {
       role,
       phone,
       shoeSize: { gender: "Men's", size: '' },
+      height: { feet: '', inches: '' },
+      weight: '',
     });
     navigation.reset({
       index: 0,
