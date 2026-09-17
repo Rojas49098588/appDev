@@ -115,8 +115,14 @@ function PieceGroup({
                   </View>
                 </Pressable>
                 {flag && (
-                  <View style={[styles.commentBanner, isLast && styles.commentBannerLast]}>
-                    <Text style={styles.commentText}>
+                  <View
+                    style={[
+                      styles.commentBanner,
+                      { backgroundColor: flag.status === 'repair' ? colors.rustTint : colors.washTint },
+                      isLast && styles.commentBannerLast,
+                    ]}
+                  >
+                    <Text style={[styles.commentText, { color: statusColor }]}>
                       {flag.comment !== '' ? `You flagged this — ${flag.comment}` : 'You flagged this.'}
                     </Text>
                     <Pressable
@@ -128,7 +134,7 @@ function PieceGroup({
                         })
                       }
                     >
-                      <Text style={styles.editLink}>Edit</Text>
+                      <Text style={[styles.editLink, { color: statusColor }]}>Edit</Text>
                     </Pressable>
                   </View>
                 )}
@@ -198,7 +204,6 @@ const styles = StyleSheet.create({
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusText: { fontFamily: fonts.bodyMedium, fontSize: 13 },
   commentBanner: {
-    backgroundColor: colors.washTint,
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.lineSoft,
@@ -208,11 +213,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   commentBannerLast: { borderBottomWidth: 0 },
-  commentText: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.wash },
+  commentText: { flex: 1, fontFamily: fonts.body, fontSize: 12 },
   editLink: {
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
-    color: colors.wash,
     textDecorationLine: 'underline',
   },
 });
