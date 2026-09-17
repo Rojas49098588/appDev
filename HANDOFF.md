@@ -10,7 +10,7 @@ The "Member View" feature (spec: `docs/superpowers/specs/2026-09-14-member-view-
 
 ## What the feature does
 
-Sign up as **Staff** (access code `1234`) → existing 4-tab experience (Home/Sections/Catalogue/Inventory), unchanged in behavior. Sign up as **Member** → new 3-tab experience (Game day/Sizes/Inventory), scoped down to just that member's own data. A member can flag one of their own uniform pieces (Coats/Vests/Bibbers/Pants/Ties/Belts) as Dirty or Needs Repair with a comment; that flag is immediately visible in the Staff view's Sections and Inventory screens, via a shared `context/FlagsContext.tsx` (React Context + AsyncStorage) both experiences read from.
+Sign up as **Staff** (access code `1234`) → existing 4-tab experience (Home/Sections/Catalogue/Inventory), unchanged in behavior. Sign up as **Member** → new 3-tab experience (Game day/Sizes/Inventory), scoped down to just that member's own data. A member can flag one of their own uniform pieces (Coats/Vests/Bibbers/Pants — each with multiple color variants — plus White shirt, Dirty-only) as Dirty or Needs Repair with a comment; that flag is immediately visible in the Staff view's Sections and Inventory screens, via a shared `context/FlagsContext.tsx` (React Context + AsyncStorage) both experiences read from. (This piece list has evolved since this doc was first written — see the dated update sections below for what changed and why; Ties/Belts were dropped from the Member view on 2026-09-17, and Shoe size/White shirt added.)
 
 The Member view's "current member" is hardcoded to **Maya Chen** (`MY_MEMBER_NAME` in `constants/myUniformData.ts`) regardless of what name is typed at sign-up — there's no real accounts system, so this is a deliberate, documented simplification (see spec's Non-goals).
 
@@ -35,21 +35,37 @@ Known, accepted inconsistency: the three code-gate checks (email login, invite c
 
 Known limitation worth a future look: `ProfileScreen`'s "Edit" mode (Staff-side account editing) mutates only local component state and never writes back to `AuthContext`. This was already true before this feature, but was previously invisible because every app launch re-collected identity via Sign Up. Now that a session can persist and restore across relaunches, a Staff user who edits their profile and then force-closes/reopens the app will see their edits silently reverted to what Sign Up originally submitted.
 
+## 2026-09-17 update: My Inventory/Sizes swap, editable Member Account, Sign Up hardening
+
+A cluster of smaller, directly-requested changes landed today on top of the auth flow — each was a quick scoped request/approve/implement round in chat, not a brainstorming-skill pass (small enough not to warrant one):
+
+1. **Flag banner color fix** (`4364d04`) — My Inventory's "You flagged this" banner (text + comment + Edit link) was hardcoded to the wash (dirty) color regardless of actual status. Now colors by `flag.status`: rust for repair, wash for dirty, matching the row's own status label and the collapsed group's Repair/Dirty badges.
+2. **Ties and Belts removed from the Member view** (`3edeac7`) — members no longer see or flag them in My Sizes or My Inventory; **Staff Inventory/Home/Sections are unaffected** (Ties/Belts stay staff-managed centrally, explicit user decision on scope). Replaced with:
+   - **Shoe size** — read-only, My Sizes only, not flaggable. A single value (`{ gender: "Men's" | "Women's", size: string }`), not a multi-color group like Coats.
+   - **White shirt** — shown in both My Sizes and My Inventory, but flaggable **only as Dirty** (no Needs Repair option — `FlagItemScreen` hides the status toggle entirely for it and shows an advisory note instead: "Only flag your white shirt as dirty if you've left it in the bin for washing," repeated on the My Inventory row itself before a member taps in).
+3. **Member Account screen is now editable** (`cc199ee`) — tapping the avatar on Game Day → Account now has an Edit/Update toggle (First Name, Last Name, Email, Phone, Instrument, Shoe size), mirroring Staff `ProfileScreen`'s existing edit-mode pattern. Unlike `ProfileScreen`'s edit mode (see the known limitation noted in the 2026-09-16 section below, still unfixed), **these edits actually persist** — `AuthContext`'s `Account` gained `phone`/`shoeSize` fields, the context now exposes the live `account` object (not just the trimmed `session`), and a new `updateAccount()` mutator merges + persists to `AsyncStorage` and keeps the derived session in sync. Shoe size moved off the static constant added earlier the same day and onto the account, since it's edited alongside the other personal fields now.
+4. **Sign Up hardening** (`8ce9986`, `d74e19a`, `9314a3d`) — three rounds of validation added to `handleSubmit`, in this order: (a) all fields required (blank-check on email/phone/password/confirm/first/last name — instrument and role always have a default so don't need one); (b) email must match a basic `something@something.tld` shape; (c) phone must be a plausible 10-digit number (or 11 with a leading `1`), ignoring formatting characters — **Phone Number is now a Sign Up field**, it wasn't before, previously defaulting blank and only fillable later via the Member Account edit screen; (d) password must be longer than 6 characters with at least one capital letter and one digit; (e) a new Confirm Password field must match Password. Each failure shows its own alert and blocks submission — staff code's existing wrong-code check already covered its own blank case, no separate check added there.
+
+`tsc`/`expo-doctor` re-verified clean after each change (same pre-existing patch-version warning, see below). **None of this has been run on-device** — folded into the checklist below.
+
 ## Required: on-device verification (nobody has done this yet)
 
 Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering the new auth flow actually finished — it supersedes the old Member-View checklist that used to live here, which assumed the app opened straight to Sign Up:
 
 1. Fresh install (or clear the app's storage/AsyncStorage) → app opens on **Login**, not Sign Up.
 2. On Login, tap "Create an account" → lands on **Invite code**; entering a wrong code shows an error and stays on that screen; entering the correct code (`4F2K9`) advances to **Sign up**.
-3. Fill out Sign up (including Email/Password) as **Member**, submit → lands on Game Day, same landing behavior as before this feature.
+3. On Sign up, try to submit with fields blank → "Please fill in all fields" alert. Try an implausible email (e.g. "abc") → email alert. Try an implausible phone (e.g. "123") → phone alert. Try a weak password (e.g. "abcdefg", no capital/digit) → password-strength alert. Enter a valid password but a different Confirm password → "Passwords do not match" alert. Then fill everything out validly as **Member** (including Phone and Confirm password) and submit → lands on Game Day, same landing behavior as before this feature.
 4. Log out (avatar → Member Account → Log Out) → returns to **Login**, not Sign Up.
 5. On Login, enter that same email/password → lands back on Game Day directly, with no need to re-fill Sign Up.
 6. On Login, enter a wrong password → error alert, stays on Login.
 7. Force-close and reopen the app while still logged in → opens directly to the signed-in tabs, skipping Login entirely — this is the core new behavior this feature adds.
 8. Log out, sign up again as **Staff** with the correct staff access code entered inline (no modal should appear) → lands on Home. Force-close/reopen → returns to Home directly (not Login, not Sign Up).
 9. Log out, sign up as Staff with the *wrong* staff access code → inline error shown, stays on Sign Up, and the previously-saved account is not overwritten.
+10. As Member, **My Sizes**: confirm the grid shows Coats/Vests/Bibbers/Pants/**Shoe size**/**White shirt** (Ties/Belts gone). Shoe size initially reads blank/— (nothing set at signup yet).
+11. As Member, **My Inventory**: confirm Ties/Belts are gone and **White shirt** appears as a flat row (not an expandable group) below Coats/Vests/Bibbers/Pants. Tap it → confirm there's **no** Dirty/Needs-repair toggle, just the advisory note, and submitting flags it Dirty. Confirm the flagged banner and an already-flagged **Coats** repair (if you have one from earlier testing) show in their correct colors — rust for repair, wash for dirty, not all one color.
+12. Tap the avatar → Account → **Edit** → change First Name, Phone, and Shoe size (pick Women's, enter a size) → **Update** → confirm the screen now shows the new values read-only. Force-close and reopen the app → confirm the edited values are still there (not reverted) and that **My Sizes**' Shoe size cell now reflects the edited value.
 
-If any of these don't match, that's a real bug — treat it seriously, don't just patch around it blindly; re-read `docs/superpowers/specs/2026-09-16-auth-flow-design.md` and `context/AuthContext.tsx` first.
+If any of these don't match, that's a real bug — treat it seriously, don't just patch around it blindly; re-read `docs/superpowers/specs/2026-09-16-auth-flow-design.md` and `context/AuthContext.tsx` first (items 10-12 aren't covered by that spec — they were quick follow-up requests, see the 2026-09-17 section above).
 
 ## Parked minor findings — all fixed 2026-09-15 (commit `e639344`)
 
