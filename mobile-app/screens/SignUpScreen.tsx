@@ -27,9 +27,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 // Placeholder staff access code — will be replaced by a real code later.
 const STAFF_ACCESS_CODE = '1234';
 
+const isPlausibleEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+const isPlausiblePhone = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+};
+
+const isValidPassword = (value: string) =>
+  value.length > 6 && /[A-Z]/.test(value) && /[0-9]/.test(value);
+
 export default function SignUpScreen({ navigation }: Props) {
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -41,12 +52,31 @@ export default function SignUpScreen({ navigation }: Props) {
   const handleSubmit = async () => {
     if (
       !email.trim() ||
+      !phone.trim() ||
       !password.trim() ||
       !confirmPassword.trim() ||
       !firstName.trim() ||
       !lastName.trim()
     ) {
       Alert.alert('Error', 'Please fill in all fields before continuing.');
+      return;
+    }
+
+    if (!isPlausibleEmail(email)) {
+      Alert.alert('Error', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (!isPlausiblePhone(phone)) {
+      Alert.alert('Error', 'Please enter a valid phone number.');
+      return;
+    }
+
+    if (!isValidPassword(password)) {
+      Alert.alert(
+        'Error',
+        'Password must be longer than 6 characters and include a capital letter and a number.'
+      );
       return;
     }
 
@@ -67,7 +97,7 @@ export default function SignUpScreen({ navigation }: Props) {
       lastName,
       instrument,
       role,
-      phone: '',
+      phone,
       shoeSize: { gender: "Men's", size: '' },
     });
     navigation.reset({
@@ -123,6 +153,18 @@ export default function SignUpScreen({ navigation }: Props) {
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Phone number</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Phone number"
+                  placeholderTextColor={colors.inkFaint}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
                 />
               </View>
 
