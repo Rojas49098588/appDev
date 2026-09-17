@@ -31,6 +31,7 @@ export default function SignUpScreen({ navigation }: Props) {
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
@@ -38,8 +39,19 @@ export default function SignUpScreen({ navigation }: Props) {
   const [staffCode, setStaffCode] = useState('');
 
   const handleSubmit = async () => {
-    if (!email.trim() || !password.trim() || !firstName.trim() || !lastName.trim()) {
+    if (
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim() ||
+      !firstName.trim() ||
+      !lastName.trim()
+    ) {
       Alert.alert('Error', 'Please fill in all fields before continuing.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match.');
       return;
     }
 
@@ -122,6 +134,19 @@ export default function SignUpScreen({ navigation }: Props) {
                   placeholderTextColor={colors.inkFaint}
                   value={password}
                   onChangeText={setPassword}
+                  autoCapitalize="none"
+                  secureTextEntry
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Confirm password</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Confirm password"
+                  placeholderTextColor={colors.inkFaint}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
                   autoCapitalize="none"
                   secureTextEntry
                 />
