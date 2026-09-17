@@ -19,12 +19,15 @@ import { MY_MEMBER_NAME } from '../../constants/myUniformData';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlagItem'>;
 
+const DIRTY_ONLY_PIECES = ['White shirt'];
+
 export default function FlagItemScreen({ navigation, route }: Props) {
   const { piece, color, size } = route.params;
   const { flags, addFlag, updateFlag } = useFlags();
   const existingFlag = flags.find(
     (f) => f.memberName === MY_MEMBER_NAME && f.piece === piece && f.color === color
   );
+  const dirtyOnly = DIRTY_ONLY_PIECES.includes(piece);
 
   const [status, setStatus] = useState<FlagStatus>(existingFlag?.status ?? 'dirty');
   const [comment, setComment] = useState(existingFlag?.comment ?? '');
@@ -68,27 +71,35 @@ export default function FlagItemScreen({ navigation, route }: Props) {
             </Text>
           </View>
 
-          <Text style={styles.fieldLabel}>What's wrong with it?</Text>
-          <View style={styles.segmented}>
-            {(['dirty', 'repair'] as FlagStatus[]).map((option, index) => {
-              const active = status === option;
-              return (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.segment,
-                    active && styles.segmentActive,
-                    index === 0 && styles.segmentBorderRight,
-                  ]}
-                  onPress={() => setStatus(option)}
-                >
-                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                    {option === 'dirty' ? 'Dirty' : 'Needs repair'}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          {dirtyOnly ? (
+            <Text style={styles.dirtyOnlyNote}>
+              Only flag your white shirt as dirty if you've left it in the bin for washing.
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.fieldLabel}>What's wrong with it?</Text>
+              <View style={styles.segmented}>
+                {(['dirty', 'repair'] as FlagStatus[]).map((option, index) => {
+                  const active = status === option;
+                  return (
+                    <Pressable
+                      key={option}
+                      style={[
+                        styles.segment,
+                        active && styles.segmentActive,
+                        index === 0 && styles.segmentBorderRight,
+                      ]}
+                      onPress={() => setStatus(option)}
+                    >
+                      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                        {option === 'dirty' ? 'Dirty' : 'Needs repair'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
 
           <Text style={styles.fieldLabel}>Comment</Text>
           <TextInput
@@ -141,6 +152,14 @@ const styles = StyleSheet.create({
   pieceName: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.ink },
   pieceSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
   fieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+  dirtyOnlyNote: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.wash,
+    backgroundColor: colors.washTint,
+    padding: 12,
+    marginBottom: 20,
+  },
   segmented: { flexDirection: 'row', borderWidth: 1, borderColor: colors.ink, marginBottom: 20 },
   segment: {
     flex: 1,

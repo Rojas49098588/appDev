@@ -7,7 +7,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MemberTabParamList, RootStackParamList } from '../../navigation/types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { MY_UNIFORM, MY_MEMBER_NAME, type UniformGroup } from '../../constants/myUniformData';
+import { MY_UNIFORM, MY_MEMBER_NAME, MY_WHITE_SHIRT, type UniformGroup } from '../../constants/myUniformData';
 import { useFlags } from '../../context/FlagsContext';
 import type { Flag } from '../../constants/flagsData';
 import TapeGutter from '../../components/TapeGutter';
@@ -32,6 +32,8 @@ export default function MyInventoryScreen({ navigation }: Props) {
           {MY_UNIFORM.map((group) => (
             <PieceGroup key={group.piece} group={group} flags={flags} navigation={navigation} />
           ))}
+
+          <WhiteShirtRow flags={flags} navigation={navigation} />
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -147,6 +149,50 @@ function PieceGroup({
   );
 }
 
+function WhiteShirtRow({ flags, navigation }: { flags: Flag[]; navigation: Props['navigation'] }) {
+  const flag = flags.find(
+    (f) => f.memberName === MY_MEMBER_NAME && f.piece === MY_WHITE_SHIRT.piece
+  );
+  const statusColor = flag ? colors.wash : colors.inkSoft;
+  const statusLabel = flag ? 'Dirty' : 'Good';
+
+  const goToFlag = () =>
+    navigation.navigate('FlagItem', {
+      piece: MY_WHITE_SHIRT.piece,
+      color: MY_WHITE_SHIRT.color,
+      size: MY_WHITE_SHIRT.size,
+    });
+
+  return (
+    <View style={styles.groupCard}>
+      <Pressable style={[styles.variantRow, !flag && styles.variantRowLast]} onPress={goToFlag}>
+        <View>
+          <Text style={styles.pieceName}>{MY_WHITE_SHIRT.piece}</Text>
+          <Text style={styles.pieceSub}>{MY_WHITE_SHIRT.color} · {MY_WHITE_SHIRT.size}</Text>
+        </View>
+        <View style={styles.rowRight}>
+          <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+          <SmallChevronRightIcon color={colors.inkFaint} size={14} strokeWidth={1.8} />
+        </View>
+      </Pressable>
+      {flag ? (
+        <View style={[styles.commentBanner, styles.commentBannerLast, { backgroundColor: colors.washTint }]}>
+          <Text style={[styles.commentText, { color: statusColor }]}>
+            {flag.comment !== '' ? `You flagged this — ${flag.comment}` : 'You flagged this.'}
+          </Text>
+          <Pressable onPress={goToFlag}>
+            <Text style={[styles.editLink, { color: statusColor }]}>Edit</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Text style={styles.whiteShirtHint}>
+          Only flag your white shirt as dirty if you've left it in the bin for washing.
+        </Text>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   flexOne: { flex: 1 },
@@ -213,6 +259,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   commentBannerLast: { borderBottomWidth: 0 },
+  whiteShirtHint: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    padding: 14,
+    paddingTop: 0,
+  },
   commentText: { flex: 1, fontFamily: fonts.body, fontSize: 12 },
   editLink: {
     fontFamily: fonts.bodyMedium,

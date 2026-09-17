@@ -2,8 +2,17 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { MY_UNIFORM } from '../../constants/myUniformData';
+import { MY_UNIFORM, MY_SHOE_SIZE, MY_WHITE_SHIRT } from '../../constants/myUniformData';
 import TapeGutter from '../../components/TapeGutter';
+
+const CELLS = [
+  ...MY_UNIFORM.map((slot) => ({
+    label: slot.piece,
+    value: `${slot.variants.map((v) => v.color).join(', ')} · ${slot.size}`,
+  })),
+  { label: 'Shoe size', value: `${MY_SHOE_SIZE.gender} · ${MY_SHOE_SIZE.size}` },
+  { label: MY_WHITE_SHIRT.piece, value: `${MY_WHITE_SHIRT.color} · ${MY_WHITE_SHIRT.size}` },
+];
 
 export default function MySizesScreen() {
   return (
@@ -14,19 +23,17 @@ export default function MySizesScreen() {
           <Text style={styles.title}>My sizes</Text>
           <Text style={styles.subtitle}>Assigned sizes</Text>
           <View style={styles.grid}>
-            {MY_UNIFORM.map((slot, index) => (
+            {CELLS.map((cell, index) => (
               <View
-                key={slot.piece}
+                key={cell.label}
                 style={[
                   styles.cell,
                   index % 2 === 0 && styles.cellBorderRight,
-                  index < MY_UNIFORM.length - 2 && styles.cellBorderBottom,
+                  index < CELLS.length - 2 && styles.cellBorderBottom,
                 ]}
               >
-                <Text style={styles.cellLabel}>{slot.piece}</Text>
-                <Text style={styles.cellValue}>
-                  {slot.variants.map((v) => v.color).join(', ')} · {slot.size}
-                </Text>
+                <Text style={styles.cellLabel}>{cell.label}</Text>
+                <Text style={styles.cellValue}>{cell.value}</Text>
               </View>
             ))}
           </View>
