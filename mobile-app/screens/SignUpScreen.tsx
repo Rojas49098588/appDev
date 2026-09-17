@@ -38,6 +38,11 @@ export default function SignUpScreen({ navigation }: Props) {
   const [staffCode, setStaffCode] = useState('');
 
   const handleSubmit = async () => {
+    if (!email.trim() || !password.trim() || !firstName.trim() || !lastName.trim()) {
+      Alert.alert('Error', 'Please fill in all fields before continuing.');
+      return;
+    }
+
     if (role === 'Staff' && staffCode !== STAFF_ACCESS_CODE) {
       Alert.alert('Error', 'Incorrect staff code.');
       return;
