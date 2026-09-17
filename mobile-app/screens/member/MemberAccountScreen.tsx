@@ -1,8 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
+import { INSTRUMENTS } from '../../constants/instruments';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import TapeGutter from '../../components/TapeGutter';
@@ -10,10 +13,60 @@ import { BackChevronIcon } from '../../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberAccount'>;
 
+const TEXT_FIELDS: {
+  key: 'firstName' | 'lastName' | 'email' | 'phone';
+  label: string;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
+}[] = [
+  { key: 'firstName', label: 'First Name' },
+  { key: 'lastName', label: 'Last Name' },
+  { key: 'email', label: 'Email', keyboardType: 'email-address' },
+  { key: 'phone', label: 'Phone Number', keyboardType: 'phone-pad' },
+];
+
 export default function MemberAccountScreen({ navigation, route }: Props) {
-  const { logOut } = useAuth();
-  const { firstName, lastName, instrument, role } = route.params;
+  const { account, updateAccount, logOut } = useAuth();
+  const role = account?.role ?? route.params.role;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [firstName, setFirstName] = useState(account?.firstName ?? route.params.firstName);
+  const [lastName, setLastName] = useState(account?.lastName ?? route.params.lastName);
+  const [email, setEmail] = useState(account?.email ?? '');
+  const [phone, setPhone] = useState(account?.phone ?? '');
+  const [instrument, setInstrument] = useState(account?.instrument ?? route.params.instrument);
+  const [shoeGender, setShoeGender] = useState<"Men's" | "Women's">(
+    account?.shoeSize.gender ?? "Men's"
+  );
+  const [shoeSizeValue, setShoeSizeValue] = useState(account?.shoeSize.size ?? '');
+
+  const fieldValues: Record<'firstName' | 'lastName' | 'email' | 'phone', string> = {
+    firstName,
+    lastName,
+    email,
+    phone,
+  };
+  const fieldSetters: Record<'firstName' | 'lastName' | 'email' | 'phone', (text: string) => void> = {
+    firstName: setFirstName,
+    lastName: setLastName,
+    email: setEmail,
+    phone: setPhone,
+  };
+
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
+  const handleToggleEdit = () => {
+    if (isEditing) {
+      updateAccount({
+        firstName,
+        lastName,
+        email,
+        phone,
+        instrument,
+        shoeSize: { gender: shoeGender, size: shoeSizeValue },
+      });
+    }
+    setIsEditing((prev) => !prev);
+  };
 
   const handleLogOut = () => {
     logOut();
@@ -24,7 +77,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.appBody}>
         <TapeGutter />
-        <View style={styles.content}>
+        <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
@@ -39,33 +92,121 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
           <Text style={styles.roleBadge}>{role}</Text>
 
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.label}>First Name</Text>
-            <Text style={styles.value}>{firstName}</Text>
-          </View>
-          <View style={styles.fieldWrapper}>
-            <Text style={styles.label}>Last Name</Text>
-            <Text style={styles.value}>{lastName}</Text>
-          </View>
+          {TEXT_FIELDS.map((field) => (
+            <ProfileField
+              key={field.key}
+              label={field.label}
+              value={fieldValues[field.key]}
+              editing={isEditing}
+              keyboardType={field.keyboardType}
+              onChangeText={fieldSetters[field.key]}
+            />
+          ))}
+
           <View style={styles.fieldWrapper}>
             <Text style={styles.label}>Instrument</Text>
-            <Text style={styles.value}>{instrument}</Text>
+            {isEditing ? (
+              <View style={styles.pickerWrapper}>
+                <Picker selectedValue={instrument} onValueChange={setInstrument}>
+                  {INSTRUMENTS.map((option) => (
+                    <Picker.Item key={option} label={option} value={option} />
+                  ))}
+                </Picker>
+              </View>
+            ) : (
+              <Text style={styles.value}>{instrument}</Text>
+            )}
           </View>
+
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.label}>Shoe Size</Text>
+            {isEditing ? (
+              <View style={styles.shoeRow}>
+                <View style={styles.segmented}>
+                  {(["Men's", "Women's"] as const).map((option, index) => {
+                    const active = shoeGender === option;
+                    return (
+                      <Pressable
+                        key={option}
+                        style={[
+                          styles.segment,
+                          active && styles.segmentActive,
+                          index === 0 && styles.segmentBorderRight,
+                        ]}
+                        onPress={() => setShoeGender(option)}
+                      >
+                        <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                          {option}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <TextInput
+                  style={styles.shoeSizeInput}
+                  value={shoeSizeValue}
+                  onChangeText={setShoeSizeValue}
+                  placeholder="Size"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="number-pad"
+                />
+              </View>
+            ) : (
+              <Text style={styles.value}>
+                {shoeSizeValue ? `${shoeGender} · ${shoeSizeValue}` : ''}
+              </Text>
+            )}
+          </View>
+
+          <Pressable style={styles.actionButton} onPress={handleToggleEdit}>
+            <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
+          </Pressable>
 
           <Pressable style={styles.logOutButton} onPress={handleLogOut}>
             <Text style={styles.logOutButtonText}>Log Out</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       </View>
     </SafeAreaView>
+  );
+}
+
+function ProfileField({
+  label,
+  value,
+  editing,
+  keyboardType,
+  onChangeText,
+}: {
+  label: string;
+  value: string;
+  editing: boolean;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  onChangeText: (text: string) => void;
+}) {
+  return (
+    <View style={styles.fieldWrapper}>
+      <Text style={styles.label}>{label}</Text>
+      {editing ? (
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'}
+        />
+      ) : (
+        <Text style={styles.value}>{value}</Text>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   appBody: { flex: 1, flexDirection: 'row' },
+  flexOne: { flex: 1 },
   content: {
-    flex: 1,
     alignItems: 'center',
     paddingTop: 16,
     paddingHorizontal: 18,
@@ -113,7 +254,57 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 6,
   },
-  value: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
+  value: { fontFamily: fonts.body, fontSize: 14, color: colors.ink, minHeight: 20, width: '100%' },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  pickerWrapper: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  shoeRow: { width: '100%', flexDirection: 'row', gap: 8 },
+  segmented: { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: colors.ink },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: colors.surface,
+  },
+  segmentBorderRight: { borderRightWidth: 1, borderRightColor: colors.ink },
+  segmentActive: { backgroundColor: colors.ink },
+  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
+  segmentTextActive: { color: colors.paper },
+  shoeSizeInput: {
+    width: 70,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  actionButton: {
+    width: '100%',
+    backgroundColor: colors.ink,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  actionButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
   logOutButton: {
     width: '100%',
     borderWidth: 1,
@@ -121,7 +312,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 10,
   },
   logOutButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
 });

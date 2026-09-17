@@ -13,6 +13,8 @@ import type { Role, UserParams } from '../navigation/types';
 const ACCOUNT_KEY = 'formation.account.v1';
 const SESSION_KEY = 'formation.session.v1';
 
+export type ShoeSize = { gender: "Men's" | "Women's"; size: string };
+
 export type Account = {
   email: string;
   password: string;
@@ -20,20 +22,30 @@ export type Account = {
   lastName: string;
   instrument: string;
   role: Role;
+  phone: string;
+  shoeSize: ShoeSize;
 };
 
 type AuthContextValue = {
   session: UserParams | null;
+  account: Account | null;
   isLoading: boolean;
   signUp: (account: Account) => Promise<void>;
   logIn: (email: string, password: string) => Promise<Account | null>;
   logOut: () => Promise<void>;
+  updateAccount: (updates: Partial<Omit<Account, 'password'>>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function isRole(value: unknown): value is Role {
   return value === 'Member' || value === 'Staff';
+}
+
+function isShoeSize(value: unknown): value is ShoeSize {
+  if (typeof value !== 'object' || value === null) return false;
+  const s = value as Record<string, unknown>;
+  return (s.gender === "Men's" || s.gender === "Women's") && typeof s.size === 'string';
 }
 
 function isAccount(value: unknown): value is Account {
@@ -45,7 +57,9 @@ function isAccount(value: unknown): value is Account {
     typeof a.firstName === 'string' &&
     typeof a.lastName === 'string' &&
     typeof a.instrument === 'string' &&
-    isRole(a.role)
+    isRole(a.role) &&
+    typeof a.phone === 'string' &&
+    isShoeSize(a.shoeSize)
   );
 }
 
@@ -157,9 +171,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateAccount = useCallback(
+    async (updates: Partial<Omit<Account, 'password'>>) => {
+      if (!account) return;
+      const nextAccount = { ...account, ...updates };
+      const nextSession = toSession(nextAccount);
+      setAccount(nextAccount);
+      setSession(nextSession);
+      try {
+        // Sequential, not Promise.all — same crash-consistency reason as signUp.
+        await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(nextAccount));
+        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+      } catch (error) {
+        // Best-effort persistence — in-memory state is already up to date.
+        console.warn('AuthContext: failed to persist account/session during updateAccount', error);
+      }
+    },
+    [account]
+  );
+
   const value = useMemo(
-    () => ({ session, isLoading, signUp, logIn, logOut }),
-    [session, isLoading, signUp, logIn, logOut]
+    () => ({ session, account, isLoading, signUp, logIn, logOut, updateAccount }),
+    [session, account, isLoading, signUp, logIn, logOut, updateAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

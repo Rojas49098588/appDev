@@ -43,7 +43,16 @@ export default function SignUpScreen({ navigation }: Props) {
       return;
     }
 
-    await signUp({ email, password, firstName, lastName, instrument, role });
+    await signUp({
+      email,
+      password,
+      firstName,
+      lastName,
+      instrument,
+      role,
+      phone: '',
+      shoeSize: { gender: "Men's", size: '' },
+    });
     navigation.reset({
       index: 0,
       routes: [
