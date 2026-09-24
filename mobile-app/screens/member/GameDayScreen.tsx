@@ -4,8 +4,8 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MemberTabParamList } from '../../navigation/types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { CURRENT_GAME } from '../../constants/gamesData';
 import { COMBOS, type Combo } from '../../constants/combosData';
+import { useGame } from '../../context/GameContext';
 import TapeGutter from '../../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
@@ -16,8 +16,9 @@ type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
 
 export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const preGameCombo = COMBOS.find((c) => c.id === CURRENT_GAME.preGameComboId);
-  const halftimeCombo = COMBOS.find((c) => c.id === CURRENT_GAME.halftimeComboId);
+  const { game } = useGame();
+  const preGameCombo = COMBOS.find((c) => c.id === game.preGameComboId);
+  const halftimeCombo = COMBOS.find((c) => c.id === game.halftimeComboId);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -31,7 +32,7 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
             </Pressable>
           </View>
           <Text style={styles.gameLine}>
-            vs. {CURRENT_GAME.opponent} — {CURRENT_GAME.date}
+            vs. {game.opponent} — {game.date}
           </Text>
 
           {preGameCombo && <ComboSection title="Pre-game" combo={preGameCombo} />}
@@ -40,13 +41,13 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
           <View style={styles.lastSection}>
             <Text style={styles.sectionTitle}>After-game instructions</Text>
             <View style={styles.instructionsCard}>
-              <Text style={styles.instructionsText}>{CURRENT_GAME.afterGameInstructions}</Text>
+              <Text style={styles.instructionsText}>{game.afterGameInstructions}</Text>
               <View style={styles.instructionsMeta}>
                 <Text style={styles.instructionsMetaText}>
-                  Posted by {CURRENT_GAME.instructionsPostedBy}
+                  Posted by {game.instructionsPostedBy}
                 </Text>
                 <Text style={styles.instructionsMetaText}>
-                  Updated {CURRENT_GAME.instructionsUpdatedAt}
+                  Updated {game.instructionsUpdatedAt}
                 </Text>
               </View>
             </View>

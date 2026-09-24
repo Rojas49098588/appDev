@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../navigation/types';
@@ -8,6 +8,7 @@ import { fonts } from '../constants/fonts';
 import { STATS, SECTIONS, CATALOGUE } from '../constants/homeData';
 import { PIECES } from '../constants/inventoryData';
 import { useFlags } from '../context/FlagsContext';
+import { useGame } from '../context/GameContext';
 import TapeGutter from '../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
@@ -19,6 +20,15 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
+  const { setCombo } = useGame();
+
+  const handleComboPress = (combo: (typeof CATALOGUE)[number]) => {
+    Alert.alert(combo.label, `${combo.sub} — set this combo for:`, [
+      { text: 'Set for pregame', onPress: () => setCombo('preGame', combo.id) },
+      { text: 'Set for halftime', onPress: () => setCombo('halftime', combo.id) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const inventoryPreview = useMemo(() => {
     return PIECES.map((piece) => {
@@ -45,8 +55,8 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.wordmark}>Formation</Text>
-            <Text style={styles.wordmarkSub}>Central High Band</Text>
+            <Text style={styles.wordmark}>Mustang Closet</Text>
+            <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
             <Text style={styles.seasonTag}>Fall 2026 season</Text>
           </View>
           <Pressable style={styles.avatar} onPress={onAvatarPress}>
@@ -73,17 +83,33 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         <View style={styles.block}>
           <View style={styles.blockHead}>
             <Text style={styles.blockTitle}>Members by section</Text>
-            <Text style={styles.blockLink}>See all</Text>
+            <Pressable
+              onPress={() =>
+                navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
+              }
+            >
+              <Text style={styles.blockLink}>See all</Text>
+            </Pressable>
           </View>
           <View style={styles.sectionGrid}>
             {SECTIONS.map((section) => (
-              <View key={section.name} style={styles.sectionCard}>
+              <Pressable
+                key={section.name}
+                style={styles.sectionCard}
+                onPress={() =>
+                  navigation.navigate('Sections', {
+                    section: section.name,
+                    piece: undefined,
+                    status: undefined,
+                  })
+                }
+              >
                 <Text style={styles.sectionName}>{section.name}</Text>
                 <Text style={styles.sectionCount}>{section.count}</Text>
                 <View style={styles.fitBar}>
                   <View style={[styles.fitBarFill, { width: `${section.fitPercent}%` }]} />
                 </View>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -95,7 +121,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swatchScroll}>
             {CATALOGUE.map((combo) => (
-              <View key={combo.label} style={styles.swatch}>
+              <Pressable key={combo.id} style={styles.swatch} onPress={() => handleComboPress(combo)}>
                 <View style={styles.swatchArt}>
                   <View style={styles.garment}>
                     <View style={styles.garmentCoat} />
@@ -104,7 +130,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
                 </View>
                 <Text style={styles.swatchLabel}>{combo.label}</Text>
                 <Text style={styles.swatchSub}>{combo.sub}</Text>
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
         </View>

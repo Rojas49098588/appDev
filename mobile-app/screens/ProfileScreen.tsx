@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  type FocusEvent,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +18,9 @@ import { useAuth } from '../context/AuthContext';
 import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
+import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -60,9 +63,18 @@ export default function ProfileScreen({ navigation, route }: Props) {
     weight: '',
   });
 
+  const [numericFocused, setNumericFocused] = useState(false);
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
+
   const updateField = (key: keyof ProfileData, value: string) => {
     setProfile((prev) => ({ ...prev, [key]: value }));
   };
+
+  const focusNumericField = (event: FocusEvent) => {
+    scrollToFocusedInput(event);
+    setNumericFocused(true);
+  };
+  const blurNumericField = () => setNumericFocused(false);
 
   const handleLogOut = () => {
     logOut();
@@ -81,7 +93,14 @@ export default function ProfileScreen({ navigation, route }: Props) {
         <View style={styles.appBody}>
           <TapeGutter />
 
-          <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+          <View style={styles.contentColumn}>
+          <ScrollView
+            ref={scrollRef}
+            style={styles.flexOne}
+            contentContainerStyle={styles.content}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
             <View style={styles.header}>
               <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
@@ -103,19 +122,25 @@ export default function ProfileScreen({ navigation, route }: Props) {
                 value={profile[field.key]}
                 editing={isEditing}
                 onChangeText={(text) => updateField(field.key, text)}
+                onFocus={scrollToFocusedInput}
               />
             ))}
 
-            {TEXT_FIELDS.slice(2, 4).map((field) => (
-              <ProfileField
-                key={field.key}
-                label={field.label}
-                value={profile[field.key]}
-                editing={isEditing}
-                keyboardType={field.keyboardType}
-                onChangeText={(text) => updateField(field.key, text)}
-              />
-            ))}
+            {TEXT_FIELDS.slice(2, 4).map((field) => {
+              const isNumericKeyboard = field.keyboardType === 'phone-pad';
+              return (
+                <ProfileField
+                  key={field.key}
+                  label={field.label}
+                  value={profile[field.key]}
+                  editing={isEditing}
+                  keyboardType={field.keyboardType}
+                  onChangeText={(text) => updateField(field.key, text)}
+                  onFocus={isNumericKeyboard ? focusNumericField : scrollToFocusedInput}
+                  onBlur={isNumericKeyboard ? blurNumericField : undefined}
+                />
+              );
+            })}
 
             <Text style={styles.label}>Instrument</Text>
             {isEditing ? (
@@ -143,6 +168,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
                     onChangeText={(text) =>
                       updateField('heightFeet', digitsOnly(text).slice(0, 1))
                     }
+                    onFocus={focusNumericField}
+                    onBlur={blurNumericField}
                     keyboardType="number-pad"
                     maxLength={1}
                   />
@@ -153,6 +180,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
                     onChangeText={(text) =>
                       updateField('heightInches', digitsOnly(text).slice(0, 2))
                     }
+                    onFocus={focusNumericField}
+                    onBlur={blurNumericField}
                     keyboardType="number-pad"
                     maxLength={2}
                   />
@@ -172,6 +201,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
               keyboardType="number-pad"
               maxLength={3}
               onChangeText={(text) => updateField('weight', digitsOnly(text).slice(0, 3))}
+              onFocus={focusNumericField}
+              onBlur={blurNumericField}
             />
 
             <Pressable style={styles.actionButton} onPress={() => setIsEditing((prev) => !prev)}>
@@ -182,6 +213,10 @@ export default function ProfileScreen({ navigation, route }: Props) {
               <Text style={styles.logOutButtonText}>Log Out</Text>
             </Pressable>
           </ScrollView>
+          <View onLayout={registerBottomInset}>
+            <KeyboardDoneBar visible={numericFocused} />
+          </View>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -195,6 +230,8 @@ function ProfileField({
   keyboardType,
   maxLength,
   onChangeText,
+  onFocus,
+  onBlur,
 }: {
   label: string;
   value: string;
@@ -202,6 +239,8 @@ function ProfileField({
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
   maxLength?: number;
   onChangeText: (text: string) => void;
+  onFocus?: (event: FocusEvent) => void;
+  onBlur?: () => void;
 }) {
   return (
     <View style={styles.fieldWrapper}>
@@ -211,6 +250,8 @@ function ProfileField({
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
+          onFocus={onFocus}
+          onBlur={onBlur}
           keyboardType={keyboardType}
           maxLength={maxLength}
         />
@@ -232,6 +273,10 @@ const styles = StyleSheet.create({
   appBody: {
     flex: 1,
     flexDirection: 'row',
+  },
+  contentColumn: {
+    flex: 1,
+    flexDirection: 'column',
   },
   content: {
     alignItems: 'center',

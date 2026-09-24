@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type FocusEvent,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,7 +18,9 @@ import { useAuth } from '../../context/AuthContext';
 import { INSTRUMENTS } from '../../constants/instruments';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { useScrollToInput } from '../../hooks/useScrollToInput';
 import TapeGutter from '../../components/TapeGutter';
+import KeyboardDoneBar from '../../components/KeyboardDoneBar';
 import { BackChevronIcon } from '../../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberAccount'>;
@@ -43,6 +55,14 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
   const [heightFeet, setHeightFeet] = useState(account?.height.feet ?? '');
   const [heightInches, setHeightInches] = useState(account?.height.inches ?? '');
   const [weight, setWeight] = useState(account?.weight ?? '');
+  const [numericFocused, setNumericFocused] = useState(false);
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
+
+  const focusNumericField = (event: FocusEvent) => {
+    scrollToFocusedInput(event);
+    setNumericFocused(true);
+  };
+  const blurNumericField = () => setNumericFocused(false);
 
   const fieldValues: Record<'firstName' | 'lastName' | 'email' | 'phone', string> = {
     firstName,
@@ -83,9 +103,20 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flexOne}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <View style={styles.appBody}>
         <TapeGutter />
-        <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+        <View style={styles.contentColumn}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flexOne}
+          contentContainerStyle={styles.content}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
           <View style={styles.header}>
             <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
@@ -100,16 +131,21 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
           <Text style={styles.roleBadge}>{role}</Text>
 
-          {TEXT_FIELDS.map((field) => (
-            <ProfileField
-              key={field.key}
-              label={field.label}
-              value={fieldValues[field.key]}
-              editing={isEditing}
-              keyboardType={field.keyboardType}
-              onChangeText={fieldSetters[field.key]}
-            />
-          ))}
+          {TEXT_FIELDS.map((field) => {
+            const isNumericKeyboard = field.keyboardType === 'phone-pad';
+            return (
+              <ProfileField
+                key={field.key}
+                label={field.label}
+                value={fieldValues[field.key]}
+                editing={isEditing}
+                keyboardType={field.keyboardType}
+                onChangeText={fieldSetters[field.key]}
+                onFocus={isNumericKeyboard ? focusNumericField : scrollToFocusedInput}
+                onBlur={isNumericKeyboard ? blurNumericField : undefined}
+              />
+            );
+          })}
 
           <View style={styles.fieldWrapper}>
             <Text style={styles.label}>Instrument</Text>
@@ -154,6 +190,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   style={styles.shoeSizeInput}
                   value={shoeSizeValue}
                   onChangeText={setShoeSizeValue}
+                  onFocus={focusNumericField}
+                  onBlur={blurNumericField}
                   placeholder="Size"
                   placeholderTextColor={colors.inkFaint}
                   keyboardType="number-pad"
@@ -174,6 +212,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   style={styles.heightInput}
                   value={heightFeet}
                   onChangeText={(text) => setHeightFeet(digitsOnly(text).slice(0, 1))}
+                  onFocus={focusNumericField}
+                  onBlur={blurNumericField}
                   keyboardType="number-pad"
                   maxLength={1}
                 />
@@ -182,6 +222,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   style={styles.heightInput}
                   value={heightInches}
                   onChangeText={(text) => setHeightInches(digitsOnly(text).slice(0, 2))}
+                  onFocus={focusNumericField}
+                  onBlur={blurNumericField}
                   keyboardType="number-pad"
                   maxLength={2}
                 />
@@ -200,6 +242,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   style={styles.weightInput}
                   value={weight}
                   onChangeText={(text) => setWeight(digitsOnly(text).slice(0, 3))}
+                  onFocus={focusNumericField}
+                  onBlur={blurNumericField}
                   keyboardType="number-pad"
                   maxLength={3}
                 />
@@ -218,7 +262,12 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             <Text style={styles.logOutButtonText}>Log Out</Text>
           </Pressable>
         </ScrollView>
+        <View onLayout={registerBottomInset}>
+          <KeyboardDoneBar visible={numericFocused} />
+        </View>
+        </View>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -229,12 +278,16 @@ function ProfileField({
   editing,
   keyboardType,
   onChangeText,
+  onFocus,
+  onBlur,
 }: {
   label: string;
   value: string;
   editing: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
   onChangeText: (text: string) => void;
+  onFocus?: (event: FocusEvent) => void;
+  onBlur?: () => void;
 }) {
   return (
     <View style={styles.fieldWrapper}>
@@ -244,6 +297,8 @@ function ProfileField({
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
+          onFocus={onFocus}
+          onBlur={onBlur}
           keyboardType={keyboardType}
           autoCapitalize={keyboardType === 'email-address' ? 'none' : 'sentences'}
         />
@@ -257,6 +312,7 @@ function ProfileField({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   appBody: { flex: 1, flexDirection: 'row' },
+  contentColumn: { flex: 1, flexDirection: 'column' },
   flexOne: { flex: 1 },
   content: {
     alignItems: 'center',

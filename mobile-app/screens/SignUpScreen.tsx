@@ -14,18 +14,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList, Role } from '../navigation/types';
+import type { RootStackParamList } from '../navigation/types';
 import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 import InstrumentWheel from '../components/InstrumentWheel';
+import KeyboardDoneBar from '../components/KeyboardDoneBar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
-
-// Placeholder staff access code — will be replaced by a real code later.
-const STAFF_ACCESS_CODE = '1234';
 
 const isPlausibleEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
@@ -38,7 +37,7 @@ const isValidPassword = (value: string) =>
   value.length > 6 && /[A-Z]/.test(value) && /[0-9]/.test(value);
 
 export default function SignUpScreen({ navigation }: Props) {
-  const { signUp } = useAuth();
+  const { signUp, accountExists } = useAuth();
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -46,8 +45,8 @@ export default function SignUpScreen({ navigation }: Props) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
-  const [role, setRole] = useState<Role>('Member');
-  const [staffCode, setStaffCode] = useState('');
+  const [numericFocused, setNumericFocused] = useState(false);
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
 
   const handleSubmit = async () => {
     if (
@@ -64,6 +63,11 @@ export default function SignUpScreen({ navigation }: Props) {
 
     if (!isPlausibleEmail(email)) {
       Alert.alert('Error', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (accountExists(email)) {
+      Alert.alert('Account already exists', 'An account with this email already exists.');
       return;
     }
 
@@ -85,32 +89,33 @@ export default function SignUpScreen({ navigation }: Props) {
       return;
     }
 
-    if (role === 'Staff' && staffCode !== STAFF_ACCESS_CODE) {
-      Alert.alert('Error', 'Incorrect staff code.');
-      return;
-    }
-
     await signUp({
       email,
       password,
       firstName,
       lastName,
       instrument,
-      role,
+      role: 'Member',
       phone,
       shoeSize: { gender: "Men's", size: '' },
       height: { feet: '', inches: '' },
       weight: '',
     });
-    navigation.reset({
-      index: 0,
-      routes: [
-        {
-          name: role === 'Staff' ? 'MainTabs' : 'MemberTabs',
-          params: { firstName, lastName, instrument, role },
-        },
-      ],
-    });
+
+    const goToApp = () =>
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'MemberTabs',
+            params: { firstName, lastName, instrument, role: 'Member' },
+          },
+        ],
+      });
+
+    Alert.alert('Account created', 'Your account has been created successfully.', [
+      { text: 'OK', onPress: goToApp },
+    ]);
   };
 
   return (
@@ -123,7 +128,13 @@ export default function SignUpScreen({ navigation }: Props) {
           <TapeGutter />
 
           <View style={styles.contentColumn}>
-            <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+            <ScrollView
+              ref={scrollRef}
+              style={styles.flexOne}
+              contentContainerStyle={styles.content}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+            >
               <View style={styles.header}>
                 {navigation.canGoBack() ? (
                   <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
@@ -143,7 +154,7 @@ export default function SignUpScreen({ navigation }: Props) {
                 <View style={styles.headerSideButton} />
               </View>
 
-              <Text style={styles.intro}>A few details before you join Central High Band.</Text>
+              <Text style={styles.intro}>A few details before you join SMU Mustang Band.</Text>
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Email</Text>
@@ -153,6 +164,7 @@ export default function SignUpScreen({ navigation }: Props) {
                   placeholderTextColor={colors.inkFaint}
                   value={email}
                   onChangeText={setEmail}
+                  onFocus={scrollToFocusedInput}
                   autoCapitalize="none"
                   keyboardType="email-address"
                 />
@@ -166,6 +178,11 @@ export default function SignUpScreen({ navigation }: Props) {
                   placeholderTextColor={colors.inkFaint}
                   value={phone}
                   onChangeText={setPhone}
+                  onFocus={(e) => {
+                    scrollToFocusedInput(e);
+                    setNumericFocused(true);
+                  }}
+                  onBlur={() => setNumericFocused(false)}
                   keyboardType="phone-pad"
                 />
               </View>
@@ -178,6 +195,7 @@ export default function SignUpScreen({ navigation }: Props) {
                   placeholderTextColor={colors.inkFaint}
                   value={password}
                   onChangeText={setPassword}
+                  onFocus={scrollToFocusedInput}
                   autoCapitalize="none"
                   secureTextEntry
                 />
@@ -191,6 +209,7 @@ export default function SignUpScreen({ navigation }: Props) {
                   placeholderTextColor={colors.inkFaint}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
+                  onFocus={scrollToFocusedInput}
                   autoCapitalize="none"
                   secureTextEntry
                 />
@@ -205,6 +224,7 @@ export default function SignUpScreen({ navigation }: Props) {
                     placeholderTextColor={colors.inkFaint}
                     value={firstName}
                     onChangeText={setFirstName}
+                    onFocus={scrollToFocusedInput}
                   />
                 </View>
                 <View style={[styles.field, styles.nameField]}>
@@ -215,6 +235,7 @@ export default function SignUpScreen({ navigation }: Props) {
                     placeholderTextColor={colors.inkFaint}
                     value={lastName}
                     onChangeText={setLastName}
+                    onFocus={scrollToFocusedInput}
                   />
                 </View>
               </View>
@@ -223,51 +244,16 @@ export default function SignUpScreen({ navigation }: Props) {
                 <Text style={styles.fieldLabel}>Instrument</Text>
                 <InstrumentWheel options={INSTRUMENTS} value={instrument} onChange={setInstrument} />
               </View>
-
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Role</Text>
-                <View style={styles.segmented}>
-                  {(['Member', 'Staff'] as Role[]).map((option, index) => {
-                    const active = role === option;
-                    return (
-                      <Pressable
-                        key={option}
-                        style={[
-                          styles.segment,
-                          active && styles.segmentActive,
-                          index === 0 && styles.segmentBorderRight,
-                        ]}
-                        onPress={() => setRole(option)}
-                      >
-                        <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                          {option}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {role === 'Staff' && (
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Staff code</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Staff code"
-                    placeholderTextColor={colors.inkFaint}
-                    value={staffCode}
-                    onChangeText={setStaffCode}
-                    keyboardType="number-pad"
-                    secureTextEntry
-                  />
-                </View>
-              )}
             </ScrollView>
 
-            <View style={styles.footer}>
-              <Pressable style={styles.submitButton} onPress={handleSubmit}>
-                <Text style={styles.submitButtonText}>Create account</Text>
-              </Pressable>
+            <View onLayout={registerBottomInset}>
+              <KeyboardDoneBar visible={numericFocused} />
+
+              <View style={styles.footer}>
+                <Pressable style={styles.submitButton} onPress={handleSubmit}>
+                  <Text style={styles.submitButtonText}>Create account</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
@@ -352,33 +338,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
     color: colors.ink,
-  },
-  segmented: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: colors.ink,
-  },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 13,
-    backgroundColor: colors.surface,
-  },
-  segmentBorderRight: {
-    borderRightWidth: 1,
-    borderRightColor: colors.ink,
-  },
-  segmentActive: {
-    backgroundColor: colors.ink,
-  },
-  segmentText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13.5,
-    color: colors.ink,
-  },
-  segmentTextActive: {
-    color: colors.paper,
   },
   footer: {
     borderTopWidth: 1,

@@ -17,6 +17,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InviteCode'>;
 
@@ -25,6 +26,7 @@ const INVITE_CODE = '4F2K9';
 
 export default function InviteCodeScreen({ navigation }: Props) {
   const [code, setCode] = useState('');
+  const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const handleContinue = () => {
     if (code.trim().toUpperCase() !== INVITE_CODE) {
@@ -43,9 +45,12 @@ export default function InviteCodeScreen({ navigation }: Props) {
         <View style={styles.appBody}>
           <TapeGutter />
           <ScrollView
+            ref={scrollRef}
             style={styles.flexOne}
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           >
             <View style={styles.header}>
               <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
@@ -53,7 +58,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            <Text style={styles.title}>Join Formation</Text>
+            <Text style={styles.title}>Join Mustang Closet</Text>
             <Text style={styles.subtitle}>Enter the invite code from your band director.</Text>
 
             <View style={styles.field}>
@@ -64,6 +69,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
                 placeholderTextColor={colors.inkFaint}
                 value={code}
                 onChangeText={setCode}
+                onFocus={scrollToFocusedInput}
                 autoCapitalize="characters"
               />
             </View>

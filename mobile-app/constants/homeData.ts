@@ -19,4 +19,4 @@ export const SECTIONS = [
   { name: 'Drumline', count: 26, fitPercent: 81 },
 ];
 
-export const CATALOGUE = COMBOS.slice(0, 5).map(({ label, sub }) => ({ label, sub }));
+export const CATALOGUE = COMBOS.slice(0, 5).map(({ id, label, sub }) => ({ id, label, sub }));

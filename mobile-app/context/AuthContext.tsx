@@ -39,6 +39,7 @@ type AuthContextValue = {
   logIn: (email: string, password: string) => Promise<Account | null>;
   logOut: () => Promise<void>;
   updateAccount: (updates: Partial<Omit<Account, 'password'>>) => Promise<void>;
+  accountExists: (email: string) => boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -136,6 +137,37 @@ function directoryKeyFor(email: string): string {
   return email.trim().toLowerCase();
 }
 
+// Always-available test accounts so development/demo doesn't require signing
+// up each time. Seeded into the directory on first load only — if a real
+// device already has these accounts (e.g. edited via the account screen),
+// those edits are left alone rather than being overwritten on every launch.
+const SEED_ACCOUNTS: Account[] = [
+  {
+    email: 'staff@mail.com',
+    password: 'Password1',
+    firstName: 'Staff',
+    lastName: 'Account',
+    instrument: 'Trumpet',
+    role: 'Staff',
+    phone: '',
+    shoeSize: { gender: "Men's", size: '' },
+    height: { feet: '', inches: '' },
+    weight: '',
+  },
+  {
+    email: 'member@mail.com',
+    password: 'Password2',
+    firstName: 'Member',
+    lastName: 'Account',
+    instrument: 'Trumpet',
+    role: 'Member',
+    phone: '',
+    shoeSize: { gender: "Men's", size: '' },
+    height: { feet: '', inches: '' },
+    weight: '',
+  },
+];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [session, setSession] = useState<UserParams | null>(null);
@@ -155,11 +187,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ])
       .then(([savedAccount, savedSession, savedDirectory]) => {
         if (!isMounted) return;
-        if (savedDirectory) {
-          const parsedDirectory = parseDirectory(savedDirectory);
-          directoryRef.current = parsedDirectory;
-          setDirectory(parsedDirectory);
+
+        let parsedDirectory = savedDirectory ? parseDirectory(savedDirectory) : {};
+        let directoryChanged = false;
+        for (const seed of SEED_ACCOUNTS) {
+          const key = directoryKeyFor(seed.email);
+          if (!parsedDirectory[key]) {
+            parsedDirectory = { ...parsedDirectory, [key]: seed };
+            directoryChanged = true;
+          }
         }
+        directoryRef.current = parsedDirectory;
+        setDirectory(parsedDirectory);
+        if (directoryChanged) {
+          AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(parsedDirectory)).catch((error) => {
+            console.warn('AuthContext: failed to persist seeded accounts', error);
+          });
+        }
+
         if (savedAccount) {
           const parsedAccount = normalizeAccount(JSON.parse(savedAccount));
           // Only trust a saved session if its paired account also parsed
@@ -274,9 +319,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [directory]
   );
 
+  const accountExists = useCallback((email: string): boolean => {
+    return directoryRef.current[directoryKeyFor(email)] != null;
+  }, []);
+
   const value = useMemo(
-    () => ({ session, account, members, isLoading, signUp, logIn, logOut, updateAccount }),
-    [session, account, members, isLoading, signUp, logIn, logOut, updateAccount]
+    () => ({
+      session,
+      account,
+      members,
+      isLoading,
+      signUp,
+      logIn,
+      logOut,
+      updateAccount,
+      accountExists,
+    }),
+    [session, account, members, isLoading, signUp, logIn, logOut, updateAccount, accountExists]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

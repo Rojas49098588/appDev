@@ -10,6 +10,7 @@ import TapeGutter from '../components/TapeGutter';
 import PieceCard from '../components/PieceCard';
 import { BackChevronIcon, PlusIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Inventory'>;
 
@@ -26,6 +27,7 @@ export default function InventoryScreen({ navigation }: Props) {
   const [searchText, setSearchText] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const { flags } = useFlags();
+  const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const pieceCounts = useMemo(() => {
     const counts = new Map<string, { repairCount: number; dirtyCount: number }>();
@@ -85,7 +87,7 @@ export default function InventoryScreen({ navigation }: Props) {
   }, [searchText, activeFilters, pieceCounts]);
 
   const handleFlagPress = (piece: Piece, kind: 'repair' | 'dirty') => {
-    navigation.navigate('Sections', { piece: piece.name, status: kind });
+    navigation.navigate('Sections', { piece: piece.name, status: kind, section: undefined });
   };
 
   const handleAddPress = () => {
@@ -97,7 +99,13 @@ export default function InventoryScreen({ navigation }: Props) {
       <View style={styles.appBody}>
         <TapeGutter />
 
-        <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flexOne}
+          contentContainerStyle={styles.content}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
           <View style={styles.header}>
             {navigation.canGoBack() ? (
               <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
@@ -120,6 +128,7 @@ export default function InventoryScreen({ navigation }: Props) {
               placeholderTextColor={colors.inkFaint}
               value={searchText}
               onChangeText={setSearchText}
+              onFocus={scrollToFocusedInput}
             />
           </View>
 

@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +17,7 @@ import { fonts } from '../../constants/fonts';
 import { useFlags } from '../../context/FlagsContext';
 import type { FlagStatus } from '../../constants/flagsData';
 import { MY_MEMBER_NAME } from '../../constants/myUniformData';
+import { useScrollToInput } from '../../hooks/useScrollToInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlagItem'>;
 
@@ -31,6 +33,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
 
   const [status, setStatus] = useState<FlagStatus>(existingFlag?.status ?? 'dirty');
   const [comment, setComment] = useState(existingFlag?.comment ?? '');
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
 
   const handleSubmit = () => {
     if (existingFlag) {
@@ -55,7 +58,14 @@ export default function FlagItemScreen({ navigation, route }: Props) {
         style={styles.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flexOne}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
           <View style={styles.header}>
             <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <Text style={styles.closeIcon}>✕</Text>
@@ -108,12 +118,13 @@ export default function FlagItemScreen({ navigation, route }: Props) {
             placeholderTextColor={colors.inkFaint}
             value={comment}
             onChangeText={setComment}
+            onFocus={scrollToFocusedInput}
             multiline
           />
           <Text style={styles.hint}>A staff member will see this.</Text>
-        </View>
+        </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={styles.footer} onLayout={registerBottomInset}>
           <Pressable style={styles.submitButton} onPress={handleSubmit}>
             <Text style={styles.submitButtonText}>Submit flag</Text>
           </Pressable>
@@ -126,7 +137,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   flexOne: { flex: 1 },
-  content: { flex: 1, paddingTop: 16, paddingHorizontal: 18 },
+  content: { flexGrow: 1, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 16 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

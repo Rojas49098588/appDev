@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import MemberRow from '../components/MemberRow';
 import { BackChevronIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
 import { useAuth } from '../context/AuthContext';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Sections'>,
@@ -40,14 +41,21 @@ type RosterMember = {
 
 export default function SectionsScreen({ navigation, route }: Props) {
   const [searchText, setSearchText] = useState('');
-  const [sectionFilter, setSectionFilter] = useState<string | null>(null);
+  const [sectionFilter, setSectionFilter] = useState<string | null>(route.params?.section ?? null);
   const [statusFilters, setStatusFilters] = useState<Set<StatusKey>>(new Set());
   const { flags } = useFlags();
   const { members: signedUpMembers } = useAuth();
+  const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const filterPiece = route.params?.piece;
   const filterStatus = route.params?.status;
   const isFiltered = !!(filterPiece && filterStatus);
+
+  useEffect(() => {
+    setSearchText('');
+    setStatusFilters(new Set());
+    setSectionFilter(route.params?.section ?? null);
+  }, [route.params?.section]);
 
   const roster = useMemo<RosterMember[]>(() => {
     const matchedEmails = new Set<string>();
@@ -173,7 +181,13 @@ export default function SectionsScreen({ navigation, route }: Props) {
       <View style={styles.appBody}>
         <TapeGutter />
 
-        <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flexOne}
+          contentContainerStyle={styles.content}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
           <View style={styles.header}>
             {isFiltered ? (
               <Pressable style={styles.headerSideButton} onPress={clearInventoryFilter}>
@@ -208,6 +222,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   placeholderTextColor={colors.inkFaint}
                   value={searchText}
                   onChangeText={handleSearchChange}
+                  onFocus={scrollToFocusedInput}
                 />
               </View>
 

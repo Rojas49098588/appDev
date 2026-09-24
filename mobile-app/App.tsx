@@ -24,6 +24,7 @@ import MemberProfileScreen from './screens/MemberProfileScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { GameProvider } from './context/GameContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -111,7 +112,9 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <FlagsProvider>
-          <AppNavigator onReady={onLayoutRootView} />
+          <GameProvider>
+            <AppNavigator onReady={onLayoutRootView} />
+          </GameProvider>
         </FlagsProvider>
       </AuthProvider>
     </SafeAreaProvider>

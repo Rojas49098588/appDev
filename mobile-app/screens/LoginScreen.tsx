@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +17,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -25,6 +27,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const handleLogin = async () => {
     const account = await logIn(email, password);
@@ -57,13 +60,21 @@ export default function LoginScreen({ navigation }: Props) {
         <View style={styles.appBody}>
           <TapeGutter />
           <ScrollView
+            ref={scrollRef}
             style={styles.flexOne}
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
           >
             <View style={styles.header}>
-              <Text style={styles.wordmark}>Formation</Text>
-              <Text style={styles.wordmarkSub}>Central High Band</Text>
+              <Image
+                source={require('../assets/band_M.jpg')}
+                style={styles.bandImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.wordmark}>Mustang Closet</Text>
+              <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
             </View>
 
             <View style={styles.field}>
@@ -74,6 +85,7 @@ export default function LoginScreen({ navigation }: Props) {
                 placeholderTextColor={colors.inkFaint}
                 value={email}
                 onChangeText={setEmail}
+                onFocus={scrollToFocusedInput}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
@@ -92,6 +104,7 @@ export default function LoginScreen({ navigation }: Props) {
                 placeholderTextColor={colors.inkFaint}
                 value={password}
                 onChangeText={setPassword}
+                onFocus={scrollToFocusedInput}
                 autoCapitalize="none"
                 secureTextEntry={!showPassword}
               />
@@ -112,7 +125,7 @@ export default function LoginScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('InviteCode')}
             >
               <Text style={styles.createAccountText}>
-                New to Formation? <Text style={styles.createAccountLink}>Create an account</Text>
+                New to Mustang Closet? <Text style={styles.createAccountLink}>Create an account</Text>
               </Text>
             </Pressable>
           </ScrollView>
@@ -126,8 +139,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
-  content: { padding: 18, paddingTop: 72, paddingBottom: 28 },
+  content: { padding: 18, paddingTop: 40, paddingBottom: 28 },
   header: { alignItems: 'center', marginBottom: 36 },
+  bandImage: { width: 160, height: 133, marginBottom: 14 },
   wordmark: { fontFamily: fonts.wordmark, fontSize: 26, color: colors.ink },
   wordmarkSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, marginTop: 4 },
   field: { marginBottom: 20 },

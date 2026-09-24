@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "owner": "smu-c3-mobile-fall-26",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Diamond_M.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -14,7 +14,7 @@
       "package": "com.mobileapp.signup",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
+        "foregroundImage": "./assets/Diamond_M.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
