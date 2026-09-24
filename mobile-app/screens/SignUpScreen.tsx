@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  type FocusEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -28,10 +29,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
 const isPlausibleEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
-const isPlausiblePhone = (value: string) => {
-  const digits = value.replace(/\D/g, '');
-  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
-};
+const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 const isValidPassword = (value: string) =>
   value.length > 6 && /[A-Z]/.test(value) && /[0-9]/.test(value);
@@ -39,23 +37,33 @@ const isValidPassword = (value: string) =>
 export default function SignUpScreen({ navigation }: Props) {
   const { signUp, accountExists } = useAuth();
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [instrument, setInstrument] = useState(INSTRUMENTS[0]);
+  const [heightFeet, setHeightFeet] = useState('');
+  const [heightInches, setHeightInches] = useState('');
+  const [weight, setWeight] = useState('');
   const [numericFocused, setNumericFocused] = useState(false);
   const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
+
+  const focusNumericField = (event: FocusEvent) => {
+    scrollToFocusedInput(event);
+    setNumericFocused(true);
+  };
+  const blurNumericField = () => setNumericFocused(false);
 
   const handleSubmit = async () => {
     if (
       !email.trim() ||
-      !phone.trim() ||
       !password.trim() ||
       !confirmPassword.trim() ||
       !firstName.trim() ||
-      !lastName.trim()
+      !lastName.trim() ||
+      !heightFeet.trim() ||
+      !heightInches.trim() ||
+      !weight.trim()
     ) {
       Alert.alert('Error', 'Please fill in all fields before continuing.');
       return;
@@ -68,11 +76,6 @@ export default function SignUpScreen({ navigation }: Props) {
 
     if (accountExists(email)) {
       Alert.alert('Account already exists', 'An account with this email already exists.');
-      return;
-    }
-
-    if (!isPlausiblePhone(phone)) {
-      Alert.alert('Error', 'Please enter a valid phone number.');
       return;
     }
 
@@ -96,10 +99,10 @@ export default function SignUpScreen({ navigation }: Props) {
       lastName,
       instrument,
       role: 'Member',
-      phone,
+      phone: '',
       shoeSize: { gender: "Men's", size: '' },
-      height: { feet: '', inches: '' },
-      weight: '',
+      height: { feet: heightFeet, inches: heightInches },
+      weight,
     });
 
     const goToApp = () =>
@@ -113,7 +116,7 @@ export default function SignUpScreen({ navigation }: Props) {
         ],
       });
 
-    Alert.alert('Account created', 'Your account has been created successfully.', [
+    Alert.alert('Account created', 'Please finish setting up your account under Profile.', [
       { text: 'OK', onPress: goToApp },
     ]);
   };
@@ -171,20 +174,51 @@ export default function SignUpScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Phone number</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Phone number"
-                  placeholderTextColor={colors.inkFaint}
-                  value={phone}
-                  onChangeText={setPhone}
-                  onFocus={(e) => {
-                    scrollToFocusedInput(e);
-                    setNumericFocused(true);
-                  }}
-                  onBlur={() => setNumericFocused(false)}
-                  keyboardType="phone-pad"
-                />
+                <Text style={styles.fieldLabel}>Height</Text>
+                <View style={styles.heightRow}>
+                  <TextInput
+                    style={styles.heightInput}
+                    placeholder="0"
+                    placeholderTextColor={colors.inkFaint}
+                    value={heightFeet}
+                    onChangeText={(text) => setHeightFeet(digitsOnly(text).slice(0, 1))}
+                    onFocus={focusNumericField}
+                    onBlur={blurNumericField}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                  />
+                  <Text style={styles.heightUnit}>'</Text>
+                  <TextInput
+                    style={styles.heightInput}
+                    placeholder="0"
+                    placeholderTextColor={colors.inkFaint}
+                    value={heightInches}
+                    onChangeText={(text) => setHeightInches(digitsOnly(text).slice(0, 2))}
+                    onFocus={focusNumericField}
+                    onBlur={blurNumericField}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                  <Text style={styles.heightUnit}>"</Text>
+                </View>
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Weight</Text>
+                <View style={styles.weightRow}>
+                  <TextInput
+                    style={styles.weightInput}
+                    placeholder="0"
+                    placeholderTextColor={colors.inkFaint}
+                    value={weight}
+                    onChangeText={(text) => setWeight(digitsOnly(text).slice(0, 3))}
+                    onFocus={focusNumericField}
+                    onBlur={blurNumericField}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                  />
+                  <Text style={styles.heightUnit}>lbs</Text>
+                </View>
               </View>
 
               <View style={styles.field}>
@@ -338,6 +372,45 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
     color: colors.ink,
+  },
+  heightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  heightInput: {
+    width: 56,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+  heightUnit: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  weightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weightInput: {
+    width: 70,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    textAlign: 'center',
   },
   footer: {
     borderTopWidth: 1,

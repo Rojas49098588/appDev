@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -37,6 +38,11 @@ const TEXT_FIELDS: {
 ];
 
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
+
+const isPlausiblePhone = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+};
 
 export default function MemberAccountScreen({ navigation, route }: Props) {
   const { account, updateAccount, logOut } = useAuth();
@@ -82,6 +88,11 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
   const handleToggleEdit = () => {
     if (isEditing) {
+      if (phone.trim() !== '' && !isPlausiblePhone(phone)) {
+        Alert.alert('Error', 'Please enter a valid phone number.');
+        return;
+      }
+
       updateAccount({
         firstName,
         lastName,
