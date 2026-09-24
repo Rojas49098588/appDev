@@ -91,8 +91,8 @@ export default function AddComboScreen({ navigation }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!label.trim() || !sub.trim()) {
-      Alert.alert('Error', 'Please fill in a name and description before continuing.');
+    if (!label.trim()) {
+      Alert.alert('Error', 'Please give this combo a name before continuing.');
       return;
     }
     if (!imageUri) {
@@ -181,7 +181,7 @@ export default function AddComboScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Description</Text>
+                <Text style={styles.fieldLabel}>Description (optional)</Text>
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g. Field — away"

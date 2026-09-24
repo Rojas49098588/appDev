@@ -65,7 +65,7 @@ function ComboSection({ title, combo }: { title: string; combo: Combo }) {
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <Text style={styles.sectionSub}>
-        {combo.label} — {combo.sub}
+        {combo.sub ? `${combo.label} — ${combo.sub}` : combo.label}
       </Text>
       <View style={styles.photoBox}>
         {combo.image ? (

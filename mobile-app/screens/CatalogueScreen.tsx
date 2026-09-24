@@ -22,7 +22,8 @@ export default function CatalogueScreen({ navigation }: Props) {
   const { setCombo } = useGame();
 
   const handleComboPress = (combo: Combo) => {
-    Alert.alert(combo.label, `${combo.sub} — set this combo for:`, [
+    const message = combo.sub ? `${combo.sub} — set this combo for:` : 'Set this combo for:';
+    Alert.alert(combo.label, message, [
       { text: 'Set for pregame', onPress: () => setCombo('preGame', combo.id) },
       { text: 'Set for halftime', onPress: () => setCombo('halftime', combo.id) },
       { text: 'Cancel', style: 'cancel' },
@@ -56,7 +57,7 @@ export default function CatalogueScreen({ navigation }: Props) {
                   )}
                 </View>
                 <Text style={styles.tileLabel}>{combo.label}</Text>
-                <Text style={styles.tileSub}>{combo.sub}</Text>
+                {combo.sub ? <Text style={styles.tileSub}>{combo.sub}</Text> : null}
               </Pressable>
             ))}
 
