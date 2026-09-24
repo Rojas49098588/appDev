@@ -26,7 +26,14 @@
     "plugins": [
       "expo-status-bar",
       "expo-font",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mustang Closet uses your photo library to let staff choose combo images.",
+          "cameraPermission": "Mustang Closet uses your camera to let staff take combo photos."
+        }
+      ]
     ],
     "extra": {
       "eas": {

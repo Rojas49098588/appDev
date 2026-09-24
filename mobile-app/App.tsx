@@ -21,10 +21,12 @@ import MemberAccountScreen from './screens/member/MemberAccountScreen';
 import FlagItemScreen from './screens/member/FlagItemScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import MemberProfileScreen from './screens/MemberProfileScreen';
+import AddComboScreen from './screens/AddComboScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GameProvider } from './context/GameContext';
+import { CombosProvider } from './context/CombosContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -82,6 +84,11 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
             component={MemberProfileScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="AddCombo"
+            component={AddComboScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </View>
@@ -113,7 +120,9 @@ export default function App() {
       <AuthProvider>
         <FlagsProvider>
           <GameProvider>
-            <AppNavigator onReady={onLayoutRootView} />
+            <CombosProvider>
+              <AppNavigator onReady={onLayoutRootView} />
+            </CombosProvider>
           </GameProvider>
         </FlagsProvider>
       </AuthProvider>

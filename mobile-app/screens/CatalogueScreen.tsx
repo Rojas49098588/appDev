@@ -1,17 +1,24 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../navigation/types';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { COMBOS, type Combo } from '../constants/combosData';
+import type { Combo } from '../constants/combosData';
+import { useCombos } from '../context/CombosContext';
 import { useGame } from '../context/GameContext';
 import TapeGutter from '../components/TapeGutter';
 import { ImagePlaceholderIcon, PlusIcon } from '../components/icons';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Catalogue'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Catalogue'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
-export default function CatalogueScreen({}: Props) {
+export default function CatalogueScreen({ navigation }: Props) {
+  const { combos } = useCombos();
   const { setCombo } = useGame();
 
   const handleComboPress = (combo: Combo) => {
@@ -23,7 +30,7 @@ export default function CatalogueScreen({}: Props) {
   };
 
   const handleAddPress = () => {
-    Alert.alert('Coming soon', 'Adding a new combo isn’t available yet.');
+    navigation.navigate('AddCombo');
   };
 
   return (
@@ -39,10 +46,14 @@ export default function CatalogueScreen({}: Props) {
           </View>
 
           <View style={styles.grid}>
-            {COMBOS.map((combo) => (
+            {combos.map((combo) => (
               <Pressable key={combo.id} style={styles.tile} onPress={() => handleComboPress(combo)}>
                 <View style={styles.tileImage}>
-                  <ImagePlaceholderIcon color={colors.inkFaint} />
+                  {combo.image ? (
+                    <Image source={{ uri: combo.image }} style={styles.tileImageFill} />
+                  ) : (
+                    <ImagePlaceholderIcon color={colors.inkFaint} />
+                  )}
                 </View>
                 <Text style={styles.tileLabel}>{combo.label}</Text>
                 <Text style={styles.tileSub}>{combo.sub}</Text>
@@ -116,6 +127,10 @@ const styles = StyleSheet.create({
   },
   addTileImage: {
     borderStyle: 'dashed',
+  },
+  tileImageFill: {
+    width: '100%',
+    height: '100%',
   },
   tileLabel: {
     fontFamily: fonts.bodyMedium,

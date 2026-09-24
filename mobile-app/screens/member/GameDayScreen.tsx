@@ -1,10 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MemberTabParamList } from '../../navigation/types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { COMBOS, type Combo } from '../../constants/combosData';
+import type { Combo } from '../../constants/combosData';
+import { useCombos } from '../../context/CombosContext';
 import { useGame } from '../../context/GameContext';
 import TapeGutter from '../../components/TapeGutter';
 
@@ -17,8 +18,9 @@ type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
 export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { game } = useGame();
-  const preGameCombo = COMBOS.find((c) => c.id === game.preGameComboId);
-  const halftimeCombo = COMBOS.find((c) => c.id === game.halftimeComboId);
+  const { combos } = useCombos();
+  const preGameCombo = combos.find((c) => c.id === game.preGameComboId);
+  const halftimeCombo = combos.find((c) => c.id === game.halftimeComboId);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -66,7 +68,11 @@ function ComboSection({ title, combo }: { title: string; combo: Combo }) {
         {combo.label} — {combo.sub}
       </Text>
       <View style={styles.photoBox}>
-        <Text style={styles.photoCaption}>From Catalogue — {combo.label}</Text>
+        {combo.image ? (
+          <Image source={{ uri: combo.image }} style={styles.photoBoxImage} resizeMode="cover" />
+        ) : (
+          <Text style={styles.photoCaption}>From Catalogue — {combo.label}</Text>
+        )}
       </View>
       <Text style={styles.componentsLabel}>Components</Text>
       <View style={styles.chipRow}>
@@ -116,6 +122,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   photoCaption: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint },
+  photoBoxImage: { width: '100%', height: '100%' },
   componentsLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {

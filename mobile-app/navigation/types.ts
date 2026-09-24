@@ -28,6 +28,7 @@ export type RootStackParamList = {
   MemberAccount: UserParams;
   MemberProfile: MemberProfileParams;
   FlagItem: { piece: string; color: string; size: string };
+  AddCombo: undefined;
 };
 
 export type MainTabParamList = {
