@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { STATS, SECTIONS, CATALOGUE } from '../constants/homeData';
+import { STATS, SECTIONS } from '../constants/homeData';
 import { PIECES } from '../constants/inventoryData';
 import { useFlags } from '../context/FlagsContext';
-import { useGame } from '../context/GameContext';
 import TapeGutter from '../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
@@ -20,15 +19,6 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
-  const { setCombo } = useGame();
-
-  const handleComboPress = (combo: (typeof CATALOGUE)[number]) => {
-    Alert.alert(combo.label, `${combo.sub} — set this combo for:`, [
-      { text: 'Set for pregame', onPress: () => setCombo('preGame', combo.id) },
-      { text: 'Set for halftime', onPress: () => setCombo('halftime', combo.id) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
 
   const inventoryPreview = useMemo(() => {
     return PIECES.map((piece) => {
@@ -112,27 +102,6 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               </Pressable>
             ))}
           </View>
-        </View>
-
-        <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Catalogue</Text>
-            <Text style={styles.blockLink}>View all 36</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swatchScroll}>
-            {CATALOGUE.map((combo) => (
-              <Pressable key={combo.id} style={styles.swatch} onPress={() => handleComboPress(combo)}>
-                <View style={styles.swatchArt}>
-                  <View style={styles.garment}>
-                    <View style={styles.garmentCoat} />
-                    <View style={styles.garmentPants} />
-                  </View>
-                </View>
-                <Text style={styles.swatchLabel}>{combo.label}</Text>
-                <Text style={styles.swatchSub}>{combo.sub}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
         </View>
 
         <View style={styles.block}>
@@ -329,57 +298,6 @@ const styles = StyleSheet.create({
   fitBarFill: {
     height: '100%',
     backgroundColor: colors.ink,
-  },
-  swatchScroll: {
-    marginHorizontal: -18,
-    paddingHorizontal: 18,
-  },
-  swatch: {
-    width: 108,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    padding: 12,
-    paddingBottom: 10,
-    marginRight: 10,
-  },
-  swatchArt: {
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  garment: {
-    width: 28,
-    height: 44,
-  },
-  garmentCoat: {
-    position: 'absolute',
-    top: 0,
-    left: 3,
-    width: 22,
-    height: 24,
-    backgroundColor: colors.ink,
-    opacity: 0.86,
-  },
-  garmentPants: {
-    position: 'absolute',
-    bottom: 0,
-    left: 7,
-    width: 14,
-    height: 22,
-    backgroundColor: colors.inkSoft,
-  },
-  swatchLabel: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
-    color: colors.ink,
-  },
-  swatchSub: {
-    fontFamily: fonts.body,
-    fontSize: 10,
-    color: colors.inkSoft,
-    marginTop: 2,
   },
   invList: {
     borderTopWidth: 1,

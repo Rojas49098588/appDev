@@ -1,4 +1,4 @@
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 export function BackChevronIcon({ color, size = 19 }: { color: string; size?: number }) {
   return (
@@ -42,6 +42,16 @@ export function ChevronDownIcon({
       style={open ? { transform: [{ rotate: '180deg' }] } : undefined}
     >
       <Path d="M6 9l6 6 6-6" stroke={color} strokeWidth={1.8} fill="none" />
+    </Svg>
+  );
+}
+
+export function ImagePlaceholderIcon({ color, size = 26 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Rect x={2.5} y={4.5} width={19} height={15} rx={0} stroke={color} strokeWidth={1.4} fill="none" />
+      <Circle cx={8.5} cy={10} r={1.6} stroke={color} strokeWidth={1.4} fill="none" />
+      <Path d="M3 16.5l5.5-5 4 3.5 3-2.5 5.5 4.5" stroke={color} strokeWidth={1.4} fill="none" />
     </Svg>
   );
 }

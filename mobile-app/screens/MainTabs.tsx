@@ -8,7 +8,7 @@ import TabIcon, { type TabIconName } from '../components/TabIcon';
 import HomeScreen from './HomeScreen';
 import InventoryScreen from './InventoryScreen';
 import SectionsScreen from './SectionsScreen';
-import PlaceholderScreen from './PlaceholderScreen';
+import CatalogueScreen from './CatalogueScreen';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MainTabs'>;
 
@@ -52,9 +52,7 @@ export default function MainTabs({ navigation, route }: Props) {
         )}
       </Tab.Screen>
       <Tab.Screen name="Sections" component={SectionsScreen} />
-      <Tab.Screen name="Catalogue">
-        {() => <PlaceholderScreen title="Catalogue" />}
-      </Tab.Screen>
+      <Tab.Screen name="Catalogue" component={CatalogueScreen} />
       <Tab.Screen name="Inventory" component={InventoryScreen} />
     </Tab.Navigator>
   );

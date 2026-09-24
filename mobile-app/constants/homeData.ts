@@ -1,5 +1,3 @@
-import { COMBOS } from './combosData';
-
 export const STATS = [
   { label: 'members', value: '122' },
   { label: 'sections', value: '9' },
@@ -18,5 +16,3 @@ export const SECTIONS = [
   { name: 'Tuba', count: 8, fitPercent: 100 },
   { name: 'Drumline', count: 26, fitPercent: 81 },
 ];
-
-export const CATALOGUE = COMBOS.slice(0, 5).map(({ id, label, sub }) => ({ id, label, sub }));
