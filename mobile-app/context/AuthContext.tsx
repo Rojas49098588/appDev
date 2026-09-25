@@ -40,6 +40,7 @@ type AuthContextValue = {
   logOut: () => Promise<void>;
   updateAccount: (updates: Partial<Omit<Account, 'password'>>) => Promise<void>;
   setAccountRole: (email: string, role: Role) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   accountExists: (email: string) => boolean;
 };
 
@@ -315,6 +316,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [account]
   );
 
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<boolean> => {
+      if (!account || account.password !== currentPassword) return false;
+
+      const nextAccount: Account = { ...account, password: newPassword };
+      setAccount(nextAccount);
+
+      const nextDirectory = {
+        ...directoryRef.current,
+        [directoryKeyFor(nextAccount.email)]: nextAccount,
+      };
+      directoryRef.current = nextDirectory;
+      setDirectory(nextDirectory);
+
+      try {
+        await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(nextAccount));
+        await AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(nextDirectory));
+      } catch (error) {
+        // Best-effort persistence — in-memory state is already up to date.
+        console.warn('AuthContext: failed to persist password change', error);
+      }
+      return true;
+    },
+    [account]
+  );
+
   const setAccountRole = useCallback(
     async (email: string, role: Role) => {
       const key = directoryKeyFor(email);
@@ -365,6 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logOut,
       updateAccount,
       setAccountRole,
+      changePassword,
       accountExists,
     }),
     [
@@ -377,6 +405,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logOut,
       updateAccount,
       setAccountRole,
+      changePassword,
       accountExists,
     ]
   );

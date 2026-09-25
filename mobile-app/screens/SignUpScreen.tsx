@@ -20,6 +20,7 @@ import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { isValidPassword } from '../constants/validation';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 import InstrumentWheel from '../components/InstrumentWheel';
@@ -30,9 +31,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 const isPlausibleEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
-
-const isValidPassword = (value: string) =>
-  value.length > 6 && /[A-Z]/.test(value) && /[0-9]/.test(value);
 
 export default function SignUpScreen({ navigation }: Props) {
   const { signUp, accountExists } = useAuth();

@@ -21,6 +21,7 @@ import { fonts } from '../constants/fonts';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
+import ChangePasswordSection from '../components/ChangePasswordSection';
 import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -208,6 +209,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
             <Pressable style={styles.actionButton} onPress={() => setIsEditing((prev) => !prev)}>
               <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
             </Pressable>
+
+            <ChangePasswordSection onFocusField={scrollToFocusedInput} />
 
             <Pressable style={styles.logOutButton} onPress={handleLogOut}>
               <Text style={styles.logOutButtonText}>Log Out</Text>

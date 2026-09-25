@@ -19,9 +19,11 @@ import { useAuth } from '../../context/AuthContext';
 import { INSTRUMENTS } from '../../constants/instruments';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
+import { isPlausiblePhone, isValidPassword } from '../../constants/validation';
 import { useScrollToInput } from '../../hooks/useScrollToInput';
 import TapeGutter from '../../components/TapeGutter';
 import KeyboardDoneBar from '../../components/KeyboardDoneBar';
+import ChangePasswordSection from '../../components/ChangePasswordSection';
 import { BackChevronIcon } from '../../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberAccount'>;
@@ -38,11 +40,6 @@ const TEXT_FIELDS: {
 ];
 
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
-
-const isPlausiblePhone = (value: string) => {
-  const digits = value.replace(/\D/g, '');
-  return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
-};
 
 export default function MemberAccountScreen({ navigation, route }: Props) {
   const { account, updateAccount, logOut } = useAuth();
@@ -268,6 +265,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
           <Pressable style={styles.actionButton} onPress={handleToggleEdit}>
             <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
           </Pressable>
+
+          <ChangePasswordSection onFocusField={scrollToFocusedInput} />
 
           <Pressable style={styles.logOutButton} onPress={handleLogOut}>
             <Text style={styles.logOutButtonText}>Log Out</Text>
