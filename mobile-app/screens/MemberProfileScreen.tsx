@@ -1,9 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
+import { useAuth } from '../context/AuthContext';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
 
@@ -11,6 +13,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'MemberProfile'>;
 
 export default function MemberProfileScreen({ navigation, route }: Props) {
   const { name, section, email, phone, height, weight } = route.params;
+  const { setAccountRole } = useAuth();
+  const [role, setRole] = useState(route.params.role ?? 'Member');
 
   const initials = name
     .split(' ')
@@ -29,6 +33,30 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     { label: 'Weight', value: weightDisplay },
   ];
 
+  const isRealAccount = !!email;
+  const isStaff = role === 'Staff';
+
+  const handleRoleChangePress = () => {
+    const nextRole = isStaff ? 'Member' : 'Staff';
+    Alert.alert(
+      'Are you sure?',
+      isStaff
+        ? `Demote ${name} to Member? They'll see the Member view next time they sign in.`
+        : `Promote ${name} to Staff? They'll see the Staff view next time they sign in.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isStaff ? 'Demote' : 'Promote',
+          onPress: async () => {
+            if (!email) return;
+            await setAccountRole(email, nextRole);
+            setRole(nextRole);
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.appBody}>
@@ -39,7 +67,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
             <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Member Profile</Text>
+            <Text style={styles.pageTitle}>{isStaff ? 'Staff Profile' : 'Member Profile'}</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -49,6 +77,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
 
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.sectionBadge}>{section}</Text>
+          <Text style={styles.roleBadge}>{role}</Text>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Information</Text>
@@ -66,6 +95,23 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
               </View>
             ))}
           </View>
+
+          <Pressable
+            style={[styles.roleButton, !isRealAccount && styles.roleButtonDisabled]}
+            onPress={isRealAccount ? handleRoleChangePress : undefined}
+            disabled={!isRealAccount}
+          >
+            <Text
+              style={[styles.roleButtonText, !isRealAccount && styles.roleButtonTextDisabled]}
+            >
+              {isStaff ? 'Demote to Member' : 'Promote to Staff'}
+            </Text>
+          </Pressable>
+          {!isRealAccount && (
+            <Text style={styles.roleButtonHint}>
+              This member hasn't signed up yet, so there's no account to change.
+            </Text>
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -114,6 +160,14 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: colors.inkSoft,
     marginTop: 4,
+  },
+  roleBadge: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    color: colors.ink,
+    textTransform: 'uppercase',
+    marginTop: 8,
     marginBottom: 22,
   },
   card: {
@@ -140,4 +194,25 @@ const styles = StyleSheet.create({
   infoLabel: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
   infoValue: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
   infoValueMuted: { fontFamily: fonts.body, color: colors.inkFaint },
+  roleButton: {
+    width: '100%',
+    backgroundColor: colors.ink,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  roleButtonDisabled: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  roleButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  roleButtonTextDisabled: { color: colors.inkFaint },
+  roleButtonHint: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginTop: 8,
+    textAlign: 'center',
+  },
 });

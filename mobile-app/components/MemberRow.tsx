@@ -3,14 +3,17 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { Member } from '../constants/membersData';
 import type { Flag } from '../constants/flagsData';
+import type { Role } from '../navigation/types';
 import { SmallChevronRightIcon } from './icons';
 
 export default function MemberRow({
   member,
+  role,
   flags = [],
   onPress,
 }: {
   member: Member;
+  role?: Role;
   flags?: Flag[];
   onPress: () => void;
 }) {
@@ -26,7 +29,14 @@ export default function MemberRow({
         <Text style={styles.avatarText}>{initials}</Text>
       </View>
       <View style={styles.info}>
-        <Text style={styles.name}>{member.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{member.name}</Text>
+          {role === 'Staff' && (
+            <View style={styles.staffBadge}>
+              <Text style={styles.staffBadgeText}>Staff</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.section}>{member.section}</Text>
         {flags.map((flag) => {
           const itemColor = flag.status === 'repair' ? colors.rust : colors.wash;
@@ -72,10 +82,29 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   name: {
     fontFamily: fonts.bodyMedium,
     fontSize: 13.5,
     color: colors.ink,
+  },
+  staffBadge: {
+    borderWidth: 1,
+    borderColor: colors.ink,
+    backgroundColor: colors.ink,
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+  },
+  staffBadgeText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 9,
+    letterSpacing: 0.4,
+    color: colors.paper,
+    textTransform: 'uppercase',
   },
   section: {
     fontFamily: fonts.body,

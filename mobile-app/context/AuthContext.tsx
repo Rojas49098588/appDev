@@ -33,12 +33,13 @@ export type Account = {
 type AuthContextValue = {
   session: UserParams | null;
   account: Account | null;
-  members: Account[];
+  accounts: Account[];
   isLoading: boolean;
   signUp: (account: Account) => Promise<void>;
   logIn: (email: string, password: string) => Promise<Account | null>;
   logOut: () => Promise<void>;
   updateAccount: (updates: Partial<Omit<Account, 'password'>>) => Promise<void>;
+  setAccountRole: (email: string, role: Role) => Promise<void>;
   accountExists: (email: string) => boolean;
 };
 
@@ -314,10 +315,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [account]
   );
 
-  const members = useMemo(
-    () => Object.values(directory).filter((entry) => entry.role === 'Member'),
-    [directory]
+  const setAccountRole = useCallback(
+    async (email: string, role: Role) => {
+      const key = directoryKeyFor(email);
+      const existing = directoryRef.current[key];
+      if (!existing) return;
+
+      const nextAccount: Account = { ...existing, role };
+      const nextDirectory = { ...directoryRef.current, [key]: nextAccount };
+      directoryRef.current = nextDirectory;
+      setDirectory(nextDirectory);
+
+      // If staff happens to be changing their own role, keep the active session in sync.
+      const isActiveAccount = account && directoryKeyFor(account.email) === key;
+      if (isActiveAccount) {
+        const nextSession = toSession(nextAccount);
+        setAccount(nextAccount);
+        setSession(nextSession);
+      }
+
+      try {
+        await AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(nextDirectory));
+        if (isActiveAccount) {
+          await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(nextAccount));
+          await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(toSession(nextAccount)));
+        }
+      } catch (error) {
+        // Best-effort persistence — in-memory state is already up to date.
+        console.warn('AuthContext: failed to persist directory during setAccountRole', error);
+      }
+    },
+    [account]
   );
+
+  const accounts = useMemo(() => Object.values(directory), [directory]);
 
   const accountExists = useCallback((email: string): boolean => {
     return directoryRef.current[directoryKeyFor(email)] != null;
@@ -327,15 +358,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       account,
-      members,
+      accounts,
       isLoading,
       signUp,
       logIn,
       logOut,
       updateAccount,
+      setAccountRole,
       accountExists,
     }),
-    [session, account, members, isLoading, signUp, logIn, logOut, updateAccount, accountExists]
+    [
+      session,
+      account,
+      accounts,
+      isLoading,
+      signUp,
+      logIn,
+      logOut,
+      updateAccount,
+      setAccountRole,
+      accountExists,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,7 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { MainTabParamList, MemberProfileParams, RootStackParamList } from '../navigation/types';
+import type {
+  MainTabParamList,
+  MemberProfileParams,
+  RootStackParamList,
+  Role,
+} from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { MEMBERS } from '../constants/membersData';
@@ -37,6 +42,7 @@ type RosterMember = {
   phone?: string;
   height?: { feet: string; inches: string };
   weight?: string;
+  role?: Role;
 };
 
 export default function SectionsScreen({ navigation, route }: Props) {
@@ -44,7 +50,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const [sectionFilter, setSectionFilter] = useState<string | null>(route.params?.section ?? null);
   const [statusFilters, setStatusFilters] = useState<Set<StatusKey>>(new Set());
   const { flags } = useFlags();
-  const { members: signedUpMembers } = useAuth();
+  const { accounts } = useAuth();
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const filterPiece = route.params?.piece;
@@ -60,7 +66,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const roster = useMemo<RosterMember[]>(() => {
     const matchedEmails = new Set<string>();
     const fromRoster = MEMBERS.map((member) => {
-      const match = signedUpMembers.find(
+      const match = accounts.find(
         (a) => `${a.firstName} ${a.lastName}`.trim().toLowerCase() === member.name.toLowerCase()
       );
       if (match) matchedEmails.add(match.email.toLowerCase());
@@ -71,10 +77,11 @@ export default function SectionsScreen({ navigation, route }: Props) {
         phone: match?.phone,
         height: match?.height,
         weight: match?.weight,
+        role: match?.role,
       };
     });
 
-    const newSignUps = signedUpMembers
+    const newSignUps = accounts
       .filter((a) => !matchedEmails.has(a.email.toLowerCase()))
       .map((a) => ({
         name: `${a.firstName} ${a.lastName}`,
@@ -83,10 +90,11 @@ export default function SectionsScreen({ navigation, route }: Props) {
         phone: a.phone,
         height: a.height,
         weight: a.weight,
+        role: a.role,
       }));
 
     return [...fromRoster, ...newSignUps];
-  }, [signedUpMembers]);
+  }, [accounts]);
 
   const handleSearchChange = (text: string) => {
     setSearchText(text);
@@ -120,6 +128,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
       phone: member.phone,
       height: member.height,
       weight: member.weight,
+      role: member.role,
     };
     navigation.navigate('MemberProfile', params);
   };
@@ -319,8 +328,9 @@ export default function SectionsScreen({ navigation, route }: Props) {
               : memberFlags;
             return (
               <MemberRow
-                key={member.name}
+                key={member.email ?? member.name}
                 member={member}
+                role={member.role}
                 flags={displayFlags}
                 onPress={() => handleRowPress(member)}
               />

@@ -16,6 +16,7 @@ export type MemberProfileParams = {
   phone?: string;
   height?: HeightValue;
   weight?: string;
+  role?: Role;
 };
 
 export type RootStackParamList = {
