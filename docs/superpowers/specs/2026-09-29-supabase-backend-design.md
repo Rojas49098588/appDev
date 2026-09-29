@@ -80,7 +80,9 @@ Deleting a combo deletes the row (and the app deletes its image). The
 | `is_current` | boolean, not null, default false | Partial unique index: at most one row where `is_current` |
 
 When a slot's combo is deleted the slot becomes null and Game Day shows
-"No combo set" for it.
+"No combo set" for it. The app keeps its existing guard that refuses to delete
+a combo currently set for pregame/halftime; `on delete set null` covers the
+race where another phone changes the game at the same moment.
 
 ### `flags` — one row per flagged piece
 
@@ -108,7 +110,9 @@ RLS enabled with **no policies**: no client can read or write it.
 
 ### Storage bucket `combo-images`
 
-Private bucket. Objects named `<combo id>.jpg`. The app displays images via
+Private bucket. Objects named `combo-<timestamp>-<random>.jpg`. The photo is
+uploaded before the combo row exists, and combos have no update policy, so the
+name can't be the combo's ID. The app displays images via
 signed or authenticated URLs and relies on the image cache after first load.
 
 ## Security rules (RLS)
@@ -119,7 +123,7 @@ role only; `anon` gets nothing.
 
 | Table | Select | Insert | Update | Delete |
 |---|---|---|---|---|
-| `profiles` | own row; any row where `role = 'Staff'`; all rows if `is_staff()` | none (created by trigger) | own row, and `role` must be unchanged | none |
+| `profiles` | own row; all rows if `is_staff()`. Members read staff **names only** through the `staff_directory` view (`id, first_name, last_name` of Staff profiles), so staff phone/weight stay private | none (created by trigger) | own row; `role`, `email` and `id` must be unchanged | none |
 | `combos` | all | `is_staff()` | none (not editable in-app today) | `is_staff()` |
 | `games` | all | none | `is_staff()` | none |
 | `flags` | own rows; all if `is_staff()` | own `member_id` only | own rows only | none |
@@ -218,10 +222,12 @@ no longer needed.
 ## Setup (done by the user, walked through in the plan)
 
 1. Create a free Supabase project.
-2. Put the URL and anon key in `mobile-app/.env` (git-ignored) as the
-   `EXPO_PUBLIC_*` variables above.
-3. Run `supabase/schema.sql` (tables, RLS, functions, triggers, bucket) and
-   `supabase/seed.sql` (invite code, seed combos, current game) in the SQL editor.
+2. Put the URL and anon key in `mobile-app/.env.local` as the `EXPO_PUBLIC_*`
+   variables above, and the test/DB secrets in `mobile-app/supabase/.env.local`
+   (both git-ignored by the existing `.env*.local` rule).
+3. Apply `supabase/schema.sql` (tables, RLS, functions, triggers, bucket) and
+   `supabase/seed.sql` (invite code, seed combos, current game) with
+   `npm run db:apply` (or paste them into the SQL editor).
 4. Turn off email confirmation.
 5. Create the first Staff account: sign up in the app, then set `role = 'Staff'`
    on that profile in the Table Editor.
