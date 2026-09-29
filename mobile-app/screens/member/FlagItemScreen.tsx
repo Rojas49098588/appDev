@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,7 +17,9 @@ import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { useFlags } from '../../context/FlagsContext';
 import type { FlagStatus } from '../../constants/flagsData';
-import { MY_MEMBER_NAME } from '../../constants/myUniformData';
+import { useAuth } from '../../context/AuthContext';
+import { friendlyError } from '../../lib/errors';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../../hooks/useConnection';
 import { useScrollToInput } from '../../hooks/useScrollToInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FlagItem'>;
@@ -26,8 +29,10 @@ const DIRTY_ONLY_PIECES = ['White shirt'];
 export default function FlagItemScreen({ navigation, route }: Props) {
   const { piece, color, size } = route.params;
   const { flags, addFlag, updateFlag } = useFlags();
+  const { account } = useAuth();
+  const { isOnline } = useConnection();
   const existingFlag = flags.find(
-    (f) => f.memberName === MY_MEMBER_NAME && f.piece === piece && f.color === color
+    (f) => f.memberId === account?.id && f.piece === piece && f.color === color
   );
   const dirtyOnly = DIRTY_ONLY_PIECES.includes(piece);
 
@@ -35,21 +40,23 @@ export default function FlagItemScreen({ navigation, route }: Props) {
   const [comment, setComment] = useState(existingFlag?.comment ?? '');
   const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
 
-  const handleSubmit = () => {
-    if (existingFlag) {
-      updateFlag(existingFlag.id, status, comment);
-    } else {
-      addFlag({
-        id: `${MY_MEMBER_NAME}-${piece}-${color}`,
-        memberName: MY_MEMBER_NAME,
-        piece,
-        color,
-        size,
-        status,
-        comment,
-      });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!requireOnline(isOnline)) return;
+    setIsSaving(true);
+    try {
+      if (existingFlag) {
+        await updateFlag(existingFlag.id, status, comment);
+      } else {
+        await addFlag({ piece, color, size, status, comment });
+      }
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert("Couldn't save flag", friendlyError(error));
+    } finally {
+      setIsSaving(false);
     }
-    navigation.goBack();
   };
 
   return (
@@ -125,7 +132,11 @@ export default function FlagItemScreen({ navigation, route }: Props) {
         </ScrollView>
 
         <View style={styles.footer} onLayout={registerBottomInset}>
-          <Pressable style={styles.submitButton} onPress={handleSubmit}>
+          <Pressable
+            style={[styles.submitButton, (!isOnline || isSaving) && OFFLINE_DIM]}
+            onPress={handleSubmit}
+            disabled={isSaving}
+          >
             <Text style={styles.submitButtonText}>Submit flag</Text>
           </Pressable>
         </View>

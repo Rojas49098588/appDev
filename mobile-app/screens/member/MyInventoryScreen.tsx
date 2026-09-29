@@ -7,9 +7,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MemberTabParamList, RootStackParamList } from '../../navigation/types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { MY_UNIFORM, MY_MEMBER_NAME, MY_WHITE_SHIRT, type UniformGroup } from '../../constants/myUniformData';
+import { MY_UNIFORM, MY_WHITE_SHIRT, type UniformGroup } from '../../constants/myUniformData';
 import { useFlags } from '../../context/FlagsContext';
 import type { Flag } from '../../constants/flagsData';
+import { useAuth } from '../../context/AuthContext';
 import TapeGutter from '../../components/TapeGutter';
 import { ChevronDownIcon, SmallChevronRightIcon } from '../../components/icons';
 
@@ -20,6 +21,10 @@ type Props = CompositeScreenProps<
 
 export default function MyInventoryScreen({ navigation }: Props) {
   const { flags } = useFlags();
+  const { account } = useAuth();
+  // The database only sends a member their own flags; filtering by id keeps
+  // this correct if a staff account ever opens the member view.
+  const myFlags = flags.filter((f) => f.memberId === account?.id);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -30,10 +35,10 @@ export default function MyInventoryScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>Tap a piece type to see all your sizes. Tap any item to flag it.</Text>
 
           {MY_UNIFORM.map((group) => (
-            <PieceGroup key={group.piece} group={group} flags={flags} navigation={navigation} />
+            <PieceGroup key={group.piece} group={group} flags={myFlags} navigation={navigation} />
           ))}
 
-          <WhiteShirtRow flags={flags} navigation={navigation} />
+          <WhiteShirtRow flags={myFlags} navigation={navigation} />
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -51,9 +56,7 @@ function PieceGroup({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const groupFlags = flags.filter(
-    (f) => f.memberName === MY_MEMBER_NAME && f.piece === group.piece
-  );
+  const groupFlags = flags.filter((f) => f.piece === group.piece);
   const repairCount = groupFlags.filter((f) => f.status === 'repair').length;
   const dirtyCount = groupFlags.filter((f) => f.status === 'dirty').length;
 
@@ -150,9 +153,7 @@ function PieceGroup({
 }
 
 function WhiteShirtRow({ flags, navigation }: { flags: Flag[]; navigation: Props['navigation'] }) {
-  const flag = flags.find(
-    (f) => f.memberName === MY_MEMBER_NAME && f.piece === MY_WHITE_SHIRT.piece
-  );
+  const flag = flags.find((f) => f.piece === MY_WHITE_SHIRT.piece);
   const statusColor = flag ? colors.wash : colors.inkSoft;
   const statusLabel = flag ? 'Dirty' : 'Good';
 

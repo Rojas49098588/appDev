@@ -99,6 +99,9 @@ export default function SectionsScreen({ navigation, route }: Props) {
     return [...fromRoster, ...newSignUps];
   }, [accounts]);
 
+  const flagsFor = (member: RosterMember) =>
+    member.id ? flags.filter((f) => f.memberId === member.id) : [];
+
   const handleSearchChange = (text: string) => {
     setSearchText(text);
     if (text.trim() !== '') {
@@ -140,9 +143,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const filteredMembers = useMemo(() => {
     if (isFiltered) {
       return roster.filter((member) =>
-        flags.some(
-          (f) => f.memberName === member.name && f.piece === filterPiece && f.status === filterStatus
-        )
+        flagsFor(member).some((f) => f.piece === filterPiece && f.status === filterStatus)
       );
     }
 
@@ -158,7 +159,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
       if (!matchesSection) return false;
 
       if (statusFilters.size === 0) return true;
-      const memberFlags = flags.filter((f) => f.memberName === member.name);
+      const memberFlags = flagsFor(member);
       return (
         (statusFilters.has('good') && memberFlags.length === 0) ||
         (statusFilters.has('repair') && memberFlags.some((f) => f.status === 'repair')) ||
@@ -326,7 +327,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
           <Text style={styles.resultCount}>{resultLabel}</Text>
 
           {filteredMembers.map((member) => {
-            const memberFlags = flags.filter((f) => f.memberName === member.name);
+            const memberFlags = flagsFor(member);
             const displayFlags = isFiltered
               ? memberFlags.filter((f) => f.piece === filterPiece && f.status === filterStatus)
               : memberFlags;

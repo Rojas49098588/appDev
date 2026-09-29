@@ -1,7 +1,5 @@
 import { PIECES } from './inventoryData';
 
-export const MY_MEMBER_NAME = 'Maya Chen';
-
 export type UniformVariant = {
   color: string;
 };
