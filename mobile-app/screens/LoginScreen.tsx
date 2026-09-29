@@ -17,6 +17,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { friendlyError } from '../lib/errors';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 
@@ -30,9 +31,11 @@ export default function LoginScreen({ navigation }: Props) {
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const handleLogin = async () => {
-    const account = await logIn(email, password);
-    if (!account) {
-      Alert.alert('Error', 'Incorrect email or password.');
+    let account;
+    try {
+      account = await logIn(email, password);
+    } catch (error) {
+      Alert.alert('Error', friendlyError(error));
       return;
     }
     navigation.reset({

@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -23,7 +23,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import MemberProfileScreen from './screens/MemberProfileScreen';
 import AddComboScreen from './screens/AddComboScreen';
 import ComboDetailScreen from './screens/ComboDetailScreen';
-import type { RootStackParamList } from './navigation/types';
+import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GameProvider } from './context/GameContext';
@@ -33,8 +33,29 @@ SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 function AppNavigator({ onReady }: { onReady: () => void }) {
   const { session, isLoading } = useAuth();
+
+  // When your role changes while the app is open (a staff member promoted or
+  // demoted you), jump to the matching tabs. Login/logout already navigate
+  // on their own; this only handles changes that arrive via Realtime.
+  const previousRole = useRef<Role | null>(null);
+  useEffect(() => {
+    const role = session?.role ?? null;
+    const previous = previousRole.current;
+    previousRole.current = role;
+    if (!navigationRef.isReady() || previous === role) return;
+    if (previous && role && session) {
+      navigationRef.reset({
+        index: 0,
+        routes: [{ name: role === 'Staff' ? 'MainTabs' : 'MemberTabs', params: session }],
+      });
+    } else if (previous && !role) {
+      navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+    }
+  }, [session]);
 
   if (isLoading) {
     return null;
@@ -48,7 +69,7 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
 
   return (
     <View style={{ flex: 1 }} onLayout={onReady}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName={initialRouteName}>
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
           <Stack.Screen

@@ -20,6 +20,7 @@ import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { friendlyError } from '../lib/errors';
 import { isValidPassword } from '../constants/validation';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
@@ -32,8 +33,8 @@ const isPlausibleEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(va
 
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
-export default function SignUpScreen({ navigation }: Props) {
-  const { signUp, accountExists } = useAuth();
+export default function SignUpScreen({ navigation, route }: Props) {
+  const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -72,11 +73,6 @@ export default function SignUpScreen({ navigation }: Props) {
       return;
     }
 
-    if (accountExists(email)) {
-      Alert.alert('Account already exists', 'An account with this email already exists.');
-      return;
-    }
-
     if (!isValidPassword(password)) {
       Alert.alert(
         'Error',
@@ -90,18 +86,21 @@ export default function SignUpScreen({ navigation }: Props) {
       return;
     }
 
-    await signUp({
-      email,
-      password,
-      firstName,
-      lastName,
-      instrument,
-      role: 'Member',
-      phone: '',
-      shoeSize: { gender: "Men's", size: '' },
-      height: { feet: heightFeet, inches: heightInches },
-      weight,
-    });
+    try {
+      await signUp({
+        email,
+        password,
+        inviteCode: route.params.inviteCode,
+        firstName,
+        lastName,
+        instrument,
+        height: { feet: heightFeet, inches: heightInches },
+        weight,
+      });
+    } catch (error) {
+      Alert.alert("Couldn't create account", friendlyError(error));
+      return;
+    }
 
     const goToApp = () =>
       navigation.reset({

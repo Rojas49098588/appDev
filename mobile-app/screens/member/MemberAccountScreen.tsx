@@ -20,6 +20,7 @@ import { INSTRUMENTS } from '../../constants/instruments';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { isPlausiblePhone, isValidPassword } from '../../constants/validation';
+import { friendlyError } from '../../lib/errors';
 import { useScrollToInput } from '../../hooks/useScrollToInput';
 import TapeGutter from '../../components/TapeGutter';
 import KeyboardDoneBar from '../../components/KeyboardDoneBar';
@@ -83,29 +84,34 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const hasHeight = heightFeet !== '' || heightInches !== '';
 
-  const handleToggleEdit = () => {
+  const handleToggleEdit = async () => {
     if (isEditing) {
       if (phone.trim() !== '' && !isPlausiblePhone(phone)) {
         Alert.alert('Error', 'Please enter a valid phone number.');
         return;
       }
 
-      updateAccount({
-        firstName,
-        lastName,
-        email,
-        phone,
-        instrument,
-        shoeSize: { gender: shoeGender, size: shoeSizeValue },
-        height: { feet: heightFeet, inches: heightInches },
-        weight,
-      });
+      try {
+        await updateAccount({
+          firstName,
+          lastName,
+          email,
+          phone,
+          instrument,
+          shoeSize: { gender: shoeGender, size: shoeSizeValue },
+          height: { feet: heightFeet, inches: heightInches },
+          weight,
+        });
+      } catch (error) {
+        Alert.alert("Couldn't save changes", friendlyError(error));
+        return;
+      }
     }
     setIsEditing((prev) => !prev);
   };
 
-  const handleLogOut = () => {
-    logOut();
+  const handleLogOut = async () => {
+    await logOut();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 

@@ -36,6 +36,7 @@ const STATUS_CHIPS: { key: StatusKey; label: string }[] = [
 ];
 
 type RosterMember = {
+  id?: string;
   name: string;
   section: string;
   email?: string;
@@ -71,6 +72,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
       );
       if (match) matchedEmails.add(match.email.toLowerCase());
       return {
+        id: match?.id,
         name: member.name,
         section: member.section,
         email: match?.email,
@@ -84,6 +86,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
     const newSignUps = accounts
       .filter((a) => !matchedEmails.has(a.email.toLowerCase()))
       .map((a) => ({
+        id: a.id,
         name: `${a.firstName} ${a.lastName}`,
         section: sectionForInstrument(a.instrument),
         email: a.email,
@@ -122,6 +125,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
 
   const handleRowPress = (member: RosterMember) => {
     const params: MemberProfileParams = {
+      id: member.id,
       name: member.name,
       section: member.section,
       email: member.email,

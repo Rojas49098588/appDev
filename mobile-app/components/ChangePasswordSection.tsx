@@ -4,6 +4,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { isValidPassword } from '../constants/validation';
 import { useAuth } from '../context/AuthContext';
+import { friendlyError } from '../lib/errors';
 
 export default function ChangePasswordSection({
   onFocusField,
@@ -44,7 +45,13 @@ export default function ChangePasswordSection({
       return;
     }
 
-    const success = await changePassword(currentPassword, newPassword);
+    let success: boolean;
+    try {
+      success = await changePassword(currentPassword, newPassword);
+    } catch (error) {
+      Alert.alert('Error', friendlyError(error));
+      return;
+    }
     if (!success) {
       Alert.alert('Error', 'Current password is incorrect.');
       return;

@@ -18,22 +18,35 @@ import { fonts } from '../constants/fonts';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
 import { useScrollToInput } from '../hooks/useScrollToInput';
+import { useAuth } from '../context/AuthContext';
+import { friendlyError } from '../lib/errors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InviteCode'>;
-
-// Placeholder invite code — meant to rotate yearly; not implemented this pass.
-const INVITE_CODE = '4F2K9';
 
 export default function InviteCodeScreen({ navigation }: Props) {
   const [code, setCode] = useState('');
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
+  const { checkInviteCode } = useAuth();
+  const [isChecking, setIsChecking] = useState(false);
 
-  const handleContinue = () => {
-    if (code.trim().toUpperCase() !== INVITE_CODE) {
-      Alert.alert('Error', 'Incorrect invite code.');
+  const handleContinue = async () => {
+    const normalized = code.trim().toUpperCase();
+    if (!normalized) {
+      Alert.alert('Error', 'Please enter your invite code.');
       return;
     }
-    navigation.navigate('SignUp');
+    setIsChecking(true);
+    try {
+      if (!(await checkInviteCode(normalized))) {
+        Alert.alert('Error', 'Incorrect invite code.');
+        return;
+      }
+      navigation.navigate('SignUp', { inviteCode: normalized });
+    } catch (error) {
+      Alert.alert('Error', friendlyError(error));
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   return (
@@ -74,7 +87,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
               />
             </View>
 
-            <Pressable style={styles.submitButton} onPress={handleContinue}>
+            <Pressable style={styles.submitButton} onPress={handleContinue} disabled={isChecking}>
               <Text style={styles.submitButtonText}>Continue</Text>
             </Pressable>
 

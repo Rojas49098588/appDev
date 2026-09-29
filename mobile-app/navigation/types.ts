@@ -10,6 +10,7 @@ export type UserParams = {
 export type HeightValue = { feet: string; inches: string };
 
 export type MemberProfileParams = {
+  id?: string;
   name: string;
   section: string;
   email?: string;
@@ -22,7 +23,7 @@ export type MemberProfileParams = {
 export type RootStackParamList = {
   Login: undefined;
   InviteCode: undefined;
-  SignUp: undefined;
+  SignUp: { inviteCode: string };
   MainTabs: UserParams;
   MemberTabs: UserParams;
   Profile: UserParams;

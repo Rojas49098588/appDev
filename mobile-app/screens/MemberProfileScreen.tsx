@@ -6,14 +6,15 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { friendlyError } from '../lib/errors';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberProfile'>;
 
 export default function MemberProfileScreen({ navigation, route }: Props) {
-  const { name, section, email, phone, height, weight } = route.params;
-  const { setAccountRole } = useAuth();
+  const { id, name, section, email, phone, height, weight } = route.params;
+  const { account, setAccountRole } = useAuth();
   const [role, setRole] = useState(route.params.role ?? 'Member');
 
   const initials = name
@@ -33,7 +34,10 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     { label: 'Weight', value: weightDisplay },
   ];
 
-  const isRealAccount = !!email;
+  const isRealAccount = !!id;
+  // Staff can't change their own role (the database refuses it too).
+  const isSelf = !!id && id === account?.id;
+  const canChangeRole = isRealAccount && !isSelf;
   const isStaff = role === 'Staff';
 
   const handleRoleChangePress = () => {
@@ -41,16 +45,20 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     Alert.alert(
       'Are you sure?',
       isStaff
-        ? `Demote ${name} to Member? They'll see the Member view next time they sign in.`
-        : `Promote ${name} to Staff? They'll see the Staff view next time they sign in.`,
+        ? `Demote ${name} to Member? Their app will switch to the Member view.`
+        : `Promote ${name} to Staff? Their app will switch to the Staff view.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: isStaff ? 'Demote' : 'Promote',
           onPress: async () => {
-            if (!email) return;
-            await setAccountRole(email, nextRole);
-            setRole(nextRole);
+            if (!id) return;
+            try {
+              await setAccountRole(id, nextRole);
+              setRole(nextRole);
+            } catch (error) {
+              Alert.alert("Couldn't change role", friendlyError(error));
+            }
           },
         },
       ]
@@ -97,12 +105,12 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           </View>
 
           <Pressable
-            style={[styles.roleButton, !isRealAccount && styles.roleButtonDisabled]}
-            onPress={isRealAccount ? handleRoleChangePress : undefined}
-            disabled={!isRealAccount}
+            style={[styles.roleButton, !canChangeRole && styles.roleButtonDisabled]}
+            onPress={canChangeRole ? handleRoleChangePress : undefined}
+            disabled={!canChangeRole}
           >
             <Text
-              style={[styles.roleButtonText, !isRealAccount && styles.roleButtonTextDisabled]}
+              style={[styles.roleButtonText, !canChangeRole && styles.roleButtonTextDisabled]}
             >
               {isStaff ? 'Demote to Member' : 'Promote to Staff'}
             </Text>
@@ -111,6 +119,9 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
             <Text style={styles.roleButtonHint}>
               This member hasn't signed up yet, so there's no account to change.
             </Text>
+          )}
+          {isSelf && (
+            <Text style={styles.roleButtonHint}>You can't change your own role.</Text>
           )}
         </ScrollView>
       </View>

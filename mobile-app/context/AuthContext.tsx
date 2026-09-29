@@ -8,25 +8,28 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { HeightValue, Role, UserParams } from '../navigation/types';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
+import type { Role, UserParams } from '../navigation/types';
+import type { Account, ShoeSize } from '../lib/models';
+import type { ProfileRow } from '../lib/rows';
+import { accountUpdatesToProfile, profileToAccount, type AccountUpdates } from '../lib/mappers';
+import { isAccount, isAccountList } from '../lib/validators';
+import { removeById, upsertById } from '../lib/realtime';
+import { CACHE_KEYS, clearAllCaches, clearLegacyKeys, readCache, writeCache } from '../lib/cacheStorage';
+import { startupAction } from '../lib/startup';
+import { supabase } from '../lib/supabase';
+import { useOnReconnect } from '../hooks/useConnection';
 
-const ACCOUNT_KEY = 'formation.account.v1';
-const SESSION_KEY = 'formation.session.v1';
-const DIRECTORY_KEY = 'formation.accounts.directory.v1';
+export type { Account, ShoeSize };
 
-export type ShoeSize = { gender: "Men's" | "Women's"; size: string };
-
-export type Account = {
+export type SignUpInput = {
   email: string;
   password: string;
+  inviteCode: string;
   firstName: string;
   lastName: string;
   instrument: string;
-  role: Role;
-  phone: string;
-  shoeSize: ShoeSize;
-  height: HeightValue;
+  height: { feet: string; inches: string };
   weight: string;
 };
 
@@ -35,351 +38,270 @@ type AuthContextValue = {
   account: Account | null;
   accounts: Account[];
   isLoading: boolean;
-  signUp: (account: Account) => Promise<void>;
-  logIn: (email: string, password: string) => Promise<Account | null>;
+  checkInviteCode: (code: string) => Promise<boolean>;
+  signUp: (input: SignUpInput) => Promise<Account>;
+  logIn: (email: string, password: string) => Promise<Account>;
   logOut: () => Promise<void>;
-  updateAccount: (updates: Partial<Omit<Account, 'password'>>) => Promise<void>;
-  setAccountRole: (email: string, role: Role) => Promise<void>;
+  updateAccount: (updates: AccountUpdates) => Promise<void>;
+  setAccountRole: (id: string, role: Role) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  accountExists: (email: string) => boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function isRole(value: unknown): value is Role {
-  return value === 'Member' || value === 'Staff';
-}
-
-function isShoeSize(value: unknown): value is ShoeSize {
-  if (typeof value !== 'object' || value === null) return false;
-  const s = value as Record<string, unknown>;
-  return (s.gender === "Men's" || s.gender === "Women's") && typeof s.size === 'string';
-}
-
-function isHeight(value: unknown): value is HeightValue {
-  if (typeof value !== 'object' || value === null) return false;
-  const h = value as Record<string, unknown>;
-  return typeof h.feet === 'string' && typeof h.inches === 'string';
-}
-
-// Lenient by design: an account saved before height/weight existed (or with a
-// corrupted optional field) should still load, just with those fields defaulted,
-// rather than being rejected wholesale and silently logging the user out.
-function normalizeAccount(value: unknown): Account | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const a = value as Record<string, unknown>;
-  if (
-    typeof a.email !== 'string' ||
-    typeof a.password !== 'string' ||
-    typeof a.firstName !== 'string' ||
-    typeof a.lastName !== 'string' ||
-    typeof a.instrument !== 'string' ||
-    !isRole(a.role) ||
-    typeof a.phone !== 'string'
-  ) {
-    return null;
-  }
-  return {
-    email: a.email,
-    password: a.password,
-    firstName: a.firstName,
-    lastName: a.lastName,
-    instrument: a.instrument,
-    role: a.role,
-    phone: a.phone,
-    shoeSize: isShoeSize(a.shoeSize) ? a.shoeSize : { gender: "Men's", size: '' },
-    height: isHeight(a.height) ? a.height : { feet: '', inches: '' },
-    weight: typeof a.weight === 'string' ? a.weight : '',
-  };
-}
-
-function isSession(value: unknown): value is UserParams {
-  if (typeof value !== 'object' || value === null) return false;
-  const s = value as Record<string, unknown>;
-  return (
-    typeof s.firstName === 'string' &&
-    typeof s.lastName === 'string' &&
-    typeof s.instrument === 'string' &&
-    isRole(s.role)
-  );
-}
-
-function parseJson<T>(raw: string, isValid: (value: unknown) => value is T): T | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  return isValid(parsed) ? parsed : null;
-}
-
-function parseDirectory(raw: string): Record<string, Account> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return {};
-  }
-  if (typeof parsed !== 'object' || parsed === null) return {};
-  const result: Record<string, Account> = {};
-  for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-    const normalized = normalizeAccount(value);
-    if (normalized) result[key] = normalized;
-  }
-  return result;
-}
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 function toSession(account: Account): UserParams {
   const { firstName, lastName, instrument, role } = account;
   return { firstName, lastName, instrument, role };
 }
 
-function directoryKeyFor(email: string): string {
-  return email.trim().toLowerCase();
+function warn(what: string) {
+  return (error: unknown) => console.warn(`AuthContext: ${what}`, error);
 }
-
-// Always-available test accounts so development/demo doesn't require signing
-// up each time. Seeded into the directory on first load only — if a real
-// device already has these accounts (e.g. edited via the account screen),
-// those edits are left alone rather than being overwritten on every launch.
-const SEED_ACCOUNTS: Account[] = [
-  {
-    email: 'staff@mail.com',
-    password: 'Password1',
-    firstName: 'Staff',
-    lastName: 'Account',
-    instrument: 'Trumpet',
-    role: 'Staff',
-    phone: '',
-    shoeSize: { gender: "Men's", size: '' },
-    height: { feet: '', inches: '' },
-    weight: '',
-  },
-  {
-    email: 'member@mail.com',
-    password: 'Password2',
-    firstName: 'Member',
-    lastName: 'Account',
-    instrument: 'Trumpet',
-    role: 'Member',
-    phone: '',
-    shoeSize: { gender: "Men's", size: '' },
-    height: { feet: '', inches: '' },
-    weight: '',
-  },
-];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
-  const [session, setSession] = useState<UserParams | null>(null);
-  const [directory, setDirectory] = useState<Record<string, Account>>({});
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Mirrors for Realtime callbacks, which would otherwise see stale state.
+  const accountRef = useRef<Account | null>(null);
+  const accountsRef = useRef<Account[]>([]);
 
-  // Mirrors `directory` synchronously so signUp/updateAccount/logIn can read
-  // and persist the latest map without waiting on a state-update round trip.
-  const directoryRef = useRef<Record<string, Account>>({});
+  const commitAccount = useCallback((next: Account) => {
+    accountRef.current = next;
+    setAccount(next);
+    writeCache(CACHE_KEYS.account, next).catch(warn('failed to cache account'));
+  }, []);
 
+  const commitAccounts = useCallback((next: Account[]) => {
+    accountsRef.current = next;
+    setAccounts(next);
+    writeCache(CACHE_KEYS.accounts, next).catch(warn('failed to cache accounts'));
+  }, []);
+
+  const clearLocalState = useCallback(async () => {
+    accountRef.current = null;
+    setAccount(null);
+    accountsRef.current = [];
+    setAccounts([]);
+    await clearAllCaches().catch(warn('failed to clear caches'));
+  }, []);
+
+  const loadProfile = useCallback(
+    async (userId: string): Promise<Account> => {
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (error) throw error;
+      const next = profileToAccount(data as ProfileRow);
+      commitAccount(next);
+      return next;
+    },
+    [commitAccount]
+  );
+
+  const loadAccounts = useCallback(async () => {
+    const { data, error } = await supabase.from('profiles').select('*').order('last_name');
+    if (error) throw error;
+    commitAccounts((data as ProfileRow[]).map(profileToAccount));
+  }, [commitAccounts]);
+
+  // Launch: show cached data immediately where possible, then refresh.
   useEffect(() => {
     let isMounted = true;
-    Promise.all([
-      AsyncStorage.getItem(ACCOUNT_KEY),
-      AsyncStorage.getItem(SESSION_KEY),
-      AsyncStorage.getItem(DIRECTORY_KEY),
-    ])
-      .then(([savedAccount, savedSession, savedDirectory]) => {
-        if (!isMounted) return;
+    (async () => {
+      await clearLegacyKeys().catch(warn('failed to clear legacy keys'));
+      const cachedAccount = await readCache(CACHE_KEYS.account, isAccount);
+      const cachedAccounts = await readCache(CACHE_KEYS.accounts, isAccountList);
+      const { data, error } = await supabase.auth.getSession();
+      if (!isMounted) return;
 
-        let parsedDirectory = savedDirectory ? parseDirectory(savedDirectory) : {};
-        let directoryChanged = false;
-        for (const seed of SEED_ACCOUNTS) {
-          const key = directoryKeyFor(seed.email);
-          if (!parsedDirectory[key]) {
-            parsedDirectory = { ...parsedDirectory, [key]: seed };
-            directoryChanged = true;
-          }
-        }
-        directoryRef.current = parsedDirectory;
-        setDirectory(parsedDirectory);
-        if (directoryChanged) {
-          AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(parsedDirectory)).catch((error) => {
-            console.warn('AuthContext: failed to persist seeded accounts', error);
-          });
-        }
-
-        if (savedAccount) {
-          const parsedAccount = normalizeAccount(JSON.parse(savedAccount));
-          // Only trust a saved session if its paired account also parsed
-          // successfully — a session should never outlive a corrupted account,
-          // since logIn requires an account to check credentials against.
-          if (parsedAccount) {
-            setAccount(parsedAccount);
-            if (savedSession) {
-              const parsedSession = parseJson(savedSession, isSession);
-              if (parsedSession) setSession(parsedSession);
-            }
-          }
-        }
-      })
-      .catch((error) => {
-        // No saved data yet, or storage unavailable — stay logged out.
-        console.warn('AuthContext: failed to read persisted account/session', error);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
+      const sessionUserId = data.session?.user.id ?? null;
+      const action = startupAction({
+        sessionUserId,
+        sessionErrorIsNetwork: !!error && isAuthRetryableFetchError(error),
+        cachedAccountId: cachedAccount?.data.id ?? null,
       });
+
+      const showCache = () => {
+        accountRef.current = cachedAccount!.data;
+        setAccount(cachedAccount!.data);
+        if (cachedAccounts) {
+          accountsRef.current = cachedAccounts.data;
+          setAccounts(cachedAccounts.data);
+        }
+      };
+
+      if (action === 'use-cache-then-refresh') {
+        showCache();
+        loadProfile(sessionUserId!).catch(warn('background profile refresh failed'));
+      } else if (action === 'use-cache-offline') {
+        showCache();
+      } else if (action === 'load-profile') {
+        try {
+          await loadProfile(sessionUserId!);
+        } catch (loadError) {
+          // Signed in but no profile we can load (e.g. first launch offline):
+          // fall back to Login rather than showing an app with no user.
+          warn('could not load profile at launch')(loadError);
+          await supabase.auth.signOut({ scope: 'local' }).catch(warn('signOut failed'));
+          await clearLocalState();
+        }
+      } else {
+        await clearLocalState();
+      }
+      if (isMounted) setIsLoading(false);
+    })();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadProfile, clearLocalState]);
 
-  const signUp = useCallback(async (newAccount: Account) => {
-    setAccount(newAccount);
-    const newSession = toSession(newAccount);
-    setSession(newSession);
+  // Session ended elsewhere (e.g. refresh token revoked).
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        void clearLocalState();
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, [clearLocalState]);
 
-    const nextDirectory = {
-      ...directoryRef.current,
-      [directoryKeyFor(newAccount.email)]: newAccount,
-    };
-    directoryRef.current = nextDirectory;
-    setDirectory(nextDirectory);
+  const userId = account?.id ?? null;
+  const role = account?.role ?? null;
 
-    try {
-      // Sequential, not Promise.all: a failure between these writes must
-      // never leave a session persisted without its account (see logIn's
-      // account-required guard).
-      await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(newAccount));
-      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
-      await AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(nextDirectory));
-    } catch (error) {
-      // Best-effort persistence — in-memory state is already up to date.
-      console.warn('AuthContext: failed to persist account/session during signUp', error);
+  // Staff see everyone; members only ever see themselves.
+  useEffect(() => {
+    if (!userId) return;
+    if (role !== 'Staff') {
+      if (accountsRef.current.length > 0) commitAccounts([]);
+      return;
     }
+    loadAccounts().catch(warn('failed to load accounts'));
+  }, [userId, role, loadAccounts, commitAccounts]);
+
+  // Live profile changes: your own edits from another device, promotions,
+  // and (for staff) everyone else's changes.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`profiles:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as Partial<ProfileRow>).id;
+          if (id) commitAccounts(removeById(accountsRef.current, id));
+          return;
+        }
+        const changed = profileToAccount(payload.new as ProfileRow);
+        if (changed.id === accountRef.current?.id) commitAccount(changed);
+        if (accountRef.current?.role === 'Staff') commitAccounts(upsertById(accountsRef.current, changed));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, commitAccount, commitAccounts]);
+
+  useOnReconnect(() => {
+    const current = accountRef.current;
+    if (!current) return;
+    loadProfile(current.id).catch(warn('refresh on reconnect failed'));
+    if (current.role === 'Staff') loadAccounts().catch(warn('accounts refresh on reconnect failed'));
+  });
+
+  const checkInviteCode = useCallback(async (code: string) => {
+    const { data, error } = await supabase.rpc('check_invite_code', { code });
+    if (error) throw error;
+    return data === true;
   }, []);
+
+  const signUp = useCallback(
+    async (input: SignUpInput): Promise<Account> => {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizeEmail(input.email),
+        password: input.password,
+        options: {
+          data: {
+            invite_code: input.inviteCode,
+            first_name: input.firstName.trim(),
+            last_name: input.lastName.trim(),
+            instrument: input.instrument,
+            height_feet: input.height.feet,
+            height_inches: input.height.inches,
+            weight: input.weight,
+          },
+        },
+      });
+      if (error) throw error;
+      if (!data.user || !data.session) {
+        throw new Error('Sign-up did not start a session. Is "Confirm email" turned off in Supabase?');
+      }
+      return loadProfile(data.user.id);
+    },
+    [loadProfile]
+  );
 
   const logIn = useCallback(
-    async (email: string, password: string): Promise<Account | null> => {
-      const match = directoryRef.current[directoryKeyFor(email)];
-      if (!match || match.password !== password) return null;
-
-      const newSession = toSession(match);
-      setAccount(match);
-      setSession(newSession);
-      try {
-        await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(match));
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
-      } catch (error) {
-        // Best-effort persistence — in-memory state is already up to date.
-        console.warn('AuthContext: failed to persist session during logIn', error);
-      }
-      return match;
+    async (email: string, password: string): Promise<Account> => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: normalizeEmail(email), password });
+      if (error) throw error;
+      return loadProfile(data.user.id);
     },
-    []
+    [loadProfile]
   );
 
   const logOut = useCallback(async () => {
-    setSession(null);
-    try {
-      await AsyncStorage.removeItem(SESSION_KEY);
-    } catch (error) {
-      // Best-effort — in-memory state is already up to date.
-      console.warn('AuthContext: failed to clear persisted session during logOut', error);
-    }
-  }, []);
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) warn('signOut failed')(error);
+    await clearLocalState();
+  }, [clearLocalState]);
 
   const updateAccount = useCallback(
-    async (updates: Partial<Omit<Account, 'password'>>) => {
-      if (!account) return;
-      const nextAccount = { ...account, ...updates };
-      const nextSession = toSession(nextAccount);
-      setAccount(nextAccount);
-      setSession(nextSession);
-
-      const nextDirectory = {
-        ...directoryRef.current,
-        [directoryKeyFor(nextAccount.email)]: nextAccount,
-      };
-      directoryRef.current = nextDirectory;
-      setDirectory(nextDirectory);
-
-      try {
-        // Sequential, not Promise.all — same crash-consistency reason as signUp.
-        await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(nextAccount));
-        await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
-        await AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(nextDirectory));
-      } catch (error) {
-        // Best-effort persistence — in-memory state is already up to date.
-        console.warn('AuthContext: failed to persist account/session during updateAccount', error);
+    async (updates: AccountUpdates) => {
+      const current = accountRef.current;
+      if (!current) throw new Error('Not signed in.');
+      if (updates.email !== undefined && normalizeEmail(updates.email) !== current.email) {
+        const { error } = await supabase.auth.updateUser({ email: normalizeEmail(updates.email) });
+        if (error) throw error;
       }
+      const patch = accountUpdatesToProfile(updates);
+      if (Object.keys(patch).length === 0) {
+        await loadProfile(current.id);
+        return;
+      }
+      const { data, error } = await supabase.from('profiles').update(patch).eq('id', current.id).select().single();
+      if (error) throw error;
+      commitAccount(profileToAccount(data as ProfileRow));
     },
-    [account]
+    [commitAccount, loadProfile]
   );
 
-  const changePassword = useCallback(
-    async (currentPassword: string, newPassword: string): Promise<boolean> => {
-      if (!account || account.password !== currentPassword) return false;
-
-      const nextAccount: Account = { ...account, password: newPassword };
-      setAccount(nextAccount);
-
-      const nextDirectory = {
-        ...directoryRef.current,
-        [directoryKeyFor(nextAccount.email)]: nextAccount,
-      };
-      directoryRef.current = nextDirectory;
-      setDirectory(nextDirectory);
-
-      try {
-        await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(nextAccount));
-        await AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(nextDirectory));
-      } catch (error) {
-        // Best-effort persistence — in-memory state is already up to date.
-        console.warn('AuthContext: failed to persist password change', error);
-      }
-      return true;
-    },
-    [account]
-  );
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const current = accountRef.current;
+    if (!current) return false;
+    // Supabase doesn't ask for the old password, so check it by signing in.
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: current.email,
+      password: currentPassword,
+    });
+    if (verifyError) {
+      if (/invalid login credentials/i.test(verifyError.message)) return false;
+      throw verifyError;
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    return true;
+  }, []);
 
   const setAccountRole = useCallback(
-    async (email: string, role: Role) => {
-      const key = directoryKeyFor(email);
-      const existing = directoryRef.current[key];
-      if (!existing) return;
-
-      const nextAccount: Account = { ...existing, role };
-      const nextDirectory = { ...directoryRef.current, [key]: nextAccount };
-      directoryRef.current = nextDirectory;
-      setDirectory(nextDirectory);
-
-      // If staff happens to be changing their own role, keep the active session in sync.
-      const isActiveAccount = account && directoryKeyFor(account.email) === key;
-      if (isActiveAccount) {
-        const nextSession = toSession(nextAccount);
-        setAccount(nextAccount);
-        setSession(nextSession);
-      }
-
-      try {
-        await AsyncStorage.setItem(DIRECTORY_KEY, JSON.stringify(nextDirectory));
-        if (isActiveAccount) {
-          await AsyncStorage.setItem(ACCOUNT_KEY, JSON.stringify(nextAccount));
-          await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(toSession(nextAccount)));
-        }
-      } catch (error) {
-        // Best-effort persistence — in-memory state is already up to date.
-        console.warn('AuthContext: failed to persist directory during setAccountRole', error);
-      }
+    async (id: string, nextRole: Role) => {
+      const { error } = await supabase.rpc('set_role', { target: id, new_role: nextRole });
+      if (error) throw error;
+      commitAccounts(accountsRef.current.map((a) => (a.id === id ? { ...a, role: nextRole } : a)));
     },
-    [account]
+    [commitAccounts]
   );
 
-  const accounts = useMemo(() => Object.values(directory), [directory]);
-
-  const accountExists = useCallback((email: string): boolean => {
-    return directoryRef.current[directoryKeyFor(email)] != null;
-  }, []);
+  const session = useMemo(() => (account ? toSession(account) : null), [account]);
 
   const value = useMemo(
     () => ({
@@ -387,27 +309,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       account,
       accounts,
       isLoading,
+      checkInviteCode,
       signUp,
       logIn,
       logOut,
       updateAccount,
       setAccountRole,
       changePassword,
-      accountExists,
     }),
-    [
-      session,
-      account,
-      accounts,
-      isLoading,
-      signUp,
-      logIn,
-      logOut,
-      updateAccount,
-      setAccountRole,
-      changePassword,
-      accountExists,
-    ]
+    [session, account, accounts, isLoading, checkInviteCode, signUp, logIn, logOut, updateAccount, setAccountRole, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
