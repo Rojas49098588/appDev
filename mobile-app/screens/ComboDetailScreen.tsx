@@ -6,6 +6,8 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useCombos } from '../context/CombosContext';
 import { useGame, type ComboSlot } from '../context/GameContext';
+import { friendlyError } from '../lib/errors';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
 
@@ -16,6 +18,7 @@ const SLOT_LABELS: Record<ComboSlot, string> = { preGame: 'pregame', halftime: '
 export default function ComboDetailScreen({ navigation, route }: Props) {
   const { combos, deleteCombo } = useCombos();
   const { game, setCombo } = useGame();
+  const { isOnline } = useConnection();
   const combo = combos.find((c) => c.id === route.params.comboId);
 
   if (!combo) {
@@ -43,6 +46,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
   const components = combo.components ?? [];
 
   const handleDelete = () => {
+    if (!requireOnline(isOnline)) return;
     // Game Day looks combos up by id, so a combo in use can't be removed.
     const inUseSlot: ComboSlot | null = isPreGame ? 'preGame' : isHalftime ? 'halftime' : null;
     if (inUseSlot) {
@@ -58,8 +62,12 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteCombo(combo.id);
-          navigation.goBack();
+          try {
+            await deleteCombo(combo.id);
+            navigation.goBack();
+          } catch (error) {
+            Alert.alert("Couldn't delete combo", friendlyError(error));
+          }
         },
       },
     ]);
@@ -122,7 +130,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
             </Pressable>
           </View>
 
-          <Pressable style={styles.deleteButton} onPress={handleDelete}>
+          <Pressable style={[styles.deleteButton, !isOnline && OFFLINE_DIM]} onPress={handleDelete}>
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
         </ScrollView>

@@ -1,131 +1,154 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COMBOS as SEED_COMBOS, type Combo } from '../constants/combosData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { File } from 'expo-file-system';
+import type { Combo } from '../lib/models';
+import type { ComboRow } from '../lib/rows';
+import { rowToCombo } from '../lib/mappers';
+import { isComboList } from '../lib/validators';
+import { removeById, upsertById } from '../lib/realtime';
+import { CACHE_KEYS } from '../lib/cacheStorage';
+import { friendlyError } from '../lib/errors';
+import { supabase } from '../lib/supabase';
+import { useCachedList } from '../hooks/useCachedList';
+import { useOnReconnect } from '../hooks/useConnection';
+import { useAuth } from './AuthContext';
 
-const STORAGE_KEY = 'formation.combos.custom.v1';
-// Ids of seed combos the user deleted. Seed combos live in code, so they're
-// hidden by id rather than removed.
-const DELETED_SEEDS_KEY = 'formation.combos.deleted.v1';
+const BUCKET = 'combo-images';
+// Photos are private; display URLs are signed and refreshed on every load.
+const SIGNED_URL_SECONDS = 60 * 60 * 24 * 7;
+
+export type NewComboInput = { label: string; sub: string; components: string[]; localImageUri: string };
 
 type CombosContextValue = {
   combos: Combo[];
-  addCombo: (combo: Combo) => Promise<void>;
+  syncedAt: number | null;
+  error: string | null;
+  reload: () => Promise<void>;
+  addCombo: (input: NewComboInput) => Promise<void>;
   deleteCombo: (id: string) => Promise<void>;
 };
 
 const CombosContext = createContext<CombosContextValue | null>(null);
 
-function isCombo(value: unknown): value is Combo {
-  if (typeof value !== 'object' || value === null) return false;
-  const c = value as Record<string, unknown>;
-  return (
-    typeof c.id === 'string' &&
-    typeof c.label === 'string' &&
-    typeof c.sub === 'string' &&
-    (c.image === undefined || typeof c.image === 'string') &&
-    (c.components === undefined ||
-      (Array.isArray(c.components) && c.components.every((item) => typeof item === 'string')))
-  );
+async function signedUrlsFor(rows: ComboRow[]): Promise<Map<string, string>> {
+  const paths = rows.map((row) => row.image_path).filter((path): path is string => !!path);
+  if (paths.length === 0) return new Map();
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_SECONDS);
+  if (error) throw error;
+  const urls = new Map<string, string>();
+  for (const entry of data) {
+    if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+  }
+  return urls;
 }
 
-function parseCombos(saved: string): Combo[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(saved);
-  } catch {
-    return [];
-  }
-  return Array.isArray(parsed) ? parsed.filter(isCombo) : [];
-}
-
-function parseIds(saved: string): string[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(saved);
-  } catch {
-    return [];
-  }
-  return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+function toCombos(rows: ComboRow[], urls: Map<string, string>): Combo[] {
+  return rows.map((row) => rowToCombo(row, row.image_path ? urls.get(row.image_path) : undefined));
 }
 
 export function CombosProvider({ children }: { children: ReactNode }) {
-  const [customCombos, setCustomCombos] = useState<Combo[]>([]);
-  const customCombosRef = useRef<Combo[]>([]);
-  const [deletedSeedIds, setDeletedSeedIds] = useState<string[]>([]);
-  const deletedSeedIdsRef = useRef<string[]>([]);
+  const { account } = useAuth();
+  const userId = account?.id ?? null;
+  const { items: combos, itemsRef, syncedAt, commit, hydrate, reset } = useCachedList(CACHE_KEYS.combos, isComboList);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('combos')
+        .select('*')
+        .order('created_at')
+        .order('label');
+      if (fetchError) throw fetchError;
+      const rows = data as ComboRow[];
+      commit(toCombos(rows, await signedUrlsFor(rows)));
+      setError(null);
+    } catch (loadError) {
+      setError(friendlyError(loadError));
+    }
+  }, [commit]);
 
   useEffect(() => {
-    let isMounted = true;
-    Promise.all([AsyncStorage.getItem(STORAGE_KEY), AsyncStorage.getItem(DELETED_SEEDS_KEY)])
-      .then(([saved, savedDeleted]) => {
-        if (!isMounted) return;
-        if (saved) {
-          const parsed = parseCombos(saved);
-          customCombosRef.current = parsed;
-          setCustomCombos(parsed);
+    if (!userId) {
+      reset();
+      setError(null);
+      return;
+    }
+    void hydrate();
+    void reload();
+    const channel = supabase
+      .channel(`combos:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'combos' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as Partial<ComboRow>).id;
+          if (id) commit(removeById(itemsRef.current, id));
+          return;
         }
-        if (savedDeleted) {
-          const parsedDeleted = parseIds(savedDeleted);
-          deletedSeedIdsRef.current = parsedDeleted;
-          setDeletedSeedIds(parsedDeleted);
-        }
+        const row = payload.new as ComboRow;
+        signedUrlsFor([row])
+          .then((urls) => commit(upsertById(itemsRef.current, toCombos([row], urls)[0])))
+          .catch(() => commit(upsertById(itemsRef.current, rowToCombo(row))));
       })
-      .catch(() => {
-        // No saved data yet, or storage unavailable — stay with the empty seed.
-      });
+      .subscribe();
     return () => {
-      isMounted = false;
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId, hydrate, reload, reset, commit, itemsRef]);
 
-  const addCombo = useCallback(async (combo: Combo) => {
-    const next = [...customCombosRef.current, combo];
-    customCombosRef.current = next;
-    setCustomCombos(next);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (error) {
-      // Best-effort persistence — in-memory state is already up to date.
-      console.warn('CombosContext: failed to persist new combo', error);
-    }
-  }, []);
+  useOnReconnect(() => {
+    if (userId) void reload();
+  });
 
-  const deleteCombo = useCallback(async (id: string) => {
-    const isSeed = SEED_COMBOS.some((combo) => combo.id === id);
-    try {
-      if (isSeed) {
-        if (deletedSeedIdsRef.current.includes(id)) return;
-        const next = [...deletedSeedIdsRef.current, id];
-        deletedSeedIdsRef.current = next;
-        setDeletedSeedIds(next);
-        await AsyncStorage.setItem(DELETED_SEEDS_KEY, JSON.stringify(next));
-      } else {
-        const next = customCombosRef.current.filter((combo) => combo.id !== id);
-        customCombosRef.current = next;
-        setCustomCombos(next);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  const addCombo = useCallback(
+    async (input: NewComboInput) => {
+      if (!userId) throw new Error('Not signed in.');
+      // Upload the photo first; only create the combo if that worked.
+      const path = `combo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const body = await new File(input.localImageUri).arrayBuffer();
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, body, { contentType: 'image/jpeg', upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data, error: insertError } = await supabase
+        .from('combos')
+        .insert({
+          label: input.label,
+          sub: input.sub,
+          components: input.components,
+          image_path: path,
+          created_by: userId,
+        })
+        .select()
+        .single();
+      if (insertError) {
+        await supabase.storage.from(BUCKET).remove([path]);
+        throw insertError;
       }
-    } catch (error) {
-      // Best-effort persistence — in-memory state is already up to date.
-      console.warn('CombosContext: failed to persist combo deletion', error);
-    }
-  }, []);
-
-  const combos = useMemo(
-    () => [...SEED_COMBOS.filter((combo) => !deletedSeedIds.includes(combo.id)), ...customCombos],
-    [customCombos, deletedSeedIds]
+      const row = data as ComboRow;
+      commit(upsertById(itemsRef.current, toCombos([row], await signedUrlsFor([row]).catch(() => new Map()))[0]));
+    },
+    [userId, commit, itemsRef]
   );
 
-  const value = useMemo(() => ({ combos, addCombo, deleteCombo }), [combos, addCombo, deleteCombo]);
+  const deleteCombo = useCallback(
+    async (id: string) => {
+      const combo = itemsRef.current.find((c) => c.id === id);
+      const { data, error: deleteError } = await supabase.from('combos').delete().eq('id', id).select('id');
+      if (deleteError) throw deleteError;
+      if (!data || data.length === 0) throw new Error("You don't have permission to do that.");
+      commit(removeById(itemsRef.current, id));
+      if (combo?.imagePath) {
+        const { error: removeError } = await supabase.storage.from(BUCKET).remove([combo.imagePath]);
+        if (removeError) console.warn('CombosContext: combo deleted but photo was not', removeError);
+      }
+    },
+    [commit, itemsRef]
+  );
+
+  const value = useMemo(
+    () => ({ combos, syncedAt, error, reload, addCombo, deleteCombo }),
+    [combos, syncedAt, error, reload, addCombo, deleteCombo]
+  );
 
   return <CombosContext.Provider value={value}>{children}</CombosContext.Provider>;
 }

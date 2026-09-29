@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { File, Directory, Paths } from 'expo-file-system';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
@@ -21,6 +20,8 @@ import { fonts } from '../constants/fonts';
 import { PIECES, type Piece } from '../constants/inventoryData';
 import { useCombos } from '../context/CombosContext';
 import { useScrollToInput } from '../hooks/useScrollToInput';
+import { friendlyError } from '../lib/errors';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
 
@@ -32,17 +33,9 @@ function colorsForPiece(piece: Piece): string[] {
     : piece.breakdown.rows.map((row) => row.name);
 }
 
-async function persistPickedImage(pickedUri: string, comboId: string): Promise<string> {
-  const dir = new Directory(Paths.document, 'combo-images');
-  dir.create({ intermediates: true, idempotent: true });
-  const dest = new File(dir, `${comboId}.jpg`);
-  const source = new File(pickedUri);
-  await source.copy(dest);
-  return dest.uri;
-}
-
 export default function AddComboScreen({ navigation }: Props) {
   const { addCombo } = useCombos();
+  const { isOnline } = useConnection();
   const [label, setLabel] = useState('');
   const [sub, setSub] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -100,25 +93,18 @@ export default function AddComboScreen({ navigation }: Props) {
       return;
     }
 
+    if (!requireOnline(isOnline)) return;
     setIsSaving(true);
     try {
-      const id = `custom-${Date.now()}`;
-      const persistedImageUri = await persistPickedImage(imageUri, id);
       const components = PIECES.map((piece) => {
         const color = selectedColors[piece.name];
         return color ? `${color} ${piece.name}` : null;
       }).filter((component): component is string => component !== null);
 
-      await addCombo({
-        id,
-        label: label.trim(),
-        sub: sub.trim(),
-        image: persistedImageUri,
-        components,
-      });
+      await addCombo({ label: label.trim(), sub: sub.trim(), components, localImageUri: imageUri });
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong saving this combo. Please try again.');
+      Alert.alert("Couldn't save combo", friendlyError(error));
     } finally {
       setIsSaving(false);
     }
@@ -220,7 +206,7 @@ export default function AddComboScreen({ navigation }: Props) {
 
             <View style={styles.footer}>
               <Pressable
-                style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
+                style={[styles.submitButton, isSaving && styles.submitButtonDisabled, !isOnline && OFFLINE_DIM]}
                 onPress={handleSubmit}
                 disabled={isSaving}
               >
