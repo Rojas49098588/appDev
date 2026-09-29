@@ -1,10 +1,11 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { BottomTabBar, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TabIcon, { type TabIconName } from '../components/TabIcon';
+import OfflineBanner from '../components/OfflineBanner';
 import HomeScreen from './HomeScreen';
 import InventoryScreen from './InventoryScreen';
 import SectionsScreen from './SectionsScreen';
@@ -26,6 +27,12 @@ export default function MainTabs({ navigation, route }: Props) {
 
   return (
     <Tab.Navigator
+      tabBar={(props) => (
+        <View>
+          <OfflineBanner />
+          <BottomTabBar {...props} />
+        </View>
+      )}
       screenOptions={({ route: tabRoute }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.ink,

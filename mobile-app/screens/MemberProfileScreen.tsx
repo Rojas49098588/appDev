@@ -7,6 +7,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
 
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'MemberProfile'>;
 export default function MemberProfileScreen({ navigation, route }: Props) {
   const { id, name, section, email, phone, height, weight } = route.params;
   const { account, setAccountRole } = useAuth();
+  const { isOnline } = useConnection();
   const [role, setRole] = useState(route.params.role ?? 'Member');
 
   const initials = name
@@ -41,6 +43,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
   const isStaff = role === 'Staff';
 
   const handleRoleChangePress = () => {
+    if (!requireOnline(isOnline)) return;
     const nextRole = isStaff ? 'Member' : 'Staff';
     Alert.alert(
       'Are you sure?',
@@ -105,7 +108,11 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           </View>
 
           <Pressable
-            style={[styles.roleButton, !canChangeRole && styles.roleButtonDisabled]}
+            style={[
+              styles.roleButton,
+              !canChangeRole && styles.roleButtonDisabled,
+              canChangeRole && !isOnline && OFFLINE_DIM,
+            ]}
             onPress={canChangeRole ? handleRoleChangePress : undefined}
             disabled={!canChangeRole}
           >

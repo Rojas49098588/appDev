@@ -5,6 +5,7 @@ import { fonts } from '../constants/fonts';
 import { isValidPassword } from '../constants/validation';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 
 export default function ChangePasswordSection({
   onFocusField,
@@ -12,6 +13,7 @@ export default function ChangePasswordSection({
   onFocusField?: (event: FocusEvent) => void;
 }) {
   const { changePassword } = useAuth();
+  const { isOnline } = useConnection();
   const [isOpen, setIsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -29,6 +31,7 @@ export default function ChangePasswordSection({
   };
 
   const handleSave = async () => {
+    if (!requireOnline(isOnline)) return;
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       Alert.alert('Error', 'Please fill in all password fields.');
       return;
@@ -99,7 +102,7 @@ export default function ChangePasswordSection({
         autoCapitalize="none"
         secureTextEntry
       />
-      <Pressable style={styles.saveButton} onPress={handleSave}>
+      <Pressable style={[styles.saveButton, !isOnline && OFFLINE_DIM]} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save password</Text>
       </Pressable>
       <Pressable style={styles.cancelButton} onPress={handleCancel}>

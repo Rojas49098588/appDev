@@ -22,6 +22,7 @@ import { fonts } from '../../constants/fonts';
 import { isPlausiblePhone, isValidPassword } from '../../constants/validation';
 import { friendlyError } from '../../lib/errors';
 import { useScrollToInput } from '../../hooks/useScrollToInput';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../../hooks/useConnection';
 import TapeGutter from '../../components/TapeGutter';
 import KeyboardDoneBar from '../../components/KeyboardDoneBar';
 import ChangePasswordSection from '../../components/ChangePasswordSection';
@@ -44,6 +45,7 @@ const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 export default function MemberAccountScreen({ navigation, route }: Props) {
   const { account, updateAccount, logOut } = useAuth();
+  const { isOnline } = useConnection();
   const role = account?.role ?? route.params.role;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -86,6 +88,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
   const handleToggleEdit = async () => {
     if (isEditing) {
+      if (!requireOnline(isOnline)) return;
       if (phone.trim() !== '' && !isPlausiblePhone(phone)) {
         Alert.alert('Error', 'Please enter a valid phone number.');
         return;
@@ -268,7 +271,10 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             )}
           </View>
 
-          <Pressable style={styles.actionButton} onPress={handleToggleEdit}>
+          <Pressable
+            style={[styles.actionButton, isEditing && !isOnline && OFFLINE_DIM]}
+            onPress={handleToggleEdit}
+          >
             <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
           </Pressable>
 

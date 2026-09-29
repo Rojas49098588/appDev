@@ -1,10 +1,11 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { BottomTabBar, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { MemberTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TabIcon, { type TabIconName } from '../components/TabIcon';
+import OfflineBanner from '../components/OfflineBanner';
 import GameDayScreen from './member/GameDayScreen';
 import MySizesScreen from './member/MySizesScreen';
 import MyInventoryScreen from './member/MyInventoryScreen';
@@ -29,6 +30,12 @@ export default function MemberTabs({ navigation, route }: Props) {
   const { firstName, lastName, instrument, role } = route.params;
   return (
     <Tab.Navigator
+      tabBar={(props) => (
+        <View>
+          <OfflineBanner />
+          <BottomTabBar {...props} />
+        </View>
+      )}
       screenOptions={({ route: tabRoute }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.ink,
