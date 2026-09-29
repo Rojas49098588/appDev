@@ -1,90 +1,125 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CURRENT_GAME, type Game } from '../constants/gamesData';
-
-const STORAGE_KEY = 'formation.game.v1';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { Game } from '../lib/models';
+import type { GameRow } from '../lib/rows';
+import { rowToGame } from '../lib/mappers';
+import { isGameOrNull } from '../lib/validators';
+import { CACHE_KEYS, readCache, writeCache } from '../lib/cacheStorage';
+import { friendlyError } from '../lib/errors';
+import { supabase } from '../lib/supabase';
+import { useOnReconnect } from '../hooks/useConnection';
+import { useAuth } from './AuthContext';
 
 export type ComboSlot = 'preGame' | 'halftime';
 
 type GameContextValue = {
-  game: Game;
-  setCombo: (slot: ComboSlot, comboId: string) => void;
+  // null when no game is marked current.
+  game: Game | null;
+  syncedAt: number | null;
+  error: string | null;
+  reload: () => Promise<void>;
+  setCombo: (slot: ComboSlot, comboId: string) => Promise<void>;
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
 
-function isGame(value: unknown): value is Game {
-  if (typeof value !== 'object' || value === null) return false;
-  const g = value as Record<string, unknown>;
-  return (
-    typeof g.opponent === 'string' &&
-    typeof g.date === 'string' &&
-    typeof g.preGameComboId === 'string' &&
-    typeof g.halftimeComboId === 'string' &&
-    typeof g.afterGameInstructions === 'string' &&
-    typeof g.instructionsPostedBy === 'string' &&
-    typeof g.instructionsUpdatedAt === 'string'
-  );
-}
-
-function parseGame(saved: string): Game | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(saved);
-  } catch {
-    return null;
-  }
-  return isGame(parsed) ? parsed : null;
+async function postedByName(id: string | null): Promise<string> {
+  if (!id) return '';
+  const { data, error } = await supabase
+    .from('staff_directory')
+    .select('first_name, last_name')
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) return '';
+  return `${data.first_name} ${data.last_name}`.trim();
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [game, setGame] = useState<Game>(CURRENT_GAME);
+  const { account } = useAuth();
+  const userId = account?.id ?? null;
+  const [game, setGame] = useState<Game | null>(null);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const gameRef = useRef<Game | null>(null);
+  const hasServerData = useRef(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((saved) => {
-        if (!isMounted) return;
-        const parsed = saved ? parseGame(saved) : null;
-        if (parsed) {
-          setGame(parsed);
-        } else {
-          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(CURRENT_GAME)).catch(() => {
-            // Best-effort — in-memory seed data is already correct either way.
-          });
-        }
-      })
-      .catch(() => {
-        // No saved data yet, or storage unavailable — keep the seed game.
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const setCombo = useCallback((slot: ComboSlot, comboId: string) => {
-    setGame((current) => {
-      const next: Game = {
-        ...current,
-        preGameComboId: slot === 'preGame' ? comboId : current.preGameComboId,
-        halftimeComboId: slot === 'halftime' ? comboId : current.halftimeComboId,
-      };
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {
-        // Best-effort persistence — in-memory state is already up to date.
-      });
-      return next;
+  const commit = useCallback((next: Game | null) => {
+    hasServerData.current = true;
+    gameRef.current = next;
+    setGame(next);
+    const now = Date.now();
+    setSyncedAt(now);
+    writeCache(CACHE_KEYS.game, next, now).catch((cacheError) => {
+      console.warn('GameContext: failed to cache game', cacheError);
     });
   }, []);
 
-  const value = useMemo(() => ({ game, setCombo }), [game, setCombo]);
+  const reload = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase.from('games').select('*').eq('is_current', true).maybeSingle();
+      if (fetchError) throw fetchError;
+      const row = data as GameRow | null;
+      commit(row ? rowToGame(row, await postedByName(row.instructions_posted_by)) : null);
+      setError(null);
+    } catch (loadError) {
+      setError(friendlyError(loadError));
+    }
+  }, [commit]);
+
+  useEffect(() => {
+    if (!userId) {
+      hasServerData.current = false;
+      gameRef.current = null;
+      setGame(null);
+      setSyncedAt(null);
+      setError(null);
+      return;
+    }
+    readCache(CACHE_KEYS.game, isGameOrNull).then((cached) => {
+      if (cached && !hasServerData.current) {
+        gameRef.current = cached.data;
+        setGame(cached.data);
+        setSyncedAt(cached.syncedAt);
+      }
+    });
+    void reload();
+    // Any change to games (including a slot cleared by a combo delete, or a
+    // different game becoming current) just refetches the current game.
+    const channel = supabase
+      .channel(`games:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
+        void reload();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, reload]);
+
+  useOnReconnect(() => {
+    if (userId) void reload();
+  });
+
+  const setCombo = useCallback(
+    async (slot: ComboSlot, comboId: string) => {
+      const current = gameRef.current;
+      if (!current) throw new Error('There is no current game to update.');
+      const column = slot === 'preGame' ? 'pre_game_combo_id' : 'halftime_combo_id';
+      const { data, error: saveError } = await supabase
+        .from('games')
+        .update({ [column]: comboId })
+        .eq('id', current.id)
+        .select()
+        .single();
+      if (saveError) throw saveError;
+      commit(rowToGame(data as GameRow, current.instructionsPostedBy));
+    },
+    [commit]
+  );
+
+  const value = useMemo(
+    () => ({ game, syncedAt, error, reload, setCombo }),
+    [game, syncedAt, error, reload, setCombo]
+  );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

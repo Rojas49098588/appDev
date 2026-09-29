@@ -41,8 +41,8 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const isPreGame = game.preGameComboId === combo.id;
-  const isHalftime = game.halftimeComboId === combo.id;
+  const isPreGame = game?.preGameComboId === combo.id;
+  const isHalftime = game?.halftimeComboId === combo.id;
   const components = combo.components ?? [];
 
   const handleDelete = () => {
@@ -71,6 +71,15 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
         },
       },
     ]);
+  };
+
+  const handleSetCombo = async (slot: ComboSlot) => {
+    if (!requireOnline(isOnline)) return;
+    try {
+      await setCombo(slot, combo.id);
+    } catch (error) {
+      Alert.alert("Couldn't update game day", friendlyError(error));
+    }
   };
 
   return (
@@ -113,16 +122,16 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.slotButtonRow}>
             <Pressable
-              style={[styles.slotButton, isPreGame && styles.slotButtonActive]}
-              onPress={() => setCombo('preGame', combo.id)}
+              style={[styles.slotButton, isPreGame && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
+              onPress={() => handleSetCombo('preGame')}
             >
               <Text style={[styles.slotButtonText, isPreGame && styles.slotButtonTextActive]}>
                 {isPreGame ? 'Set for pregame ✓' : 'Set for pregame'}
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.slotButton, isHalftime && styles.slotButtonActive]}
-              onPress={() => setCombo('halftime', combo.id)}
+              style={[styles.slotButton, isHalftime && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
+              onPress={() => handleSetCombo('halftime')}
             >
               <Text style={[styles.slotButtonText, isHalftime && styles.slotButtonTextActive]}>
                 {isHalftime ? 'Set for halftime ✓' : 'Set for halftime'}

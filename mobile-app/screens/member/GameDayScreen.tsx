@@ -19,8 +19,8 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { game } = useGame();
   const { combos } = useCombos();
-  const preGameCombo = combos.find((c) => c.id === game.preGameComboId);
-  const halftimeCombo = combos.find((c) => c.id === game.halftimeComboId);
+  const preGameCombo = game?.preGameComboId ? combos.find((c) => c.id === game.preGameComboId) : undefined;
+  const halftimeCombo = game?.halftimeComboId ? combos.find((c) => c.id === game.halftimeComboId) : undefined;
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -34,26 +34,38 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
             </Pressable>
           </View>
           <Text style={styles.gameLine}>
-            vs. {game.opponent} — {game.date}
+            {game ? `vs. ${game.opponent} — ${game.date}` : 'No game scheduled'}
           </Text>
 
-          {preGameCombo && <ComboSection title="Pre-game" combo={preGameCombo} />}
-          {halftimeCombo && <ComboSection title="Halftime" combo={halftimeCombo} />}
+          {game && (
+            <>
+              {preGameCombo ? (
+                <ComboSection title="Pre-game" combo={preGameCombo} />
+              ) : (
+                <EmptySlot title="Pre-game" />
+              )}
+              {halftimeCombo ? (
+                <ComboSection title="Halftime" combo={halftimeCombo} />
+              ) : (
+                <EmptySlot title="Halftime" />
+              )}
 
-          <View style={styles.lastSection}>
-            <Text style={styles.sectionTitle}>After-game instructions</Text>
-            <View style={styles.instructionsCard}>
-              <Text style={styles.instructionsText}>{game.afterGameInstructions}</Text>
-              <View style={styles.instructionsMeta}>
-                <Text style={styles.instructionsMetaText}>
-                  Posted by {game.instructionsPostedBy}
-                </Text>
-                <Text style={styles.instructionsMetaText}>
-                  Updated {game.instructionsUpdatedAt}
-                </Text>
+              <View style={styles.lastSection}>
+                <Text style={styles.sectionTitle}>After-game instructions</Text>
+                <View style={styles.instructionsCard}>
+                  <Text style={styles.instructionsText}>{game.afterGameInstructions}</Text>
+                  <View style={styles.instructionsMeta}>
+                    {game.instructionsPostedBy ? (
+                      <Text style={styles.instructionsMetaText}>Posted by {game.instructionsPostedBy}</Text>
+                    ) : null}
+                    {game.instructionsUpdatedAt ? (
+                      <Text style={styles.instructionsMetaText}>Updated {game.instructionsUpdatedAt}</Text>
+                    ) : null}
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
+            </>
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -82,6 +94,15 @@ function ComboSection({ title, combo }: { title: string; combo: Combo }) {
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+function EmptySlot({ title }: { title: string }) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={styles.sectionSub}>No combo set</Text>
     </View>
   );
 }
