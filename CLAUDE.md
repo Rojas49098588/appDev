@@ -21,3 +21,10 @@ Commands (run from `mobile-app/`):
 - `npx expo-doctor` — validate the project setup
 
 Entry point is `index.ts` → `App.tsx`. Config (app name, icons, platform-specific settings) lives in `app.json`.
+
+### Combos and the Catalogue
+
+- Combos come from two sources merged in `context/CombosContext.tsx`: built-in seed combos in `constants/combosData.ts`, plus user-added combos persisted in AsyncStorage (`formation.combos.custom.v1`).
+- `deleteCombo(id)` removes a user-added combo from storage outright. Seed combos live in code, so deleting one instead records its id in `formation.combos.deleted.v1` and filters it out of `combos`.
+- Tapping a tile on the staff Catalogue tab (`screens/CatalogueScreen.tsx`) opens `screens/ComboDetailScreen.tsx` (stack route `ComboDetail`, param `{ comboId }`): name + sub-label, enlarged photo, component chips, side-by-side "Set for pregame" / "Set for halftime" (via `useGame().setCombo`), and a Delete button.
+- A combo currently assigned to pregame or halftime can't be deleted — member `GameDayScreen.tsx` looks combos up by id from `GameContext`, so deleting one in use would leave Game Day pointing at nothing.

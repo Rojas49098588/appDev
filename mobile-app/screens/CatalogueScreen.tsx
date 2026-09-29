@@ -1,4 +1,4 @@
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -8,7 +8,6 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { Combo } from '../constants/combosData';
 import { useCombos } from '../context/CombosContext';
-import { useGame } from '../context/GameContext';
 import TapeGutter from '../components/TapeGutter';
 import { ImagePlaceholderIcon, PlusIcon } from '../components/icons';
 
@@ -19,15 +18,9 @@ type Props = CompositeScreenProps<
 
 export default function CatalogueScreen({ navigation }: Props) {
   const { combos } = useCombos();
-  const { setCombo } = useGame();
 
   const handleComboPress = (combo: Combo) => {
-    const message = combo.sub ? `${combo.sub} — set this combo for:` : 'Set this combo for:';
-    Alert.alert(combo.label, message, [
-      { text: 'Set for pregame', onPress: () => setCombo('preGame', combo.id) },
-      { text: 'Set for halftime', onPress: () => setCombo('halftime', combo.id) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    navigation.navigate('ComboDetail', { comboId: combo.id });
   };
 
   const handleAddPress = () => {

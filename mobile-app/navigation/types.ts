@@ -30,6 +30,7 @@ export type RootStackParamList = {
   MemberProfile: MemberProfileParams;
   FlagItem: { piece: string; color: string; size: string };
   AddCombo: undefined;
+  ComboDetail: { comboId: string };
 };
 
 export type MainTabParamList = {

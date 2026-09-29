@@ -22,6 +22,7 @@ import FlagItemScreen from './screens/member/FlagItemScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import MemberProfileScreen from './screens/MemberProfileScreen';
 import AddComboScreen from './screens/AddComboScreen';
+import ComboDetailScreen from './screens/ComboDetailScreen';
 import type { RootStackParamList } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -87,6 +88,11 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
           <Stack.Screen
             name="AddCombo"
             component={AddComboScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ComboDetail"
+            component={ComboDetailScreen}
             options={{ headerShown: false }}
           />
         </Stack.Navigator>
