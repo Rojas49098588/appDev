@@ -3,13 +3,13 @@ import type { Flag, FlagStatus } from '../lib/models';
 import type { FlagRow } from '../lib/rows';
 import { rowToFlag } from '../lib/mappers';
 import { isFlagList } from '../lib/validators';
-import { removeById, upsertById } from '../lib/realtime';
+import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS } from '../lib/cacheStorage';
 import { friendlyError } from '../lib/errors';
-import { supabase } from '../lib/supabase';
+import { hasSession, supabase } from '../lib/supabase';
 import { useCachedList } from '../hooks/useCachedList';
 import { useOnReconnect } from '../hooks/useConnection';
-import { useAuth } from './AuthContext';
+import { useAuth, useOnSessionChange } from './AuthContext';
 
 export type FlagInput = { piece: string; color: string; size: string; status: FlagStatus; comment: string };
 
@@ -26,7 +26,7 @@ type FlagsContextValue = {
 const FlagsContext = createContext<FlagsContextValue | null>(null);
 
 export function FlagsProvider({ children }: { children: ReactNode }) {
-  const { account } = useAuth();
+  const { account, sessionVersion } = useAuth();
   const userId = account?.id ?? null;
   const role = account?.role ?? null;
   const { items: flags, itemsRef, syncedAt, commit, hydrate, reset } = useCachedList(CACHE_KEYS.flags, isFlagList);
@@ -34,6 +34,10 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     try {
+      // No live session (e.g. auth-js cooling down after a failed refresh):
+      // the query would run as anon and return nothing, so keep the cache.
+      // useOnSessionChange refetches once the token is refreshed.
+      if (!(await hasSession())) return;
       const { data, error: fetchError } = await supabase.from('flags').select('*').order('created_at');
       if (fetchError) throw fetchError;
       commit((data as FlagRow[]).map(rowToFlag));
@@ -53,7 +57,7 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
     void hydrate();
     void reload();
     const channel = supabase
-      .channel(`flags:${userId}`)
+      .channel(uniqueTopic(`flags:${userId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, (payload) => {
         if (payload.eventType === 'DELETE') {
           const id = (payload.old as Partial<FlagRow>).id;
@@ -62,13 +66,16 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
         }
         commit(upsertById(itemsRef.current, rowToFlag(payload.new as FlagRow)));
       })
-      .subscribe();
+      .subscribe(logChannelFailures('flags'));
     return () => {
       supabase.removeChannel(channel);
     };
   }, [userId, role, hydrate, reload, reset, commit, itemsRef]);
 
   useOnReconnect(() => {
+    if (userId) void reload();
+  });
+  useOnSessionChange(sessionVersion, () => {
     if (userId) void reload();
   });
 

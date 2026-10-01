@@ -14,10 +14,10 @@ import type { Account, ShoeSize } from '../lib/models';
 import type { ProfileRow } from '../lib/rows';
 import { accountUpdatesToProfile, profileToAccount, type AccountUpdates } from '../lib/mappers';
 import { isAccount, isAccountList } from '../lib/validators';
-import { removeById, upsertById } from '../lib/realtime';
+import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS, clearAllCaches, clearLegacyKeys, readCache, writeCache } from '../lib/cacheStorage';
 import { startupAction } from '../lib/startup';
-import { supabase } from '../lib/supabase';
+import { hasSession, supabase } from '../lib/supabase';
 import { useOnReconnect } from '../hooks/useConnection';
 
 export type { Account, ShoeSize };
@@ -38,6 +38,9 @@ type AuthContextValue = {
   account: Account | null;
   accounts: Account[];
   isLoading: boolean;
+  // Goes up each time a session is (re)established (TOKEN_REFRESHED or
+  // SIGNED_IN), so data contexts can refetch what they skipped without one.
+  sessionVersion: number;
   checkInviteCode: (code: string) => Promise<boolean>;
   signUp: (input: SignUpInput) => Promise<Account>;
   logIn: (email: string, password: string) => Promise<Account>;
@@ -48,6 +51,8 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+export const ACCOUNT_CREATED_LOAD_FAILED = "Your account was created, but we couldn't load it. Please log in.";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -64,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionVersion, setSessionVersion] = useState(0);
   // Mirrors for Realtime callbacks, which would otherwise see stale state.
   const accountRef = useRef<Account | null>(null);
   const accountsRef = useRef<Account[]>([]);
@@ -100,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const loadAccounts = useCallback(async () => {
+    // Without a session this would run as anon and wipe the list.
+    if (!(await hasSession())) return;
     const { data, error } = await supabase.from('profiles').select('*').order('last_name');
     if (error) throw error;
     commitAccounts((data as ProfileRow[]).map(profileToAccount));
@@ -112,6 +120,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await clearLegacyKeys().catch(warn('failed to clear legacy keys'));
       const cachedAccount = await readCache(CACHE_KEYS.account, isAccount);
       const cachedAccounts = await readCache(CACHE_KEYS.accounts, isAccountList);
+      if (!isMounted) return;
+
+      // With a cached account, show it right away: getSession() can take
+      // ~25 s offline with an expired token while auth-js retries the
+      // refresh. The session is then resolved in the background.
+      if (cachedAccount) {
+        accountRef.current = cachedAccount.data;
+        setAccount(cachedAccount.data);
+        if (cachedAccounts) {
+          accountsRef.current = cachedAccounts.data;
+          setAccounts(cachedAccounts.data);
+        }
+        setIsLoading(false);
+      }
+
       const { data, error } = await supabase.auth.getSession();
       if (!isMounted) return;
 
@@ -122,20 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cachedAccountId: cachedAccount?.data.id ?? null,
       });
 
-      const showCache = () => {
-        accountRef.current = cachedAccount!.data;
-        setAccount(cachedAccount!.data);
-        if (cachedAccounts) {
-          accountsRef.current = cachedAccounts.data;
-          setAccounts(cachedAccounts.data);
-        }
-      };
-
       if (action === 'use-cache-then-refresh') {
-        showCache();
         loadProfile(sessionUserId!).catch(warn('background profile refresh failed'));
       } else if (action === 'use-cache-offline') {
-        showCache();
+        // Already showing the cache; the session refreshes once back online.
       } else if (action === 'load-profile') {
         try {
           await loadProfile(sessionUserId!);
@@ -147,6 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await clearLocalState();
         }
       } else {
+        // If the cached account was already showing, App.tsx navigates to
+        // Login when the role goes to null.
         await clearLocalState();
       }
       if (isMounted) setIsLoading(false);
@@ -158,9 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Session ended elsewhere (e.g. refresh token revoked).
   useEffect(() => {
+    // Only update state here: calling Supabase inside this callback can
+    // deadlock auth-js.
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         void clearLocalState();
+      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        setSessionVersion((version) => version + 1);
       }
     });
     return () => data.subscription.unsubscribe();
@@ -184,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`profiles:${userId}`)
+      .channel(uniqueTopic(`profiles:${userId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
         if (payload.eventType === 'DELETE') {
           const id = (payload.old as Partial<ProfileRow>).id;
@@ -195,17 +214,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (changed.id === accountRef.current?.id) commitAccount(changed);
         if (accountRef.current?.role === 'Staff') commitAccounts(upsertById(accountsRef.current, changed));
       })
-      .subscribe();
+      .subscribe(logChannelFailures('profiles'));
     return () => {
       supabase.removeChannel(channel);
     };
   }, [userId, commitAccount, commitAccounts]);
 
-  useOnReconnect(() => {
+  const refreshAccount = useCallback(async () => {
     const current = accountRef.current;
-    if (!current) return;
-    loadProfile(current.id).catch(warn('refresh on reconnect failed'));
-    if (current.role === 'Staff') loadAccounts().catch(warn('accounts refresh on reconnect failed'));
+    if (!current || !(await hasSession())) return;
+    loadProfile(current.id).catch(warn('profile refresh failed'));
+    if (current.role === 'Staff') loadAccounts().catch(warn('accounts refresh failed'));
+  }, [loadProfile, loadAccounts]);
+
+  useOnReconnect(() => {
+    void refreshAccount();
+  });
+  useOnSessionChange(sessionVersion, () => {
+    void refreshAccount();
   });
 
   const checkInviteCode = useCallback(async (code: string) => {
@@ -235,7 +261,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data.user || !data.session) {
         throw new Error('Sign-up did not start a session. Is "Confirm email" turned off in Supabase?');
       }
-      return loadProfile(data.user.id);
+      try {
+        return await loadProfile(data.user.id);
+      } catch (loadError) {
+        // The account exists now: don't leave a hidden session behind, and
+        // tell them to log in rather than sign up again.
+        warn('could not load profile after sign-up')(loadError);
+        await supabase.auth.signOut({ scope: 'local' }).catch(warn('signOut failed'));
+        throw new Error(ACCOUNT_CREATED_LOAD_FAILED);
+      }
     },
     [loadProfile]
   );
@@ -244,7 +278,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string): Promise<Account> => {
       const { data, error } = await supabase.auth.signInWithPassword({ email: normalizeEmail(email), password });
       if (error) throw error;
-      return loadProfile(data.user.id);
+      try {
+        return await loadProfile(data.user.id);
+      } catch (loadError) {
+        // Don't leave a live session hidden behind the Login screen.
+        await supabase.auth.signOut({ scope: 'local' }).catch(warn('signOut failed'));
+        throw loadError;
+      }
     },
     [loadProfile]
   );
@@ -309,6 +349,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       account,
       accounts,
       isLoading,
+      sessionVersion,
       checkInviteCode,
       signUp,
       logIn,
@@ -317,7 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccountRole,
       changePassword,
     }),
-    [session, account, accounts, isLoading, checkInviteCode, signUp, logIn, logOut, updateAccount, setAccountRole, changePassword]
+    [session, account, accounts, isLoading, sessionVersion, checkInviteCode, signUp, logIn, logOut, updateAccount, setAccountRole, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -329,4 +370,16 @@ export function useAuth(): AuthContextValue {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// Calls `callback` each time `sessionVersion` goes up (not on mount).
+export function useOnSessionChange(sessionVersion: number, callback: () => void): void {
+  const previous = useRef(sessionVersion);
+  const latestCallback = useRef(callback);
+  latestCallback.current = callback;
+
+  useEffect(() => {
+    if (sessionVersion > previous.current) latestCallback.current();
+    previous.current = sessionVersion;
+  }, [sessionVersion]);
 }

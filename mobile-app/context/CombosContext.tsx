@@ -4,13 +4,13 @@ import type { Combo } from '../lib/models';
 import type { ComboRow } from '../lib/rows';
 import { rowToCombo } from '../lib/mappers';
 import { isComboList } from '../lib/validators';
-import { removeById, upsertById } from '../lib/realtime';
+import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS } from '../lib/cacheStorage';
 import { friendlyError } from '../lib/errors';
-import { supabase } from '../lib/supabase';
+import { hasSession, supabase } from '../lib/supabase';
 import { useCachedList } from '../hooks/useCachedList';
 import { useOnReconnect } from '../hooks/useConnection';
-import { useAuth } from './AuthContext';
+import { useAuth, useOnSessionChange } from './AuthContext';
 
 const BUCKET = 'combo-images';
 // Photos are private; display URLs are signed and refreshed on every load.
@@ -46,13 +46,17 @@ function toCombos(rows: ComboRow[], urls: Map<string, string>): Combo[] {
 }
 
 export function CombosProvider({ children }: { children: ReactNode }) {
-  const { account } = useAuth();
+  const { account, sessionVersion } = useAuth();
   const userId = account?.id ?? null;
   const { items: combos, itemsRef, syncedAt, commit, hydrate, reset } = useCachedList(CACHE_KEYS.combos, isComboList);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
+      // No live session (e.g. auth-js cooling down after a failed refresh):
+      // the query would run as anon and return nothing, so keep the cache.
+      // useOnSessionChange refetches once the token is refreshed.
+      if (!(await hasSession())) return;
       const { data, error: fetchError } = await supabase
         .from('combos')
         .select('*')
@@ -76,7 +80,7 @@ export function CombosProvider({ children }: { children: ReactNode }) {
     void hydrate();
     void reload();
     const channel = supabase
-      .channel(`combos:${userId}`)
+      .channel(uniqueTopic(`combos:${userId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'combos' }, (payload) => {
         if (payload.eventType === 'DELETE') {
           const id = (payload.old as Partial<ComboRow>).id;
@@ -88,13 +92,16 @@ export function CombosProvider({ children }: { children: ReactNode }) {
           .then((urls) => commit(upsertById(itemsRef.current, toCombos([row], urls)[0])))
           .catch(() => commit(upsertById(itemsRef.current, rowToCombo(row))));
       })
-      .subscribe();
+      .subscribe(logChannelFailures('combos'));
     return () => {
       supabase.removeChannel(channel);
     };
   }, [userId, hydrate, reload, reset, commit, itemsRef]);
 
   useOnReconnect(() => {
+    if (userId) void reload();
+  });
+  useOnSessionChange(sessionVersion, () => {
     if (userId) void reload();
   });
 

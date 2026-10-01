@@ -5,9 +5,10 @@ import { rowToGame } from '../lib/mappers';
 import { isGameOrNull } from '../lib/validators';
 import { CACHE_KEYS, readCache, writeCache } from '../lib/cacheStorage';
 import { friendlyError } from '../lib/errors';
-import { supabase } from '../lib/supabase';
+import { hasSession, supabase } from '../lib/supabase';
+import { logChannelFailures, uniqueTopic } from '../lib/realtime';
 import { useOnReconnect } from '../hooks/useConnection';
-import { useAuth } from './AuthContext';
+import { useAuth, useOnSessionChange } from './AuthContext';
 
 export type ComboSlot = 'preGame' | 'halftime';
 
@@ -34,7 +35,7 @@ async function postedByName(id: string | null): Promise<string> {
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const { account } = useAuth();
+  const { account, sessionVersion } = useAuth();
   const userId = account?.id ?? null;
   const [game, setGame] = useState<Game | null>(null);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -55,6 +56,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     try {
+      // No live session (e.g. auth-js cooling down after a failed refresh):
+      // the query would run as anon and return nothing, so keep the cache.
+      // useOnSessionChange refetches once the token is refreshed.
+      if (!(await hasSession())) return;
       const { data, error: fetchError } = await supabase.from('games').select('*').eq('is_current', true).maybeSingle();
       if (fetchError) throw fetchError;
       const row = data as GameRow | null;
@@ -85,17 +90,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Any change to games (including a slot cleared by a combo delete, or a
     // different game becoming current) just refetches the current game.
     const channel = supabase
-      .channel(`games:${userId}`)
+      .channel(uniqueTopic(`games:${userId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
         void reload();
       })
-      .subscribe();
+      .subscribe(logChannelFailures('games'));
     return () => {
       supabase.removeChannel(channel);
     };
   }, [userId, reload]);
 
   useOnReconnect(() => {
+    if (userId) void reload();
+  });
+  useOnSessionChange(sessionVersion, () => {
     if (userId) void reload();
   });
 

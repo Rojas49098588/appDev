@@ -22,3 +22,8 @@ test('unknown errors fall back to their message or a generic one', () => {
   assert.equal(friendlyError(new Error('Boom')), 'Boom');
   assert.equal(friendlyError(undefined), 'Something went wrong. Please try again.');
 });
+
+test('the account-created-but-not-loaded message passes through unchanged', () => {
+  const message = "Your account was created, but we couldn't load it. Please log in.";
+  assert.equal(friendlyError(new Error(message)), message);
+});
