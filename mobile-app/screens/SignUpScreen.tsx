@@ -19,7 +19,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { useAuth } from '../context/AuthContext';
+import { ACCOUNT_CREATED_LOAD_FAILED, useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
 import { isValidPassword } from '../constants/validation';
 import { useScrollToInput } from '../hooks/useScrollToInput';
@@ -45,6 +45,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
   const [heightInches, setHeightInches] = useState('');
   const [weight, setWeight] = useState('');
   const [numericFocused, setNumericFocused] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
 
   const focusNumericField = (event: FocusEvent) => {
@@ -54,6 +55,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
   const blurNumericField = () => setNumericFocused(false);
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     if (
       !email.trim() ||
       !password.trim() ||
@@ -86,6 +88,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await signUp({
         email,
@@ -98,8 +101,16 @@ export default function SignUpScreen({ navigation, route }: Props) {
         weight,
       });
     } catch (error) {
-      Alert.alert("Couldn't create account", friendlyError(error));
+      if (error instanceof Error && error.message === ACCOUNT_CREATED_LOAD_FAILED) {
+        Alert.alert('Account created', error.message, [
+          { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
+        ]);
+      } else {
+        Alert.alert("Couldn't create account", friendlyError(error));
+      }
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     const goToApp = () =>
@@ -281,7 +292,11 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <KeyboardDoneBar visible={numericFocused} />
 
               <View style={styles.footer}>
-                <Pressable style={styles.submitButton} onPress={handleSubmit}>
+                <Pressable
+                  style={[styles.submitButton, isSubmitting && styles.submitButtonBusy]}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                >
                   <Text style={styles.submitButtonText}>Create account</Text>
                 </Pressable>
               </View>
@@ -421,6 +436,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  submitButtonBusy: {
+    opacity: 0.5,
   },
   submitButtonText: {
     fontFamily: fonts.bodyMedium,

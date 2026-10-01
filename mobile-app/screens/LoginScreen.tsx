@@ -28,15 +28,20 @@ export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const handleLogin = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     let account;
     try {
       account = await logIn(email, password);
     } catch (error) {
       Alert.alert('Error', friendlyError(error));
       return;
+    } finally {
+      setIsSubmitting(false);
     }
     navigation.reset({
       index: 0,
@@ -113,7 +118,11 @@ export default function LoginScreen({ navigation }: Props) {
               />
             </View>
 
-            <Pressable style={styles.submitButton} onPress={handleLogin}>
+            <Pressable
+              style={[styles.submitButton, isSubmitting && styles.submitButtonBusy]}
+              onPress={handleLogin}
+              disabled={isSubmitting}
+            >
               <Text style={styles.submitButtonText}>Log in</Text>
             </Pressable>
 
@@ -173,6 +182,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  submitButtonBusy: { opacity: 0.5 },
   submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
