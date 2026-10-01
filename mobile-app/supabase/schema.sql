@@ -218,9 +218,16 @@ create trigger flags_touch_updated_at
 -- ---------- Staff names for members ("Posted by ...") ----------
 -- Runs as the view owner, so members can see staff names without seeing
 -- the rest of any staff profile. Intentional; Supabase's advisor will flag it.
+-- `select distinct` (rather than a plain select) is deliberate: it makes the
+-- view non-auto-updatable, so Postgres rejects INSERT/UPDATE/DELETE through
+-- it outright, as defense in depth on top of the privilege revoke below.
 create or replace view public.staff_directory as
-  select id, first_name, last_name from public.profiles where role = 'Staff';
-revoke all on public.staff_directory from anon, public;
+  select distinct id, first_name, last_name from public.profiles where role = 'Staff';
+-- Revoke from `public` alone does not strip the privileges Supabase grants
+-- by default to `authenticated` on every new relation, so `authenticated`
+-- must be named explicitly or members retain Supabase's default ALL grant
+-- (including DELETE/UPDATE) on this view, bypassing profiles' RLS.
+revoke all on public.staff_directory from public, anon, authenticated;
 grant select on public.staff_directory to authenticated;
 
 -- ---------- Row-level security ----------

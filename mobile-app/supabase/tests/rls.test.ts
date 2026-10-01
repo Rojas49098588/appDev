@@ -3,6 +3,7 @@
 // Creates throwaway users (rls-*@mustangcloset.test) and deletes them afterwards.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 function required(name: string): string {
@@ -116,6 +117,23 @@ describe('sign-up and invite code', () => {
   });
 });
 
+describe('anonymous access', () => {
+  test('anon (not signed in) reads of profiles, flags, combos, and games return nothing', async () => {
+    const profiles = await anon.from('profiles').select('id');
+    assert.equal(profiles.error, null);
+    assert.equal(profiles.data?.length ?? 0, 0);
+    const flags = await anon.from('flags').select('id');
+    assert.equal(flags.error, null);
+    assert.equal(flags.data?.length ?? 0, 0);
+    const combos = await anon.from('combos').select('id');
+    assert.equal(combos.error, null);
+    assert.equal(combos.data?.length ?? 0, 0);
+    const games = await anon.from('games').select('id');
+    assert.equal(games.error, null);
+    assert.equal(games.data?.length ?? 0, 0);
+  });
+});
+
 describe('member permissions', () => {
   test('sees only their own profile', async () => {
     const { data, error } = await asMember.from('profiles').select('id');
@@ -129,9 +147,30 @@ describe('member permissions', () => {
     assert.ok(data?.some((r) => r.id === staff.id));
   });
 
-  test('can edit their own phone', async () => {
-    const { error } = await asMember.from('profiles').update({ phone: '2145550100' }).eq('id', member.id);
+  test('staff_directory never returns non-staff rows or extra columns', async () => {
+    const { data, error } = await asMember.from('staff_directory').select('*');
     assert.equal(error, null);
+    assert.ok(!data!.some((r) => r.id === member.id || r.id === otherMember.id));
+    for (const row of data!) {
+      assert.deepEqual(Object.keys(row).sort(), ['first_name', 'id', 'last_name']);
+    }
+  });
+
+  test('cannot update or delete through staff_directory', async () => {
+    const update = await asMember.from('staff_directory').update({ first_name: 'Hacked' }).eq('id', staff.id);
+    assert.notEqual(update.error, null);
+    const del = await asMember.from('staff_directory').delete().eq('id', staff.id);
+    assert.notEqual(del.error, null);
+    const { data } = await admin.from('profiles').select('first_name, role').eq('id', staff.id).single();
+    assert.deepEqual(data, { first_name: 'staff', role: 'Staff' });
+  });
+
+  test('can edit their own phone', async () => {
+    const { data, error } = await asMember.from('profiles').update({ phone: '2145550100' }).eq('id', member.id).select('id');
+    assert.equal(error, null);
+    assert.equal(data?.length, 1);
+    const { data: row } = await admin.from('profiles').select('phone').eq('id', member.id).single();
+    assert.equal(row?.phone, '2145550100');
   });
 
   test('cannot change their own role', async () => {
@@ -144,11 +183,70 @@ describe('member permissions', () => {
   test('cannot edit their profile email directly', async () => {
     const { error } = await asMember.from('profiles').update({ email: 'hacker@example.com' }).eq('id', member.id);
     assert.notEqual(error, null);
+    const { data } = await admin.from('profiles').select('email').eq('id', member.id).single();
+    assert.equal(data?.email, member.email);
   });
 
   test("cannot edit someone else's profile", async () => {
     const { data } = await asMember.from('profiles').update({ phone: '1' }).eq('id', staff.id).select('id');
     assert.equal(data?.length ?? 0, 0);
+    const { data: row } = await admin.from('profiles').select('phone').eq('id', staff.id).single();
+    assert.notEqual(row?.phone, '1');
+  });
+
+  test('cannot insert or upsert a profile row (forging a profile or role)', async () => {
+    const forgedId = randomUUID();
+    const insert = await asMember.from('profiles').insert({
+      id: forgedId, email: 'forged@example.com', first_name: 'Forged', last_name: 'User',
+      instrument: 'Tuba', role: 'Staff',
+    });
+    assert.notEqual(insert.error, null);
+    const { data: forgedRow } = await admin.from('profiles').select('id').eq('id', forgedId);
+    assert.equal(forgedRow?.length ?? 0, 0);
+    const upsert = await asMember.from('profiles').upsert(
+      { id: member.id, email: member.email, first_name: 'Member', last_name: 'Test', instrument: 'Trumpet', role: 'Staff' },
+      { onConflict: 'id' },
+    );
+    assert.notEqual(upsert.error, null);
+    const { data: ownRow } = await admin.from('profiles').select('role').eq('id', member.id).single();
+    assert.equal(ownRow?.role, 'Member');
+  });
+
+  test('cannot delete profiles, flags, games, or combos', async () => {
+    const profileDel = await asMember.from('profiles').delete().eq('id', staff.id).select('id');
+    assert.equal(profileDel.data?.length ?? 0, 0);
+    const { data: staffStillThere } = await admin.from('profiles').select('id').eq('id', staff.id);
+    assert.equal(staffStillThere?.length, 1);
+
+    const flagDel = await asMember.from('flags').delete().eq('member_id', otherMember.id).select('id');
+    assert.equal(flagDel.data?.length ?? 0, 0);
+    const { data: flagStillThere } = await admin.from('flags').select('id').eq('member_id', otherMember.id);
+    assert.ok((flagStillThere?.length ?? 0) > 0);
+
+    const gameDel = await asMember.from('games').delete().eq('id', CURRENT_GAME).select('id');
+    assert.equal(gameDel.data?.length ?? 0, 0);
+    const { data: gameStillThere } = await admin.from('games').select('id').eq('id', CURRENT_GAME);
+    assert.equal(gameStillThere?.length, 1);
+
+    const comboDel = await asMember.from('combos').delete().eq('id', SEED_COMBO_01).select('id');
+    assert.equal(comboDel.data?.length ?? 0, 0);
+    const { data: comboStillThere } = await admin.from('combos').select('id').eq('id', SEED_COMBO_01);
+    assert.equal(comboStillThere?.length, 1);
+  });
+
+  test('cannot update combos; cannot insert or delete games', async () => {
+    const comboUpdate = await asMember.from('combos').update({ label: 'Hacked' }).eq('id', SEED_COMBO_01).select('id');
+    assert.equal(comboUpdate.data?.length ?? 0, 0);
+    const { data: comboRow } = await admin.from('combos').select('label').eq('id', SEED_COMBO_01).single();
+    assert.notEqual(comboRow?.label, 'Hacked');
+
+    const gameInsert = await asMember.from('games').insert({ opponent: 'Forged High', game_date: '2026-01-01' });
+    assert.notEqual(gameInsert.error, null);
+
+    const gameDel = await asMember.from('games').delete().eq('id', CURRENT_GAME).select('id');
+    assert.equal(gameDel.data?.length ?? 0, 0);
+    const { data: gameRow } = await admin.from('games').select('id, is_current').eq('id', CURRENT_GAME).single();
+    assert.equal(gameRow?.is_current, true);
   });
 
   test('cannot read settings', async () => {
@@ -182,6 +280,24 @@ describe('member permissions', () => {
     const { data, error } = await asMember.from('flags').select('member_id');
     assert.equal(error, null);
     assert.ok(data!.every((r) => r.member_id === member.id));
+    assert.ok(!data!.some((r) => r.member_id === otherMember.id));
+    const { data: ownFlags } = await admin.from('flags').select('id').eq('member_id', member.id);
+    assert.equal(data!.length, ownFlags?.length ?? 0);
+    if ((ownFlags?.length ?? 0) > 0) {
+      assert.ok(data!.some((r) => r.member_id === member.id));
+    }
+  });
+
+  test("cannot update another member's flag", async () => {
+    const { data } = await asMember
+      .from('flags')
+      .update({ status: 'dirty' })
+      .eq('member_id', otherMember.id)
+      .eq('piece', 'Vests')
+      .select('id');
+    assert.equal(data?.length ?? 0, 0);
+    const { data: row } = await admin.from('flags').select('status').eq('member_id', otherMember.id).eq('piece', 'Vests').single();
+    assert.equal(row?.status, 'repair');
   });
 
   test('cannot add or delete combos', async () => {
@@ -194,8 +310,11 @@ describe('member permissions', () => {
   });
 
   test('cannot change the current game', async () => {
+    const { data: before } = await admin.from('games').select('halftime_combo_id').eq('id', CURRENT_GAME).single();
     const { data } = await asMember.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select('id');
     assert.equal(data?.length ?? 0, 0);
+    const { data: after } = await admin.from('games').select('halftime_combo_id').eq('id', CURRENT_GAME).single();
+    assert.equal(after?.halftime_combo_id, before?.halftime_combo_id);
   });
 
   test('cannot call set_role', async () => {
@@ -206,6 +325,20 @@ describe('member permissions', () => {
   test('cannot upload combo images', async () => {
     const { error } = await asMember.storage.from('combo-images').upload(`rls-${RUN}.txt`, new Blob(['x']), { contentType: 'text/plain' });
     assert.notEqual(error, null);
+  });
+
+  test('cannot delete combo images', async () => {
+    const path = `rls-${RUN}-protected.txt`;
+    const uploaded = await asStaff.storage.from('combo-images').upload(path, new Blob(['x']), { contentType: 'text/plain' });
+    assert.equal(uploaded.error, null);
+    // Member's delete must fail outright, or at minimum be a no-op (RLS filters
+    // the row out before the delete can match it) — either way, the file must
+    // still be there afterward, which is the assertion that actually matters.
+    await asMember.storage.from('combo-images').remove([path]);
+    const { data: listing, error: listError } = await admin.storage.from('combo-images').list('', { search: path });
+    assert.equal(listError, null);
+    assert.ok(listing?.some((f) => f.name === path));
+    await admin.storage.from('combo-images').remove([path]);
   });
 
   test('email change on the login syncs to the profile', { skip: 'Needs custom SMTP: Supabase sends a verification email on email change and the built-in mailer refuses test addresses. Re-enable when SMTP is configured.' }, async () => {
@@ -263,6 +396,8 @@ describe('staff permissions', () => {
     assert.equal(data?.role, 'Staff');
     const demote = await asStaff.rpc('set_role', { target: member.id, new_role: 'Member' });
     assert.equal(demote.error, null);
+    const { data: final } = await admin.from('profiles').select('role').eq('id', member.id).single();
+    assert.equal(final?.role, 'Member');
   });
 
   test('cannot change their own role', async () => {
