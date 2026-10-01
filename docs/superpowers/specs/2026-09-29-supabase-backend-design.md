@@ -171,6 +171,7 @@ Screens and order are unchanged: Login → Invite code → Sign up.
 - **Config:** the project URL and anon key are read from `EXPO_PUBLIC_SUPABASE_URL`
   and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. The anon key is public by design; the
   service-role key never ships in the app.
+- **Email is read-only in the app** (2026-09-30): Supabase sends a verification email on every email change, and the built-in mailer won't deliver to members, so Member Account shows the email without letting members edit it. updateAccount still supports email changes and the sync_profile_email trigger stays, ready for when custom SMTP is set up.
 
 `AuthContext` keeps its public shape (`session`, `account`, `accounts`,
 `isLoading`, `signUp`, `logIn`, `logOut`, `updateAccount`, `setAccountRole`,
@@ -241,6 +242,7 @@ no longer needed.
   `set_role` fails; sign-up with a wrong invite code fails. As Staff, verify
   reading all flags and profiles, adding/deleting a combo, setting a game combo
   and promoting another user succeed, and self-demotion fails.
+- The "email change syncs to profile" RLS test is skipped until custom SMTP is configured.
 - `npx tsc --noEmit` and `npx expo-doctor` pass (except the known pre-existing
   patch-version warning).
 - **On-device checklist** (two phones, or phone + web):
@@ -261,3 +263,4 @@ no longer needed.
 4. Offline writes / sync queue.
 5. Staff-side "Edit game day" (opponent, date, instructions) and season schedule.
 6. Turning on email confirmation for production.
+7. Custom SMTP (e.g. Resend), then re-enable in-app email change and un-skip its RLS test.

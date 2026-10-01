@@ -31,13 +31,12 @@ import { BackChevronIcon } from '../../components/icons';
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberAccount'>;
 
 const TEXT_FIELDS: {
-  key: 'firstName' | 'lastName' | 'email' | 'phone';
+  key: 'firstName' | 'lastName' | 'phone';
   label: string;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
 }[] = [
   { key: 'firstName', label: 'First Name' },
   { key: 'lastName', label: 'Last Name' },
-  { key: 'email', label: 'Email', keyboardType: 'email-address' },
   { key: 'phone', label: 'Phone Number', keyboardType: 'phone-pad' },
 ];
 
@@ -51,7 +50,6 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(account?.firstName ?? route.params.firstName);
   const [lastName, setLastName] = useState(account?.lastName ?? route.params.lastName);
-  const [email, setEmail] = useState(account?.email ?? '');
   const [phone, setPhone] = useState(account?.phone ?? '');
   const [instrument, setInstrument] = useState(account?.instrument ?? route.params.instrument);
   const [shoeGender, setShoeGender] = useState<"Men's" | "Women's">(
@@ -70,16 +68,14 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
   };
   const blurNumericField = () => setNumericFocused(false);
 
-  const fieldValues: Record<'firstName' | 'lastName' | 'email' | 'phone', string> = {
+  const fieldValues: Record<'firstName' | 'lastName' | 'phone', string> = {
     firstName,
     lastName,
-    email,
     phone,
   };
-  const fieldSetters: Record<'firstName' | 'lastName' | 'email' | 'phone', (text: string) => void> = {
+  const fieldSetters: Record<'firstName' | 'lastName' | 'phone', (text: string) => void> = {
     firstName: setFirstName,
     lastName: setLastName,
-    email: setEmail,
     phone: setPhone,
   };
 
@@ -98,7 +94,6 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
         await updateAccount({
           firstName,
           lastName,
-          email,
           phone,
           instrument,
           shoeSize: { gender: shoeGender, size: shoeSizeValue },
@@ -148,7 +143,31 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
           <Text style={styles.roleBadge}>{role}</Text>
 
-          {TEXT_FIELDS.map((field) => {
+          {TEXT_FIELDS.slice(0, 2).map((field) => {
+            const isNumericKeyboard = field.keyboardType === 'phone-pad';
+            return (
+              <ProfileField
+                key={field.key}
+                label={field.label}
+                value={fieldValues[field.key]}
+                editing={isEditing}
+                keyboardType={field.keyboardType}
+                onChangeText={fieldSetters[field.key]}
+                onFocus={isNumericKeyboard ? focusNumericField : scrollToFocusedInput}
+                onBlur={isNumericKeyboard ? blurNumericField : undefined}
+              />
+            );
+          })}
+
+          <View style={styles.fieldWrapper}>
+            <Text style={styles.label}>Email</Text>
+            <Text style={styles.value}>{account?.email ?? ''}</Text>
+            {isEditing && (
+              <Text style={styles.helperText}>Email can't be changed in the app yet.</Text>
+            )}
+          </View>
+
+          {TEXT_FIELDS.slice(2).map((field) => {
             const isNumericKeyboard = field.keyboardType === 'phone-pad';
             return (
               <ProfileField
@@ -385,6 +404,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   value: { fontFamily: fonts.body, fontSize: 14, color: colors.ink, minHeight: 20, width: '100%' },
+  helperText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 4 },
   input: {
     width: '100%',
     borderWidth: 1,
