@@ -68,6 +68,59 @@ A long cluster of directly-requested changes, each scoped/approved in chat rathe
 
 `npx tsc --noEmit` and `npx expo-doctor` (`CI=1`) are both clean after all of the above except the one pre-existing patch-version warning (see below). **None of this has been run on-device**, and **none of it is committed** — both still need to happen. `19881a7` ("Prototype_2", authored outside a documented session) landed part of points 2/5/6/10 already; the diff against it that's still sitting in the working tree is roughly points 1, 3, 4 (partially), 7, 8, 9, 11, 12, 13, plus the remainder of 2/5/10. If you're auditing what's real vs. uncommitted, `git diff` against `19881a7` is more trustworthy than this summary's point-by-point attribution.
 
+## 2026-09-30 update: Supabase backend
+
+Spec: `docs/superpowers/specs/2026-09-29-supabase-backend-design.md`. The app no longer keeps its data only on the phone.
+
+**What moved to Supabase:**
+- **Accounts:** Supabase Auth (email + password) plus a `profiles` table. Sign-up still goes Login → Invite code → Sign up; the invite code now lives in the database (`settings` table) and is checked by the database when the account is created. New accounts are always Members; Staff promote people from the app (or the dashboard).
+- **Flags:** the `flags` table. Members see and write only their own; staff see everyone's.
+- **Combos and their photos:** the `combos` table plus the private `combo-images` Storage bucket (photos are shown through signed URLs).
+- **The current game:** the `games` table (`is_current`), including the live pre-game/halftime combo slots.
+
+Each context renders its AsyncStorage cache (`mustang.cache.*`) first, then fetches and stays live through Realtime. The app works read-only offline; edits need a connection.
+
+**Fresh start:** the old on-device AsyncStorage data (`formation.*` keys: local accounts, flags, user-added combos) is deleted at launch and was not migrated. Everyone signs up again.
+
+**Security** is enforced only by row-level security (RLS) in `mobile-app/supabase/schema.sql`. `npm run test:rls` checks it and must pass after any schema change.
+
+### Supabase setup
+
+For a new Supabase project (or to rebuild this one), from `mobile-app/`:
+
+1. Create a project at supabase.com.
+2. Fill in both env files from their templates (both are git-ignored, never commit them):
+   - `mobile-app/.env.local` from `.env.example`: `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+   - `mobile-app/supabase/.env.local` from `supabase/.env.example`: URL, anon key, service-role key, DB URL, and the invite code the RLS tests should use.
+   - The project URLs end at `.supabase.co`, with no `/rest/v1/` on the end.
+   - `SUPABASE_DB_URL` is the **Session pooler** connection string (Dashboard → Connect), with the password filled in.
+3. Run `npm run db:apply` (schema + seed). It's safe to re-run: it never resets data, including an invite code you've changed.
+4. Dashboard → Authentication → Sign In / Providers → Email: turn **off** "Confirm email" and "Secure email change".
+5. Sign up in the app, then promote the first Staff account in the SQL editor:
+   `update public.profiles set role = 'Staff' where email = '…';`
+6. Change the invite code from the seed value: Table Editor → `settings` → `invite_code`.
+7. Before building an APK with EAS, set the two app variables as EAS environment variables, because EAS builds don't upload the git-ignored `.env.local`. Use `eas env:create` (once for `EXPO_PUBLIC_SUPABASE_URL`, once for `EXPO_PUBLIC_SUPABASE_ANON_KEY`, for the environment you build with, e.g. `preview`), or expo.dev → your project → Environment variables. Don't put them in `eas.json`. A build without them opens to "App is missing its Supabase settings" instead of crashing.
+8. Users created from the dashboard (Authentication → Add user) need `invite_code` in their user metadata, or the database rejects them. Add `first_name`, `last_name` and `instrument` too, or those start blank.
+9. `npm run test:rls` creates and deletes test users and briefly changes the current game's combo slots. Once real members exist, run it against a **separate test project** (point `supabase/.env.local` at it), not the live one.
+
+### Follow-ups
+
+From the spec's "Out of scope" list:
+1. Staff resolve/clear flags (next feature; needs one update/delete policy plus UI).
+2. Forgot-password / reset email.
+3. Inventory catalogue and member uniform assignments in the database.
+4. Offline writes / sync queue.
+5. Staff-side "Edit game day" (opponent, date, instructions) and season schedule.
+6. Turning on email confirmation for production.
+7. Custom SMTP (e.g. Resend), then re-enable in-app email change and un-skip its RLS test.
+
+Also:
+- The staff `ProfileScreen` isn't wired to the backend yet: its fields start blank and Update saves nothing.
+- Combo photos are uploaded uncompressed and the bucket has no size/type limits yet; add compression and bucket limits.
+- Photos aren't cached on the device; consider `expo-image` with disk caching.
+
+**On-device checklist results: pending (Task 9 Step 3).** The plan's on-device checklist for this backend (`docs/superpowers/plans/2026-09-29-supabase-backend.md`, Task 9 Step 3) supersedes the older checklist below, which predates Supabase (it mentions a staff access code and local accounts that no longer exist).
+
 ## Required: on-device verification (nobody has done this yet)
 
 Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering the new auth flow actually finished — it supersedes the old Member-View checklist that used to live here, which assumed the app opened straight to Sign Up:
@@ -111,7 +164,7 @@ From the final whole-branch review. All 8 were addressed in a follow-up pass; `t
 
 ## Project conventions to follow
 
-- No automated test suite exists anywhere in this project (by design/scale) — verification is always `npx tsc --noEmit` + `npx expo-doctor` (run with `$env:CI = "1"` first in PowerShell) + manual on-device checks in Expo Go, from `mobile-app/`.
+- Verification, from `mobile-app/`: `npx tsc --noEmit`, `npm test` (unit tests for the pure `lib/` modules), `npm run test:rls` (security rules, against the Supabase project in `supabase/.env.local`), `npx expo-doctor` (run with `$env:CI = "1"` first in PowerShell), plus manual on-device checks in Expo Go. There are no UI/component tests.
 - Design tokens live in `mobile-app/constants/colors.ts` and `mobile-app/constants/fonts.ts` — never introduce new colors/fonts, reuse what's there.
 - Square corners everywhere; the only circles are avatars.
 - All commits go straight to `master` (no branches/worktrees) — this has been the project's practice throughout, by explicit user preference.
