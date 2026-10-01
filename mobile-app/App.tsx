@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -28,6 +28,9 @@ import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GameProvider } from './context/GameContext';
 import { CombosProvider } from './context/CombosContext';
+import { supabaseConfigError } from './lib/supabase';
+import { colors } from './constants/colors';
+import { fonts } from './constants/fonts';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -142,6 +145,19 @@ export default function App() {
     return null;
   }
 
+  // A build without its Supabase settings can't do anything useful; say so
+  // instead of crashing. The providers below never mount, so nothing calls
+  // Supabase.
+  if (supabaseConfigError) {
+    return (
+      <View style={styles.configError} onLayout={onLayoutRootView}>
+        <Text style={styles.configErrorText}>
+          App is missing its Supabase settings. See HANDOFF.md → Supabase setup.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>
@@ -156,3 +172,20 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  configError: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: colors.paper,
+  },
+  configErrorText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.ink,
+    textAlign: 'center',
+  },
+});
