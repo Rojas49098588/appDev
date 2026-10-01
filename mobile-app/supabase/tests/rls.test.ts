@@ -1,9 +1,13 @@
-// Security-rule tests. Runs against the real Supabase project:
+// Security-rule tests. Runs against the Supabase project in supabase/.env.local:
 //   npm run test:rls
 // Creates throwaway users (rls-*@mustangcloset.test) and deletes them afterwards.
+//
+// Once real members are onboarded, point supabase/.env.local at a SEPARATE test
+// project before running this: it creates and deletes users, uploads and
+// removes storage files, and briefly changes the current game's combo slots
+// (restoring them afterwards). Members on the live app would see those changes.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 function required(name: string): string {
@@ -24,8 +28,28 @@ const anon = createClient(url, anonKey, clientOptions);
 const RUN = Date.now().toString(36);
 const PASSWORD = 'TestPass123';
 const SEED_COMBO_01 = '00000000-0000-4000-8000-000000000001';
-const SEED_COMBO_14 = '00000000-0000-4000-8000-000000000014';
 const CURRENT_GAME = '00000000-0000-4000-8000-0000000000a1';
+
+type Slots = { pre_game_combo_id: string | null; halftime_combo_id: string | null };
+
+// The current game's combo slots, read via admin, so tests that change them
+// can put back exactly what was there.
+async function currentSlots(): Promise<Slots> {
+  const { data, error } = await admin
+    .from('games')
+    .select('pre_game_combo_id, halftime_combo_id')
+    .eq('id', CURRENT_GAME)
+    .single();
+  if (error) throw error;
+  return data as Slots;
+}
+
+async function restoreSlots(prior: Slots): Promise<void> {
+  const now = await currentSlots();
+  if (now.pre_game_combo_id === prior.pre_game_combo_id && now.halftime_combo_id === prior.halftime_combo_id) return;
+  const { error } = await admin.from('games').update(prior).eq('id', CURRENT_GAME);
+  if (error) throw error;
+}
 
 type TestUser = { id: string; email: string };
 const createdUserIds: string[] = [];
@@ -195,14 +219,16 @@ describe('member permissions', () => {
   });
 
   test('cannot insert or upsert a profile row (forging a profile or role)', async () => {
-    const forgedId = randomUUID();
+    // Uses the member's own (valid) id so the insert can only fail on the
+    // security rules, not on the foreign key to auth.users.
     const insert = await asMember.from('profiles').insert({
-      id: forgedId, email: 'forged@example.com', first_name: 'Forged', last_name: 'User',
+      id: member.id, email: 'forged@example.com', first_name: 'Forged', last_name: 'User',
       instrument: 'Tuba', role: 'Staff',
     });
     assert.notEqual(insert.error, null);
-    const { data: forgedRow } = await admin.from('profiles').select('id').eq('id', forgedId);
-    assert.equal(forgedRow?.length ?? 0, 0);
+    assert.equal(insert.error?.code, '42501', `expected a permission error, got ${insert.error?.code}: ${insert.error?.message}`);
+    const { data: rows } = await admin.from('profiles').select('email, role').eq('id', member.id);
+    assert.deepEqual(rows, [{ email: member.email, role: 'Member' }]);
     const upsert = await asMember.from('profiles').upsert(
       { id: member.id, email: member.email, first_name: 'Member', last_name: 'Test', instrument: 'Trumpet', role: 'Staff' },
       { onConflict: 'id' },
@@ -310,11 +336,15 @@ describe('member permissions', () => {
   });
 
   test('cannot change the current game', async () => {
-    const { data: before } = await admin.from('games').select('halftime_combo_id').eq('id', CURRENT_GAME).single();
-    const { data } = await asMember.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select('id');
-    assert.equal(data?.length ?? 0, 0);
-    const { data: after } = await admin.from('games').select('halftime_combo_id').eq('id', CURRENT_GAME).single();
-    assert.equal(after?.halftime_combo_id, before?.halftime_combo_id);
+    const prior = await currentSlots();
+    try {
+      const { data } = await asMember.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select('id');
+      assert.equal(data?.length ?? 0, 0);
+      const after = await currentSlots();
+      assert.equal(after.halftime_combo_id, prior.halftime_combo_id);
+    } finally {
+      await restoreSlots(prior);
+    }
   });
 
   test('cannot call set_role', async () => {
@@ -323,22 +353,33 @@ describe('member permissions', () => {
   });
 
   test('cannot upload combo images', async () => {
-    const { error } = await asMember.storage.from('combo-images').upload(`rls-${RUN}.txt`, new Blob(['x']), { contentType: 'text/plain' });
-    assert.notEqual(error, null);
+    const path = `rls-${RUN}-member-upload.txt`;
+    try {
+      const { error } = await asMember.storage.from('combo-images').upload(path, new Blob(['x']), { contentType: 'text/plain' });
+      assert.notEqual(error, null);
+      const { data: listing, error: listError } = await admin.storage.from('combo-images').list('', { search: path });
+      assert.equal(listError, null);
+      assert.ok(!listing?.some((f) => f.name === path), 'no object was stored');
+    } finally {
+      await admin.storage.from('combo-images').remove([path]);
+    }
   });
 
   test('cannot delete combo images', async () => {
     const path = `rls-${RUN}-protected.txt`;
-    const uploaded = await asStaff.storage.from('combo-images').upload(path, new Blob(['x']), { contentType: 'text/plain' });
-    assert.equal(uploaded.error, null);
-    // Member's delete must fail outright, or at minimum be a no-op (RLS filters
-    // the row out before the delete can match it) — either way, the file must
-    // still be there afterward, which is the assertion that actually matters.
-    await asMember.storage.from('combo-images').remove([path]);
-    const { data: listing, error: listError } = await admin.storage.from('combo-images').list('', { search: path });
-    assert.equal(listError, null);
-    assert.ok(listing?.some((f) => f.name === path));
-    await admin.storage.from('combo-images').remove([path]);
+    try {
+      const uploaded = await asStaff.storage.from('combo-images').upload(path, new Blob(['x']), { contentType: 'text/plain' });
+      assert.equal(uploaded.error, null);
+      // Member's delete must fail outright, or at minimum be a no-op (RLS filters
+      // the row out before the delete can match it) — either way, the file must
+      // still be there afterward, which is the assertion that actually matters.
+      await asMember.storage.from('combo-images').remove([path]);
+      const { data: listing, error: listError } = await admin.storage.from('combo-images').list('', { search: path });
+      assert.equal(listError, null);
+      assert.ok(listing?.some((f) => f.name === path));
+    } finally {
+      await admin.storage.from('combo-images').remove([path]);
+    }
   });
 
   test('email change on the login syncs to the profile', { skip: 'Needs custom SMTP: Supabase sends a verification email on email change and the built-in mailer refuses test addresses. Re-enable when SMTP is configured.' }, async () => {
@@ -373,20 +414,31 @@ describe('staff permissions', () => {
   });
 
   test('deleting a combo clears the game slot that used it', async () => {
-    const { data: combo } = await asStaff.from('combos').insert({ label: `Slot ${RUN}` }).select().single();
-    const { data: before } = await admin.from('games').select('pre_game_combo_id').eq('id', CURRENT_GAME).single();
-    await asStaff.from('games').update({ pre_game_combo_id: combo!.id }).eq('id', CURRENT_GAME);
-    await asStaff.from('combos').delete().eq('id', combo!.id);
-    const { data: game } = await admin.from('games').select('pre_game_combo_id').eq('id', CURRENT_GAME).single();
-    assert.equal(game?.pre_game_combo_id, null);
-    await admin.from('games').update({ pre_game_combo_id: before?.pre_game_combo_id ?? SEED_COMBO_01 }).eq('id', CURRENT_GAME);
+    const prior = await currentSlots();
+    let comboId: string | undefined;
+    try {
+      const { data: combo, error } = await asStaff.from('combos').insert({ label: `Slot ${RUN}` }).select().single();
+      assert.equal(error, null);
+      comboId = combo!.id;
+      await asStaff.from('games').update({ pre_game_combo_id: comboId }).eq('id', CURRENT_GAME);
+      await asStaff.from('combos').delete().eq('id', comboId);
+      const { data: game } = await admin.from('games').select('pre_game_combo_id').eq('id', CURRENT_GAME).single();
+      assert.equal(game?.pre_game_combo_id, null);
+    } finally {
+      await restoreSlots(prior);
+      if (comboId) await admin.from('combos').delete().eq('id', comboId);
+    }
   });
 
   test('can set the halftime combo', async () => {
-    const { data, error } = await asStaff.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select().single();
-    assert.equal(error, null);
-    assert.equal(data?.halftime_combo_id, SEED_COMBO_01);
-    await admin.from('games').update({ halftime_combo_id: SEED_COMBO_14 }).eq('id', CURRENT_GAME);
+    const prior = await currentSlots();
+    try {
+      const { data, error } = await asStaff.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select().single();
+      assert.equal(error, null);
+      assert.equal(data?.halftime_combo_id, SEED_COMBO_01);
+    } finally {
+      await restoreSlots(prior);
+    }
   });
 
   test('can promote and demote another user', async () => {
@@ -407,9 +459,13 @@ describe('staff permissions', () => {
 
   test('can upload and delete combo images', async () => {
     const path = `rls-${RUN}.txt`;
-    const upload = await asStaff.storage.from('combo-images').upload(path, new Blob(['x']), { contentType: 'text/plain' });
-    assert.equal(upload.error, null);
-    const remove = await asStaff.storage.from('combo-images').remove([path]);
-    assert.equal(remove.error, null);
+    try {
+      const upload = await asStaff.storage.from('combo-images').upload(path, new Blob(['x']), { contentType: 'text/plain' });
+      assert.equal(upload.error, null);
+      const remove = await asStaff.storage.from('combo-images').remove([path]);
+      assert.equal(remove.error, null);
+    } finally {
+      await admin.storage.from('combo-images').remove([path]);
+    }
   });
 });

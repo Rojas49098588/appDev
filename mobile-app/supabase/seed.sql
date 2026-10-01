@@ -1,8 +1,8 @@
--- Starting data. Re-runnable: existing rows are left alone
--- (except the invite code, which is reset to the seed value).
+-- Starting data. Re-runnable: existing rows are left alone, including an
+-- invite code that was changed in the dashboard.
 
 insert into public.settings (id, invite_code) values (1, '4F2K9')
-on conflict (id) do update set invite_code = excluded.invite_code;
+on conflict (id) do nothing;
 
 insert into public.combos (id, label, sub, components) values
   ('00000000-0000-4000-8000-000000000001', 'Combo 01', 'Field — home',
