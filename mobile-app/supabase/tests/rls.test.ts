@@ -470,6 +470,22 @@ describe('staff permissions', () => {
     assert.equal(final?.role, 'Member');
   });
 
+  test('can edit their own profile (staff Profile screen)', async () => {
+    try {
+      const { data, error } = await asStaff
+        .from('profiles')
+        .update({ phone: '2145550123', height_feet: '6', height_inches: '1', weight: '180' })
+        .eq('id', staff.id)
+        .select('id');
+      assert.equal(error, null);
+      assert.equal(data?.length, 1);
+      const { data: row } = await admin.from('profiles').select('phone, height_feet, height_inches, weight').eq('id', staff.id).single();
+      assert.deepEqual(row, { phone: '2145550123', height_feet: '6', height_inches: '1', weight: '180' });
+    } finally {
+      await admin.from('profiles').update({ phone: '', height_feet: '', height_inches: '', weight: '' }).eq('id', staff.id);
+    }
+  });
+
   test('cannot change their own role', async () => {
     const { error } = await asStaff.rpc('set_role', { target: staff.id, new_role: 'Member' });
     assert.notEqual(error, null);

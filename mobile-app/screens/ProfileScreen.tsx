@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,7 +19,10 @@ import { useAuth } from '../context/AuthContext';
 import { INSTRUMENTS } from '../constants/instruments';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
+import { isPlausiblePhone } from '../constants/validation';
+import { friendlyError } from '../lib/errors';
 import { useScrollToInput } from '../hooks/useScrollToInput';
+import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import ChangePasswordSection from '../components/ChangePasswordSection';
@@ -29,7 +33,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 type ProfileData = {
   firstName: string;
   lastName: string;
-  email: string;
   phone: string;
   instrument: string;
   heightFeet: string;
@@ -37,31 +40,34 @@ type ProfileData = {
   weight: string;
 };
 
+// Email is shown read-only below: it can't be changed in the app until
+// custom SMTP is set up.
 const TEXT_FIELDS: {
-  key: 'firstName' | 'lastName' | 'email' | 'phone';
+  key: 'firstName' | 'lastName' | 'phone';
   label: string;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
 }[] = [
   { key: 'firstName', label: 'First Name' },
   { key: 'lastName', label: 'Last Name' },
-  { key: 'email', label: 'Email', keyboardType: 'email-address' },
   { key: 'phone', label: 'Phone Number', keyboardType: 'phone-pad' },
 ];
 
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 export default function ProfileScreen({ navigation, route }: Props) {
-  const { logOut } = useAuth();
+  const { account, updateAccount, logOut } = useAuth();
+  const { isOnline } = useConnection();
   const [isEditing, setIsEditing] = useState(false);
+  // Start from the signed-in account: route params only carry name,
+  // instrument and role.
   const [profile, setProfile] = useState<ProfileData>({
-    firstName: route.params.firstName,
-    lastName: route.params.lastName,
-    email: '',
-    phone: '',
-    instrument: route.params.instrument,
-    heightFeet: '',
-    heightInches: '',
-    weight: '',
+    firstName: account?.firstName ?? route.params.firstName,
+    lastName: account?.lastName ?? route.params.lastName,
+    phone: account?.phone ?? '',
+    instrument: account?.instrument ?? route.params.instrument,
+    heightFeet: account?.height.feet ?? '',
+    heightInches: account?.height.inches ?? '',
+    weight: account?.weight ?? '',
   });
 
   const [numericFocused, setNumericFocused] = useState(false);
@@ -77,8 +83,35 @@ export default function ProfileScreen({ navigation, route }: Props) {
   };
   const blurNumericField = () => setNumericFocused(false);
 
-  const handleLogOut = () => {
-    logOut();
+  const handleToggleEdit = async () => {
+    if (isEditing) {
+      if (!requireOnline(isOnline)) return;
+      if (profile.phone.trim() !== '' && !isPlausiblePhone(profile.phone)) {
+        Alert.alert('Error', 'Please enter a valid phone number.');
+        return;
+      }
+
+      try {
+        await updateAccount({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phone: profile.phone,
+          instrument: profile.instrument,
+          height: { feet: profile.heightFeet, inches: profile.heightInches },
+          weight: profile.weight,
+        });
+      } catch (error) {
+        Alert.alert("Couldn't save changes", friendlyError(error));
+        return;
+      }
+    }
+    setIsEditing((prev) => !prev);
+  };
+
+  // Await: signOut queues behind any pending startup session check, and
+  // navigating first let a quick re-login race it and get signed out again.
+  const handleLogOut = async () => {
+    await logOut();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
@@ -127,7 +160,15 @@ export default function ProfileScreen({ navigation, route }: Props) {
               />
             ))}
 
-            {TEXT_FIELDS.slice(2, 4).map((field) => {
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>Email</Text>
+              <Text style={styles.value}>{account?.email ?? ''}</Text>
+              {isEditing && (
+                <Text style={styles.helperText}>Email can't be changed in the app yet.</Text>
+              )}
+            </View>
+
+            {TEXT_FIELDS.slice(2).map((field) => {
               const isNumericKeyboard = field.keyboardType === 'phone-pad';
               return (
                 <ProfileField
@@ -206,7 +247,10 @@ export default function ProfileScreen({ navigation, route }: Props) {
               onBlur={blurNumericField}
             />
 
-            <Pressable style={styles.actionButton} onPress={() => setIsEditing((prev) => !prev)}>
+            <Pressable
+              style={[styles.actionButton, isEditing && !isOnline && OFFLINE_DIM]}
+              onPress={handleToggleEdit}
+            >
               <Text style={styles.actionButtonText}>{isEditing ? 'Update' : 'Edit'}</Text>
             </Pressable>
 
@@ -338,6 +382,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 6,
   },
+  helperText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 4 },
   value: {
     fontFamily: fonts.body,
     fontSize: 14,
