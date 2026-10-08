@@ -399,6 +399,24 @@ describe('staff permissions', () => {
     assert.ok(data!.some((r) => r.member_id === otherMember.id));
   });
 
+  test("can mark a member's piece good by deleting its flag", async () => {
+    const { data: flag, error } = await admin
+      .from('flags')
+      .insert({ member_id: member.id, piece: 'Shakos', color: 'White', size: 'M', status: 'dirty' })
+      .select('id')
+      .single();
+    if (error) throw error;
+    try {
+      const del = await asStaff.from('flags').delete().eq('id', flag.id).select('id');
+      assert.equal(del.error, null);
+      assert.equal(del.data?.length, 1);
+      const { data: gone } = await admin.from('flags').select('id').eq('id', flag.id);
+      assert.equal(gone?.length ?? 0, 0);
+    } finally {
+      await admin.from('flags').delete().eq('id', flag.id);
+    }
+  });
+
   test('sees every profile', async () => {
     const { data, error } = await asStaff.from('profiles').select('id');
     assert.equal(error, null);

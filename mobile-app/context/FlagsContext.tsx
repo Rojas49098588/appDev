@@ -21,6 +21,7 @@ type FlagsContextValue = {
   reload: () => Promise<void>;
   addFlag: (input: FlagInput) => Promise<void>;
   updateFlag: (id: string, status: FlagStatus, comment: string) => Promise<void>;
+  clearFlag: (id: string) => Promise<void>;
 };
 
 const FlagsContext = createContext<FlagsContextValue | null>(null);
@@ -109,9 +110,21 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
     [commit, itemsRef]
   );
 
+  // Staff only (enforced by the database): marks the piece good again.
+  const clearFlag = useCallback(
+    async (id: string) => {
+      const { data, error: deleteError } = await supabase.from('flags').delete().eq('id', id).select('id');
+      if (deleteError) throw deleteError;
+      // RLS hides a refused delete as "0 rows" rather than an error.
+      if (!data || data.length === 0) throw new Error('This flag could not be cleared.');
+      commit(removeById(itemsRef.current, id));
+    },
+    [commit, itemsRef]
+  );
+
   const value = useMemo(
-    () => ({ flags, syncedAt, error, reload, addFlag, updateFlag }),
-    [flags, syncedAt, error, reload, addFlag, updateFlag]
+    () => ({ flags, syncedAt, error, reload, addFlag, updateFlag, clearFlag }),
+    [flags, syncedAt, error, reload, addFlag, updateFlag, clearFlag]
   );
 
   return <FlagsContext.Provider value={value}>{children}</FlagsContext.Provider>;

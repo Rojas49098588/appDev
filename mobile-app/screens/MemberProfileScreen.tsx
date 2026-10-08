@@ -6,6 +6,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
+import { useFlags } from '../context/FlagsContext';
+import type { Flag } from '../lib/models';
 import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
@@ -18,6 +20,9 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
   const { account, setAccountRole } = useAuth();
   const { isOnline } = useConnection();
   const [role, setRole] = useState(route.params.role ?? 'Member');
+  const { flags, clearFlag } = useFlags();
+  const [clearingId, setClearingId] = useState<string | null>(null);
+  const memberFlags = id ? flags.filter((f) => f.memberId === id) : [];
 
   const initials = name
     .split(' ')
@@ -68,6 +73,32 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     );
   };
 
+  const handleMarkGoodPress = (flag: Flag) => {
+    if (!requireOnline(isOnline)) return;
+    Alert.alert(
+      'Mark as good?',
+      `${flag.piece} (${flag.color}, ${flag.size}) will no longer be flagged as ${
+        flag.status === 'repair' ? 'needing repair' : 'dirty'
+      }.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Mark good',
+          onPress: async () => {
+            setClearingId(flag.id);
+            try {
+              await clearFlag(flag.id);
+            } catch (error) {
+              Alert.alert("Couldn't update flag", friendlyError(error));
+            } finally {
+              setClearingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <View style={styles.appBody}>
@@ -106,6 +137,41 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
               </View>
             ))}
           </View>
+
+          {isRealAccount && (
+            <View style={[styles.card, styles.flagsCard]}>
+              <Text style={styles.cardTitle}>Flagged pieces</Text>
+              {memberFlags.length === 0 ? (
+                <Text style={styles.noFlags}>Nothing flagged. Every piece is good.</Text>
+              ) : (
+                memberFlags.map((flag) => {
+                  const isRepair = flag.status === 'repair';
+                  const statusColor = isRepair ? colors.rust : colors.wash;
+                  const isClearing = clearingId === flag.id;
+                  return (
+                    <View key={flag.id} style={styles.flagRow}>
+                      <View style={styles.flagInfo}>
+                        <Text style={styles.flagPiece}>
+                          {flag.piece} — {flag.color} — {flag.size}
+                        </Text>
+                        <Text style={[styles.flagStatus, { color: statusColor }]}>
+                          {isRepair ? 'Needs repair' : 'Dirty'}
+                        </Text>
+                        {flag.comment !== '' && <Text style={styles.flagComment}>{flag.comment}</Text>}
+                      </View>
+                      <Pressable
+                        style={[styles.markGoodButton, (!isOnline || isClearing) && OFFLINE_DIM]}
+                        onPress={() => handleMarkGoodPress(flag)}
+                        disabled={isClearing}
+                      >
+                        <Text style={styles.markGoodButtonText}>Mark good</Text>
+                      </Pressable>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
 
           <Pressable
             style={[
@@ -212,6 +278,27 @@ const styles = StyleSheet.create({
   infoLabel: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
   infoValue: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
   infoValueMuted: { fontFamily: fonts.body, color: colors.inkFaint },
+  flagsCard: { marginTop: 12 },
+  noFlags: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
+  flagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.lineSoft,
+  },
+  flagInfo: { flex: 1 },
+  flagPiece: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  flagStatus: { fontFamily: fonts.body, fontSize: 11.5, marginTop: 2 },
+  flagComment: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 3 },
+  markGoodButton: {
+    borderWidth: 1,
+    borderColor: colors.ink,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+  markGoodButtonText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink },
   roleButton: {
     width: '100%',
     backgroundColor: colors.ink,

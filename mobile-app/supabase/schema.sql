@@ -268,6 +268,10 @@ create policy flags_insert_own on public.flags for insert to authenticated
 drop policy if exists flags_update_own on public.flags;
 create policy flags_update_own on public.flags for update to authenticated
   using (member_id = auth.uid()) with check (member_id = auth.uid());
+-- Staff mark a piece "good" again by deleting its flag (a piece with no flag is good).
+drop policy if exists flags_delete_staff on public.flags;
+create policy flags_delete_staff on public.flags for delete to authenticated
+  using (public.is_staff());
 
 -- ---------- Storage: combo photos ----------
 
