@@ -1,4 +1,5 @@
 export const OFFLINE_MESSAGE = "Can't reach the server. Check your connection and try again.";
+export const ARCHIVED_MESSAGE = 'This account has been archived. Talk to a uniform manager.';
 
 // Turns Supabase/network errors into messages suitable for an Alert.
 export function friendlyError(error: unknown): string {
@@ -10,6 +11,8 @@ export function friendlyError(error: unknown): string {
   if (name === 'AuthRetryableFetchError' || /network request failed|failed to fetch|fetch failed/i.test(message)) {
     return OFFLINE_MESSAGE;
   }
+  // Archiving bans the auth user, so Supabase refuses its sign-in.
+  if (code === 'user_banned' || /user is banned/i.test(message)) return ARCHIVED_MESSAGE;
   if (/invalid login credentials/i.test(message)) return 'Incorrect email or password.';
   if (/already (been )?registered/i.test(message)) return 'An account with this email already exists.';
   if (/database error saving new user/i.test(message)) {

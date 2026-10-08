@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../navigation/types';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { STATS, SECTIONS } from '../constants/homeData';
@@ -19,6 +21,8 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
+  // Archived members is a root stack route, outside the tab navigator.
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const inventoryPreview = useMemo(() => {
     return PIECES.map((piece) => {
@@ -145,6 +149,16 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
             })}
           </View>
         </View>
+
+        <View style={styles.block}>
+          <View style={styles.blockHead}>
+            <Text style={styles.blockTitle}>Archived members</Text>
+            <Pressable onPress={() => rootNavigation.navigate('ArchivedMembers')}>
+              <Text style={styles.blockLink}>View</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.blockNote}>Snapshots of members who left, with the option to restore them.</Text>
+        </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -254,6 +268,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.blockTitle,
     fontSize: 15.5,
     color: colors.ink,
+  },
+  blockNote: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkSoft,
   },
   blockLink: {
     fontFamily: fonts.body,

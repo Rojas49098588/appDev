@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { OFFLINE_MESSAGE, friendlyError } from '../lib/errors.ts';
+import { ARCHIVED_MESSAGE, OFFLINE_MESSAGE, friendlyError } from '../lib/errors.ts';
 
 test('network failures become the offline message', () => {
   assert.equal(friendlyError(new TypeError('Network request failed')), OFFLINE_MESSAGE);
@@ -26,4 +26,9 @@ test('unknown errors fall back to their message or a generic one', () => {
 test('the account-created-but-not-loaded message passes through unchanged', () => {
   const message = "Your account was created, but we couldn't load it. Please log in.";
   assert.equal(friendlyError(new Error(message)), message);
+});
+
+test('a banned (archived) account gets the archived message', () => {
+  assert.equal(friendlyError({ code: 'user_banned', message: 'User is banned' }), ARCHIVED_MESSAGE);
+  assert.equal(friendlyError({ message: 'User is banned' }), ARCHIVED_MESSAGE);
 });

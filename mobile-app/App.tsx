@@ -23,6 +23,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import MemberProfileScreen from './screens/MemberProfileScreen';
 import AddComboScreen from './screens/AddComboScreen';
 import ComboDetailScreen from './screens/ComboDetailScreen';
+import ArchivedMembersScreen from './screens/ArchivedMembersScreen';
+import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
 import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -117,6 +119,16 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
           <Stack.Screen
             name="ComboDetail"
             component={ComboDetailScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ArchivedMembers"
+            component={ArchivedMembersScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ArchivedMember"
+            component={ArchivedMemberScreen}
             options={{ headerShown: false }}
           />
         </Stack.Navigator>

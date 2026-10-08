@@ -8,19 +8,21 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { Alert } from 'react-native';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import type { Role, UserParams } from '../navigation/types';
-import type { Account, ShoeSize } from '../lib/models';
+import type { Account, ShoeSize, UniformSizes } from '../lib/models';
 import type { ProfileRow } from '../lib/rows';
 import { accountUpdatesToProfile, profileToAccount, type AccountUpdates } from '../lib/mappers';
 import { isAccount, isAccountList } from '../lib/validators';
 import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS, clearAllCaches, clearLegacyKeys, readCache, writeCache } from '../lib/cacheStorage';
 import { startupAction } from '../lib/startup';
+import { ARCHIVED_MESSAGE } from '../lib/errors';
 import { hasSession, supabase } from '../lib/supabase';
 import { useOnReconnect } from '../hooks/useConnection';
 
-export type { Account, ShoeSize };
+export type { Account, ShoeSize, UniformSizes };
 
 export type SignUpInput = {
   email: string;
@@ -47,6 +49,10 @@ type AuthContextValue = {
   logOut: () => Promise<void>;
   updateAccount: (updates: AccountUpdates) => Promise<void>;
   setAccountRole: (id: string, role: Role) => Promise<void>;
+  // Staff only (enforced by the database).
+  setUniformSizes: (id: string, sizes: UniformSizes) => Promise<void>;
+  archiveMember: (id: string) => Promise<void>;
+  restoreMember: (id: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 };
 
@@ -341,6 +347,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [commitAccounts]
   );
 
+  const setUniformSizes = useCallback(
+    async (id: string, sizes: UniformSizes) => {
+      const trimmed: UniformSizes = {
+        coats: sizes.coats.trim(),
+        vests: sizes.vests.trim(),
+        bibbers: sizes.bibbers.trim(),
+        pants: sizes.pants.trim(),
+      };
+      const { error } = await supabase.rpc('set_uniform_sizes', {
+        target: id,
+        coat: trimmed.coats,
+        vest: trimmed.vests,
+        bibber: trimmed.bibbers,
+        pant: trimmed.pants,
+      });
+      if (error) throw error;
+      commitAccounts(accountsRef.current.map((a) => (a.id === id ? { ...a, uniformSizes: trimmed } : a)));
+      const current = accountRef.current;
+      if (current?.id === id) commitAccount({ ...current, uniformSizes: trimmed });
+    },
+    [commitAccount, commitAccounts]
+  );
+
+  // The database also clears the member's flags; FlagsContext hears that via Realtime.
+  const archiveMember = useCallback(
+    async (id: string) => {
+      const { error } = await supabase.rpc('archive_member', { target: id });
+      if (error) throw error;
+      await loadAccounts();
+    },
+    [loadAccounts]
+  );
+
+  const restoreMember = useCallback(
+    async (id: string) => {
+      const { error } = await supabase.rpc('restore_member', { target: id });
+      if (error) throw error;
+      await loadAccounts();
+    },
+    [loadAccounts]
+  );
+
+  // Archived while signed in (seen on load or via Realtime): their old access
+  // token still works for up to an hour, so sign them out here.
+  const isArchived = !!account?.archivedAt;
+  useEffect(() => {
+    if (!isArchived) return;
+    void logOut();
+    Alert.alert('Account archived', ARCHIVED_MESSAGE);
+  }, [isArchived, logOut]);
+
   const session = useMemo(() => (account ? toSession(account) : null), [account]);
 
   const value = useMemo(
@@ -356,9 +413,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logOut,
       updateAccount,
       setAccountRole,
+      setUniformSizes,
+      archiveMember,
+      restoreMember,
       changePassword,
     }),
-    [session, account, accounts, isLoading, sessionVersion, checkInviteCode, signUp, logIn, logOut, updateAccount, setAccountRole, changePassword]
+    [
+      session, account, accounts, isLoading, sessionVersion, checkInviteCode, signUp, logIn, logOut,
+      updateAccount, setAccountRole, setUniformSizes, archiveMember, restoreMember, changePassword,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

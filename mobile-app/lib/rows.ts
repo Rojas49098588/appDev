@@ -13,7 +13,31 @@ export type ProfileRow = {
   height_feet: string;
   height_inches: string;
   weight: string;
+  coat_size: string;
+  vest_size: string;
+  bibber_size: string;
+  pant_size: string;
+  archived_at: string | null;
   created_at: string;
+};
+
+// archive_member() builds the snapshot from the profile row plus open flags.
+export type ArchiveSnapshot = Pick<
+  ProfileRow,
+  | 'email' | 'first_name' | 'last_name' | 'instrument' | 'phone' | 'shoe_gender' | 'shoe_size'
+  | 'height_feet' | 'height_inches' | 'weight' | 'coat_size' | 'vest_size' | 'bibber_size' | 'pant_size'
+> & {
+  flags: Pick<FlagRow, 'piece' | 'color' | 'size' | 'status' | 'comment'>[];
+};
+
+export type MemberArchiveRow = {
+  id: string;
+  member_id: string;
+  snapshot: ArchiveSnapshot;
+  archived_at: string;
+  archived_by_name: string;
+  restored_at: string | null;
+  restored_by_name: string | null;
 };
 
 export type ComboRow = {

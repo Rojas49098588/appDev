@@ -7,7 +7,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MemberTabParamList, RootStackParamList } from '../../navigation/types';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { MY_UNIFORM, MY_WHITE_SHIRT, type UniformGroup } from '../../constants/myUniformData';
+import {
+  MY_WHITE_SHIRT,
+  NO_SIZE,
+  UNASSIGNED_SIZE,
+  uniformFor,
+  type UniformGroup,
+} from '../../constants/myUniformData';
 import { useFlags } from '../../context/FlagsContext';
 import type { Flag } from '../../constants/flagsData';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +31,7 @@ export default function MyInventoryScreen({ navigation }: Props) {
   // The database only sends a member their own flags; filtering by id keeps
   // this correct if a staff account ever opens the member view.
   const myFlags = flags.filter((f) => f.memberId === account?.id);
+  const uniform = uniformFor(account?.uniformSizes);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -34,7 +41,7 @@ export default function MyInventoryScreen({ navigation }: Props) {
           <Text style={styles.title}>My inventory</Text>
           <Text style={styles.subtitle}>Tap a piece type to see all your sizes. Tap any item to flag it.</Text>
 
-          {MY_UNIFORM.map((group) => (
+          {uniform.map((group) => (
             <PieceGroup key={group.piece} group={group} flags={myFlags} navigation={navigation} />
           ))}
 
@@ -106,13 +113,13 @@ function PieceGroup({
                     navigation.navigate('FlagItem', {
                       piece: group.piece,
                       color: variant.color,
-                      size: group.size,
+                      size: group.size || UNASSIGNED_SIZE,
                     })
                   }
                 >
                   <View>
                     <Text style={styles.variantName}>{variant.color}</Text>
-                    <Text style={styles.variantSub}>{group.size}</Text>
+                    <Text style={styles.variantSub}>{group.size || NO_SIZE}</Text>
                   </View>
                   <View style={styles.rowRight}>
                     <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
@@ -135,7 +142,7 @@ function PieceGroup({
                         navigation.navigate('FlagItem', {
                           piece: group.piece,
                           color: variant.color,
-                          size: group.size,
+                          size: group.size || UNASSIGNED_SIZE,
                         })
                       }
                     >

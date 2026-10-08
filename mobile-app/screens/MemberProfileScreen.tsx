@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type FocusEvent,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -7,22 +18,46 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
 import { useFlags } from '../context/FlagsContext';
-import type { Flag } from '../lib/models';
+import type { Flag, UniformSizes } from '../lib/models';
 import { friendlyError } from '../lib/errors';
+import { digitsOnly, EMPTY_UNIFORM_SIZES, UNIFORM_PIECES } from '../lib/uniform';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
+import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberProfile'>;
 
 export default function MemberProfileScreen({ navigation, route }: Props) {
   const { id, name, section, email, phone, height, weight } = route.params;
-  const { account, setAccountRole } = useAuth();
+  const { account, accounts, setAccountRole, setUniformSizes, archiveMember } = useAuth();
   const { isOnline } = useConnection();
   const [role, setRole] = useState(route.params.role ?? 'Member');
   const { flags, clearFlag } = useFlags();
   const [clearingId, setClearingId] = useState<string | null>(null);
   const memberFlags = id ? flags.filter((f) => f.memberId === id) : [];
+
+  // Read sizes from the live account, not route params, so a save or a
+  // Realtime update from another phone shows up here.
+  const savedSizes = accounts.find((a) => a.id === id)?.uniformSizes ?? EMPTY_UNIFORM_SIZES;
+  const savedSizesKey = JSON.stringify(savedSizes);
+  const [sizes, setSizes] = useState<UniformSizes>(savedSizes);
+  const [isSavingSizes, setIsSavingSizes] = useState(false);
+  // Shown after a save until the sizes are edited again.
+  const [justSavedSizes, setJustSavedSizes] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const sizesChanged = JSON.stringify(sizes) !== savedSizesKey;
+  useEffect(() => {
+    setSizes(JSON.parse(savedSizesKey) as UniformSizes);
+  }, [savedSizesKey]);
+
+  const [numericFocused, setNumericFocused] = useState(false);
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
+  const focusNumericField = (event: FocusEvent) => {
+    scrollToFocusedInput(event);
+    setNumericFocused(true);
+  };
 
   const initials = name
     .split(' ')
@@ -46,6 +81,49 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
   const isSelf = !!id && id === account?.id;
   const canChangeRole = isRealAccount && !isSelf;
   const isStaff = role === 'Staff';
+  // Only members can be archived (the database refuses staff and yourself too).
+  const canArchive = isRealAccount && !isSelf && !isStaff;
+
+  const handleSaveSizesPress = async () => {
+    if (!id || !requireOnline(isOnline)) return;
+    setIsSavingSizes(true);
+    try {
+      await setUniformSizes(id, sizes);
+      setJustSavedSizes(true);
+    } catch (error) {
+      Alert.alert("Couldn't save sizes", friendlyError(error));
+    } finally {
+      setIsSavingSizes(false);
+    }
+  };
+
+  const handleArchivePress = () => {
+    if (!requireOnline(isOnline)) return;
+    Alert.alert(
+      `Archive ${name}?`,
+      'A snapshot of their info, sizes and flags is saved under Archived members. ' +
+        "They won't be able to log in, their sizes are unassigned and their flags are cleared. " +
+        'You can restore them later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            if (!id) return;
+            setIsArchiving(true);
+            try {
+              await archiveMember(id);
+              navigation.goBack();
+            } catch (error) {
+              Alert.alert("Couldn't archive member", friendlyError(error));
+              setIsArchiving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleRoleChangePress = () => {
     if (!requireOnline(isOnline)) return;
@@ -101,10 +179,23 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flexOne}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <View style={styles.appBody}>
         <TapeGutter />
-
-        <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
+        <View style={styles.flexOne}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.flexOne}
+          contentContainerStyle={styles.content}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          // Without this, tapping Save sizes while the number pad is open only
+          // closes the keyboard and the save never runs.
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.header}>
             <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
@@ -137,6 +228,47 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
               </View>
             ))}
           </View>
+
+          {isRealAccount && (
+            <View style={[styles.card, styles.sizesCard]}>
+              <Text style={styles.cardTitle}>Uniform sizes</Text>
+              <View style={styles.sizesGrid}>
+                {UNIFORM_PIECES.map(({ piece, key }) => (
+                  <View key={key} style={styles.sizeField}>
+                    <Text style={styles.sizeLabel}>{piece}</Text>
+                    <TextInput
+                      style={styles.sizeInput}
+                      value={sizes[key]}
+                      onChangeText={(text) => {
+                        setSizes((prev) => ({ ...prev, [key]: digitsOnly(text) }));
+                        setJustSavedSizes(false);
+                      }}
+                      onFocus={focusNumericField}
+                      onBlur={() => setNumericFocused(false)}
+                      placeholder="—"
+                      placeholderTextColor={colors.inkFaint}
+                      keyboardType="number-pad"
+                      maxLength={4}
+                    />
+                  </View>
+                ))}
+              </View>
+              <Pressable
+                style={[
+                  styles.saveSizesButton,
+                  (!sizesChanged || isSavingSizes) && styles.saveSizesButtonDisabled,
+                  sizesChanged && !isOnline && OFFLINE_DIM,
+                ]}
+                onPress={handleSaveSizesPress}
+                disabled={!sizesChanged || isSavingSizes}
+              >
+                <Text style={[styles.saveSizesButtonText, !sizesChanged && styles.roleButtonTextDisabled]}>
+                  {isSavingSizes ? 'Saving…' : 'Save sizes'}
+                </Text>
+              </Pressable>
+              {justSavedSizes && !sizesChanged && <Text style={styles.savedSizesText}>Sizes saved.</Text>}
+            </View>
+          )}
 
           {isRealAccount && (
             <View style={[styles.card, styles.flagsCard]}>
@@ -196,8 +328,26 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           {isSelf && (
             <Text style={styles.roleButtonHint}>You can't change your own role.</Text>
           )}
+
+          {canArchive && (
+            <Pressable
+              style={[styles.archiveButton, (!isOnline || isArchiving) && OFFLINE_DIM]}
+              onPress={handleArchivePress}
+              disabled={isArchiving}
+            >
+              <Text style={styles.archiveButtonText}>{isArchiving ? 'Archiving…' : 'Archive member'}</Text>
+            </Pressable>
+          )}
+          {isRealAccount && !isSelf && isStaff && (
+            <Text style={styles.roleButtonHint}>Demote staff to Member before archiving.</Text>
+          )}
         </ScrollView>
+        <View onLayout={registerBottomInset}>
+          <KeyboardDoneBar visible={numericFocused} />
+        </View>
+        </View>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -299,6 +449,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   markGoodButtonText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink },
+  sizesCard: { marginTop: 12 },
+  sizesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  sizeField: { width: '47%' },
+  sizeLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 5 },
+  sizeInput: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  saveSizesButton: {
+    borderWidth: 1,
+    borderColor: colors.ink,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  saveSizesButtonDisabled: { borderColor: colors.line },
+  saveSizesButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  savedSizesText: {
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    color: colors.inkSoft,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  archiveButton: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.rust,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  archiveButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.rust },
   roleButton: {
     width: '100%',
     backgroundColor: colors.ink,

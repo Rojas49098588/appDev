@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, type FocusEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -21,6 +21,9 @@ import { BackChevronIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
 import { useAuth } from '../context/AuthContext';
 import { useScrollToInput } from '../hooks/useScrollToInput';
+import KeyboardDoneBar from '../components/KeyboardDoneBar';
+import type { UniformSizes } from '../lib/models';
+import { digitsOnly, matchesUniformSize, UNIFORM_PIECES } from '../lib/uniform';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Sections'>,
@@ -44,6 +47,7 @@ type RosterMember = {
   height?: { feet: string; inches: string };
   weight?: string;
   role?: Role;
+  uniformSizes?: UniformSizes;
 };
 
 export default function SectionsScreen({ navigation, route }: Props) {
@@ -52,7 +56,12 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const [statusFilters, setStatusFilters] = useState<Set<StatusKey>>(new Set());
   const { flags } = useFlags();
   const { accounts } = useAuth();
-  const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
+  // Uniform size filter: active once a piece is picked and a size typed.
+  const [sizePiece, setSizePiece] = useState<string | null>(null);
+  const [sizeQuery, setSizeQuery] = useState('');
+  const isSizeFiltering = !!sizePiece && sizeQuery !== '';
+  const [numericFocused, setNumericFocused] = useState(false);
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
 
   const filterPiece = route.params?.piece;
   const filterStatus = route.params?.status;
@@ -61,16 +70,21 @@ export default function SectionsScreen({ navigation, route }: Props) {
   useEffect(() => {
     setSearchText('');
     setStatusFilters(new Set());
+    setSizePiece(null);
+    setSizeQuery('');
     setSectionFilter(route.params?.section ?? null);
   }, [route.params?.section]);
 
   const roster = useMemo<RosterMember[]>(() => {
+    // Archived accounts still claim their roster name, so it doesn't
+    // reappear as a not-signed-up row; both are then left out.
     const matchedEmails = new Set<string>();
-    const fromRoster = MEMBERS.map((member) => {
+    const fromRoster = MEMBERS.flatMap((member) => {
       const match = accounts.find(
         (a) => `${a.firstName} ${a.lastName}`.trim().toLowerCase() === member.name.toLowerCase()
       );
       if (match) matchedEmails.add(match.email.toLowerCase());
+      if (match?.archivedAt) return [];
       return {
         id: match?.id,
         name: member.name,
@@ -80,11 +94,12 @@ export default function SectionsScreen({ navigation, route }: Props) {
         height: match?.height,
         weight: match?.weight,
         role: match?.role,
+        uniformSizes: match?.uniformSizes,
       };
     });
 
     const newSignUps = accounts
-      .filter((a) => !matchedEmails.has(a.email.toLowerCase()))
+      .filter((a) => !matchedEmails.has(a.email.toLowerCase()) && !a.archivedAt)
       .map((a) => ({
         id: a.id,
         name: `${a.firstName} ${a.lastName}`,
@@ -94,6 +109,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
         height: a.height,
         weight: a.weight,
         role: a.role,
+        uniformSizes: a.uniformSizes,
       }));
 
     return [...fromRoster, ...newSignUps];
@@ -107,7 +123,14 @@ export default function SectionsScreen({ navigation, route }: Props) {
     if (text.trim() !== '') {
       setSectionFilter(null);
       setStatusFilters(new Set());
+      setSizePiece(null);
+      setSizeQuery('');
     }
+  };
+
+  const focusSizeInput = (event: FocusEvent) => {
+    scrollToFocusedInput(event);
+    setNumericFocused(true);
   };
 
   const toggleStatus = (key: StatusKey) => {
@@ -158,6 +181,8 @@ export default function SectionsScreen({ navigation, route }: Props) {
       const matchesSection = !sectionFilter || member.section === sectionFilter;
       if (!matchesSection) return false;
 
+      if (isSizeFiltering && !matchesUniformSize(member.uniformSizes, sizePiece, sizeQuery)) return false;
+
       if (statusFilters.size === 0) return true;
       const memberFlags = flagsFor(member);
       return (
@@ -166,7 +191,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
         (statusFilters.has('dirty') && memberFlags.some((f) => f.status === 'dirty'))
       );
     });
-  }, [roster, isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters, flags]);
+  }, [roster, isFiltered, filterPiece, filterStatus, searchText, sectionFilter, statusFilters, isSizeFiltering, sizePiece, sizeQuery, flags]);
 
   const resultLabel = useMemo(() => {
     const count = filteredMembers.length;
@@ -184,8 +209,9 @@ export default function SectionsScreen({ navigation, route }: Props) {
           .join('/')
       );
     }
+    if (isSizeFiltering) parts.push(`${sizePiece} ${sizeQuery}`);
     return parts.length > 0 ? `${count} ${noun} — ${parts.join(' · ')}` : `${count} ${noun}`;
-  }, [filteredMembers.length, isFiltered, filterPiece, filterStatus, sectionFilter, statusFilters]);
+  }, [filteredMembers.length, isFiltered, filterPiece, filterStatus, sectionFilter, statusFilters, isSizeFiltering, sizePiece, sizeQuery]);
 
   const bannerColor = filterStatus === 'repair' ? colors.rust : colors.wash;
   const bannerTint = filterStatus === 'repair' ? colors.rustTint : colors.washTint;
@@ -194,7 +220,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.appBody}>
         <TapeGutter />
-
+        <View style={styles.flexOne}>
         <ScrollView
           ref={scrollRef}
           style={styles.flexOne}
@@ -321,6 +347,53 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   })}
                 </ScrollView>
               </View>
+
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterGroupLabel}>Uniform size</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipsContent}
+                >
+                  {UNIFORM_PIECES.map(({ piece }) => {
+                    const active = sizePiece === piece;
+                    return (
+                      <Pressable
+                        key={piece}
+                        style={[styles.chip, active && styles.chipActive]}
+                        onPress={() => setSizePiece(active ? null : piece)}
+                      >
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{piece}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+                <View style={styles.sizeRow}>
+                  <TextInput
+                    style={[styles.sizeInput, !sizePiece && styles.sizeInputDisabled]}
+                    placeholder={sizePiece ? `${sizePiece} size, e.g. 208` : 'Pick a piece, then enter a size'}
+                    placeholderTextColor={colors.inkFaint}
+                    value={sizeQuery}
+                    onChangeText={(text) => setSizeQuery(digitsOnly(text))}
+                    onFocus={focusSizeInput}
+                    onBlur={() => setNumericFocused(false)}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    editable={!!sizePiece}
+                  />
+                  {(sizePiece || sizeQuery !== '') && (
+                    <Pressable
+                      style={styles.sizeClear}
+                      onPress={() => {
+                        setSizePiece(null);
+                        setSizeQuery('');
+                      }}
+                    >
+                      <Text style={styles.sizeClearText}>Clear</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
             </>
           )}
 
@@ -342,6 +415,10 @@ export default function SectionsScreen({ navigation, route }: Props) {
             );
           })}
         </ScrollView>
+        <View onLayout={registerBottomInset}>
+          <KeyboardDoneBar visible={numericFocused} />
+        </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -403,6 +480,35 @@ const styles = StyleSheet.create({
   },
   filterGroup: {
     marginBottom: 10,
+  },
+  sizeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 7,
+  },
+  sizeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  sizeInputDisabled: {
+    opacity: 0.6,
+  },
+  sizeClear: {
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+  },
+  sizeClearText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.inkSoft,
   },
   filterGroupLabel: {
     fontFamily: fonts.body,

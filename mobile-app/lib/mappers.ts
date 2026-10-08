@@ -1,8 +1,9 @@
-import type { Account, Combo, Flag, Game } from './models.ts';
-import type { ComboRow, FlagRow, GameRow, ProfileRow } from './rows.ts';
+import type { Account, Combo, Flag, Game, MemberArchive, UniformSizes } from './models.ts';
+import type { ArchiveSnapshot, ComboRow, FlagRow, GameRow, MemberArchiveRow, ProfileRow } from './rows.ts';
 import { formatGameDate, formatShortDate } from './format.ts';
 
-export type AccountUpdates = Partial<Omit<Account, 'id' | 'role'>>;
+// Sizes and archive state only change through staff-only database functions.
+export type AccountUpdates = Partial<Omit<Account, 'id' | 'role' | 'uniformSizes' | 'archivedAt'>>;
 
 export type ProfileUpdate = Partial<
   Pick<
@@ -10,6 +11,15 @@ export type ProfileUpdate = Partial<
     'first_name' | 'last_name' | 'instrument' | 'phone' | 'shoe_gender' | 'shoe_size' | 'height_feet' | 'height_inches' | 'weight'
   >
 >;
+
+function rowToUniformSizes(row: Pick<ProfileRow, 'coat_size' | 'vest_size' | 'bibber_size' | 'pant_size'>): UniformSizes {
+  return {
+    coats: row.coat_size ?? '',
+    vests: row.vest_size ?? '',
+    bibbers: row.bibber_size ?? '',
+    pants: row.pant_size ?? '',
+  };
+}
 
 export function profileToAccount(row: ProfileRow): Account {
   return {
@@ -23,6 +33,30 @@ export function profileToAccount(row: ProfileRow): Account {
     shoeSize: { gender: row.shoe_gender ?? "Men's", size: row.shoe_size },
     height: { feet: row.height_feet, inches: row.height_inches },
     weight: row.weight,
+    uniformSizes: rowToUniformSizes(row),
+    archivedAt: row.archived_at ?? null,
+  };
+}
+
+export function rowToArchive(row: MemberArchiveRow): MemberArchive {
+  const s: ArchiveSnapshot = row.snapshot;
+  return {
+    id: row.id,
+    memberId: row.member_id,
+    archivedAt: row.archived_at,
+    archivedByName: row.archived_by_name,
+    restoredAt: row.restored_at,
+    restoredByName: row.restored_by_name,
+    firstName: s.first_name,
+    lastName: s.last_name,
+    email: s.email,
+    instrument: s.instrument,
+    phone: s.phone,
+    shoeSize: { gender: s.shoe_gender ?? "Men's", size: s.shoe_size },
+    height: { feet: s.height_feet, inches: s.height_inches },
+    weight: s.weight,
+    uniformSizes: rowToUniformSizes(s),
+    flags: (s.flags ?? []).map(({ piece, color, size, status, comment }) => ({ piece, color, size, status, comment })),
   };
 }
 

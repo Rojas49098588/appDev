@@ -2,6 +2,9 @@ import type { HeightValue, Role } from '../navigation/types';
 
 export type ShoeSize = { gender: "Men's" | "Women's"; size: string };
 
+// One size per piece, the same across colors. '' means not assigned yet.
+export type UniformSizes = { coats: string; vests: string; bibbers: string; pants: string };
+
 export type Account = {
   id: string;
   email: string;
@@ -13,6 +16,9 @@ export type Account = {
   shoeSize: ShoeSize;
   height: HeightValue;
   weight: string;
+  uniformSizes: UniformSizes;
+  // ISO timestamp; null while the account is active.
+  archivedAt: string | null;
 };
 
 export type FlagStatus = 'dirty' | 'repair';
@@ -49,4 +55,26 @@ export type Game = {
   afterGameInstructions: string;
   instructionsPostedBy: string;
   instructionsUpdatedAt: string;
+};
+
+export type ArchivedFlag = Pick<Flag, 'piece' | 'color' | 'size' | 'status' | 'comment'>;
+
+// A frozen copy of a member's info, taken when staff archived them.
+export type MemberArchive = {
+  id: string;
+  memberId: string;
+  archivedAt: string;
+  archivedByName: string;
+  restoredAt: string | null;
+  restoredByName: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  instrument: string;
+  phone: string;
+  shoeSize: ShoeSize;
+  height: HeightValue;
+  weight: string;
+  uniformSizes: UniformSizes;
+  flags: ArchivedFlag[];
 };

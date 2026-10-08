@@ -487,3 +487,149 @@ describe('staff permissions', () => {
     }
   });
 });
+
+describe('uniform sizes', () => {
+  const sizeColumns = 'coat_size, vest_size, bibber_size, pant_size';
+  const blank = { coat_size: '', vest_size: '', bibber_size: '', pant_size: '' };
+
+  // Service-role updates bypass the size guard (auth.uid() is null).
+  async function resetSizes(id: string) {
+    await admin.from('profiles').update(blank).eq('id', id);
+  }
+
+  test('a member cannot change their own sizes directly', async () => {
+    try {
+      const { error } = await asMember.from('profiles').update({ coat_size: '208' }).eq('id', member.id);
+      assert.notEqual(error, null);
+      const { data } = await admin.from('profiles').select(sizeColumns).eq('id', member.id).single();
+      assert.deepEqual(data, blank);
+    } finally {
+      await resetSizes(member.id);
+    }
+  });
+
+  test('a member cannot call set_uniform_sizes', async () => {
+    try {
+      const self = await asMember.rpc('set_uniform_sizes', { target: member.id, coat: '208', vest: '', bibber: '', pant: '' });
+      assert.notEqual(self.error, null);
+      const other = await asMember.rpc('set_uniform_sizes', { target: otherMember.id, coat: '208', vest: '', bibber: '', pant: '' });
+      assert.notEqual(other.error, null);
+      const { data } = await admin.from('profiles').select('id, coat_size').in('id', [member.id, otherMember.id]);
+      assert.ok(data!.every((row) => row.coat_size === ''));
+    } finally {
+      await resetSizes(member.id);
+      await resetSizes(otherMember.id);
+    }
+  });
+
+  test("staff can set a member's sizes, trimmed", async () => {
+    try {
+      const { error } = await asStaff.rpc('set_uniform_sizes', { target: member.id, coat: ' 208 ', vest: '', bibber: '212', pant: '208' });
+      assert.equal(error, null);
+      const { data } = await admin.from('profiles').select(sizeColumns).eq('id', member.id).single();
+      assert.deepEqual(data, { coat_size: '208', vest_size: '', bibber_size: '212', pant_size: '208' });
+    } finally {
+      await resetSizes(member.id);
+    }
+  });
+
+  test('staff cannot set a non-numeric size', async () => {
+    const { error } = await asStaff.rpc('set_uniform_sizes', { target: member.id, coat: '20B', vest: '', bibber: '', pant: '' });
+    assert.notEqual(error, null);
+    const { data } = await admin.from('profiles').select('coat_size').eq('id', member.id).single();
+    assert.equal(data?.coat_size, '');
+  });
+});
+
+describe('archiving members', () => {
+  test('members cannot archive, restore, or read or write snapshots', async () => {
+    const archive = await asMember.rpc('archive_member', { target: otherMember.id });
+    assert.notEqual(archive.error, null);
+    const restore = await asMember.rpc('restore_member', { target: otherMember.id });
+    assert.notEqual(restore.error, null);
+    const { data: rows } = await asMember.from('member_archives').select('id');
+    assert.equal(rows?.length ?? 0, 0);
+    const insert = await asMember.from('member_archives').insert({ member_id: member.id, snapshot: {} });
+    assert.notEqual(insert.error, null);
+    const { data: profile } = await admin.from('profiles').select('archived_at').eq('id', otherMember.id).single();
+    assert.equal(profile?.archived_at, null);
+  });
+
+  test('a member cannot set archived_at on their own profile', async () => {
+    const { error } = await asMember.from('profiles').update({ archived_at: new Date().toISOString() }).eq('id', member.id);
+    assert.notEqual(error, null);
+    const { data } = await admin.from('profiles').select('archived_at').eq('id', member.id).single();
+    assert.equal(data?.archived_at, null);
+  });
+
+  test('staff cannot archive themselves or another staff account', async () => {
+    const self = await asStaff.rpc('archive_member', { target: staff.id });
+    assert.notEqual(self.error, null);
+    const otherStaff = await createUser('staff2');
+    await admin.from('profiles').update({ role: 'Staff' }).eq('id', otherStaff.id);
+    const other = await asStaff.rpc('archive_member', { target: otherStaff.id });
+    assert.notEqual(other.error, null);
+    const { data } = await admin.from('profiles').select('archived_at').in('id', [staff.id, otherStaff.id]);
+    assert.ok(data!.every((row) => row.archived_at === null));
+  });
+
+  test('archiving snapshots the member, clears flags and sizes, and blocks login; restore lets them back in', async () => {
+    const leaver = await createUser('leaver');
+    await admin.from('profiles').update({ coat_size: '208', pant_size: '216', phone: '2145550199' }).eq('id', leaver.id);
+    await admin.from('flags').insert({ member_id: leaver.id, piece: 'Coats', color: 'Blue', size: '208', status: 'repair', comment: 'torn' });
+    const asLeaver = await signIn(leaver.email);
+
+    const archive = await asStaff.rpc('archive_member', { target: leaver.id });
+    assert.equal(archive.error, null);
+
+    const { data: profile } = await admin
+      .from('profiles').select('coat_size, vest_size, bibber_size, pant_size, archived_at').eq('id', leaver.id).single();
+    assert.deepEqual(
+      { ...profile, archived_at: profile?.archived_at !== null },
+      { coat_size: '', vest_size: '', bibber_size: '', pant_size: '', archived_at: true }
+    );
+    const { data: flags } = await admin.from('flags').select('id').eq('member_id', leaver.id);
+    assert.equal(flags?.length, 0);
+
+    const { data: snapshots } = await asStaff.from('member_archives').select('*').eq('member_id', leaver.id);
+    assert.equal(snapshots?.length, 1);
+    const snap = snapshots![0];
+    assert.equal(snap.archived_by_name, 'staff Test');
+    assert.equal(snap.restored_at, null);
+    assert.equal(snap.snapshot.coat_size, '208');
+    assert.equal(snap.snapshot.pant_size, '216');
+    assert.equal(snap.snapshot.phone, '2145550199');
+    assert.deepEqual(snap.snapshot.flags, [{ piece: 'Coats', color: 'Blue', size: '208', status: 'repair', comment: 'torn' }]);
+
+    // Password sign-in is refused.
+    const blocked = createClient(url, anonKey, clientOptions);
+    const { error: signInError } = await blocked.auth.signInWithPassword({ email: leaver.email, password: PASSWORD });
+    assert.notEqual(signInError, null);
+    assert.match(signInError!.message, /banned/i);
+
+    // An access token issued before archiving can't write anything.
+    const flagInsert = await asLeaver.from('flags').insert({ member_id: leaver.id, piece: 'Pants', color: 'Blue', size: '216', status: 'dirty' });
+    assert.notEqual(flagInsert.error, null);
+    const phoneUpdate = await asLeaver.from('profiles').update({ phone: '0000000000' }).eq('id', leaver.id).select('id');
+    assert.equal(phoneUpdate.data?.length ?? 0, 0);
+    const { data: phoneRow } = await admin.from('profiles').select('phone').eq('id', leaver.id).single();
+    assert.equal(phoneRow?.phone, '2145550199');
+
+    // Archiving twice is refused.
+    const again = await asStaff.rpc('archive_member', { target: leaver.id });
+    assert.notEqual(again.error, null);
+
+    const restore = await asStaff.rpc('restore_member', { target: leaver.id });
+    assert.equal(restore.error, null);
+    const { data: restored } = await admin.from('profiles').select('archived_at, coat_size').eq('id', leaver.id).single();
+    assert.deepEqual(restored, { archived_at: null, coat_size: '' });
+    const { data: stamped } = await admin.from('member_archives').select('restored_at, restored_by_name').eq('member_id', leaver.id).single();
+    assert.notEqual(stamped?.restored_at, null);
+    assert.equal(stamped?.restored_by_name, 'staff Test');
+    await signIn(leaver.email);
+
+    // Restoring someone who isn't archived is refused.
+    const restoreAgain = await asStaff.rpc('restore_member', { target: leaver.id });
+    assert.notEqual(restoreAgain.error, null);
+  });
+});

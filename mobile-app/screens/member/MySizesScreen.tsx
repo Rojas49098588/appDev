@@ -2,21 +2,19 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
-import { MY_UNIFORM, MY_WHITE_SHIRT } from '../../constants/myUniformData';
+import { MY_WHITE_SHIRT, NO_SIZE, uniformFor } from '../../constants/myUniformData';
 import { useAuth } from '../../context/AuthContext';
 import TapeGutter from '../../components/TapeGutter';
-
-const UNIFORM_CELLS = MY_UNIFORM.map((slot) => ({
-  label: slot.piece,
-  value: `${slot.variants.map((v) => v.color).join(', ')} · ${slot.size}`,
-}));
 
 export default function MySizesScreen() {
   const { account } = useAuth();
   const shoeSize = account?.shoeSize;
 
   const cells = [
-    ...UNIFORM_CELLS,
+    ...uniformFor(account?.uniformSizes).map((slot) => ({
+      label: slot.piece,
+      value: `${slot.variants.map((v) => v.color).join(', ')} · ${slot.size || NO_SIZE}`,
+    })),
     {
       label: 'Shoe size',
       value: shoeSize ? `${shoeSize.gender} · ${shoeSize.size || '—'}` : '—',

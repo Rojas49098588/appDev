@@ -32,6 +32,8 @@ export type RootStackParamList = {
   FlagItem: { piece: string; color: string; size: string };
   AddCombo: undefined;
   ComboDetail: { comboId: string };
+  ArchivedMembers: undefined;
+  ArchivedMember: { archiveId: string };
 };
 
 export type MainTabParamList = {

@@ -9,13 +9,16 @@ const isOptionalString = (v: unknown) => v === undefined || typeof v === 'string
 
 export function isAccount(v: unknown): v is Account {
   if (!isObject(v)) return false;
-  const { shoeSize, height } = v;
+  const { shoeSize, height, uniformSizes } = v;
   return (
     isString(v.id) && isString(v.email) && isString(v.firstName) && isString(v.lastName) &&
     isString(v.instrument) && (v.role === 'Member' || v.role === 'Staff') && isString(v.phone) &&
     isString(v.weight) &&
     isObject(shoeSize) && (shoeSize.gender === "Men's" || shoeSize.gender === "Women's") && isString(shoeSize.size) &&
-    isObject(height) && isString(height.feet) && isString(height.inches)
+    isObject(height) && isString(height.feet) && isString(height.inches) &&
+    isObject(uniformSizes) && isString(uniformSizes.coats) && isString(uniformSizes.vests) &&
+    isString(uniformSizes.bibbers) && isString(uniformSizes.pants) &&
+    isStringOrNull(v.archivedAt)
   );
 }
 
