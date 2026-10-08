@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Open bugs reminder
+
+At the start of every session, read `bugs.md` and remind the user about each bug under **Open**. Call out any bug whose `Opened` date is more than 3 days before today as overdue, with how many days old it is. When a bug is fixed, move it to **Fixed** with the date and commit.
+
 ## Repository state
 
 The repository root contains standalone scratch files with no build system connecting them:
@@ -33,6 +37,8 @@ Entry point is `index.ts` → `App.tsx`. Config (app name, icons, platform-speci
 - Secrets (service-role key, DB URL) live in `mobile-app/supabase/.env.local`; the app's config (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`) lives in `mobile-app/.env.local`. Both are git-ignored; templates are the matching `.env.example` files. Never put the service-role key in app code.
 - Commands (from `mobile-app/`): `npm test` (pure `lib/` unit tests), `npm run test:rls` (security rules, live project), `npm run db:apply` (schema + seed).
 - Email change is read-only in the app until custom SMTP is set up.
+- Uniform sizes (Coats/Vests/Bibbers/Pants) live on `profiles` and change only through the staff-only `set_uniform_sizes()` function; `guard_profile_update` blocks direct edits. `lib/uniform.ts` has the piece list and the size-match helper used by the Members tab filter.
+- Archiving: staff call `archive_member()` (snapshot into `member_archives`, clear flags and sizes, set `archived_at`, ban the auth user for 100 years and delete their sessions) and `restore_member()`. Use a real date for `banned_until`, never `'infinity'`, because Supabase Auth can't parse it. Archived accounts are hidden from the Members tab, and an archived user who is still signed in is signed out by `AuthContext`. Snapshots are viewed on `ArchivedMembersScreen` / `ArchivedMemberScreen` (linked from staff Home).
 - Setup steps for a new Supabase project are in `HANDOFF.md` → Supabase setup.
 
 ### Combos and the Catalogue
