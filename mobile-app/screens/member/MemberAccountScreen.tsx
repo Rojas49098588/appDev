@@ -27,6 +27,7 @@ import TapeGutter from '../../components/TapeGutter';
 import KeyboardDoneBar from '../../components/KeyboardDoneBar';
 import ChangePasswordSection from '../../components/ChangePasswordSection';
 import { BackChevronIcon } from '../../components/icons';
+import { successBuzz } from '../../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberAccount'>;
 
@@ -100,6 +101,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
           height: { feet: heightFeet, inches: heightInches },
           weight,
         });
+        successBuzz();
       } catch (error) {
         Alert.alert("Couldn't save changes", friendlyError(error));
         return;

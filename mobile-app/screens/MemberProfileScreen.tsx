@@ -26,6 +26,7 @@ import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import { BackChevronIcon } from '../components/icons';
+import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberProfile'>;
 
@@ -89,6 +90,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     setIsSavingSizes(true);
     try {
       await setUniformSizes(id, sizes);
+      successBuzz();
       setJustSavedSizes(true);
     } catch (error) {
       Alert.alert("Couldn't save sizes", friendlyError(error));
@@ -114,6 +116,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
             setIsArchiving(true);
             try {
               await archiveMember(id);
+              successBuzz();
               navigation.goBack();
             } catch (error) {
               Alert.alert("Couldn't archive member", friendlyError(error));
@@ -141,6 +144,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
             if (!id) return;
             try {
               await setAccountRole(id, nextRole);
+              successBuzz();
               setRole(nextRole);
             } catch (error) {
               Alert.alert("Couldn't change role", friendlyError(error));
@@ -166,6 +170,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
             setClearingId(flag.id);
             try {
               await clearFlag(flag.id);
+              successBuzz();
             } catch (error) {
               Alert.alert("Couldn't update flag", friendlyError(error));
             } finally {

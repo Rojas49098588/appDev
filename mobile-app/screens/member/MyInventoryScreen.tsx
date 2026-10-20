@@ -17,6 +17,7 @@ import TapeGutter from '../../components/TapeGutter';
 import Swatch from '../../components/Swatch';
 import FlagSheet, { STATUS_LABELS, type FlagTarget } from '../../components/FlagSheet';
 import { CheckIcon, FlagIcon } from '../../components/icons';
+import { successBuzz } from '../../lib/haptics';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MemberTabParamList, 'Inventory'>,
@@ -111,6 +112,7 @@ export default function MyInventoryScreen(_props: Props) {
       Alert.alert("Couldn't save flag", friendlyError(error));
       return;
     }
+    successBuzz();
     setActiveKey(null);
     setHighlight((current) => ({ key: rowKey(row), n: (current?.n ?? 0) + 1 }));
     setToast({
@@ -128,6 +130,7 @@ export default function MyInventoryScreen(_props: Props) {
     setHighlight(null);
     try {
       await restore();
+      successBuzz();
     } catch (error) {
       Alert.alert("Couldn't undo", friendlyError(error));
     }

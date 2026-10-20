@@ -10,6 +10,7 @@ import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
+import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ComboDetail'>;
 
@@ -64,6 +65,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
         onPress: async () => {
           try {
             await deleteCombo(combo.id);
+            successBuzz();
             navigation.goBack();
           } catch (error) {
             Alert.alert("Couldn't delete combo", friendlyError(error));
@@ -77,6 +79,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
     if (!requireOnline(isOnline)) return;
     try {
       await setCombo(slot, combo.id);
+      successBuzz();
     } catch (error) {
       Alert.alert("Couldn't update game day", friendlyError(error));
     }

@@ -24,6 +24,7 @@ import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
+import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddCombo'>;
 
@@ -102,6 +103,7 @@ export default function AddComboScreen({ navigation }: Props) {
       }).filter((component): component is string => component !== null);
 
       await addCombo({ label: label.trim(), sub: sub.trim(), components, localImageUri: imageUri });
+      successBuzz();
       navigation.goBack();
     } catch (error) {
       Alert.alert("Couldn't save combo", friendlyError(error));

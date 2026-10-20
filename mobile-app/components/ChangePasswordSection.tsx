@@ -6,6 +6,7 @@ import { isValidPassword } from '../constants/validation';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
+import { successBuzz } from '../lib/haptics';
 
 export default function ChangePasswordSection({
   onFocusField,
@@ -60,6 +61,7 @@ export default function ChangePasswordSection({
       return;
     }
 
+    successBuzz();
     reset();
     setIsOpen(false);
     Alert.alert('Password updated', 'Your password has been changed successfully.');

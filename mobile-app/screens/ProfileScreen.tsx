@@ -27,6 +27,7 @@ import TapeGutter from '../components/TapeGutter';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import ChangePasswordSection from '../components/ChangePasswordSection';
 import { BackChevronIcon } from '../components/icons';
+import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -100,6 +101,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
           height: { feet: profile.heightFeet, inches: profile.heightInches },
           weight: profile.weight,
         });
+        successBuzz();
       } catch (error) {
         Alert.alert("Couldn't save changes", friendlyError(error));
         return;

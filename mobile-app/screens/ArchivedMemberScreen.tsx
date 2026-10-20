@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
+import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ArchivedMember'>;
 
@@ -72,6 +73,7 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
             setIsRestoring(true);
             try {
               await restoreMember(archive.memberId);
+              successBuzz();
               navigation.goBack();
             } catch (restoreError) {
               Alert.alert("Couldn't restore member", friendlyError(restoreError));
