@@ -10,4 +10,15 @@ export const colors = {
   rustTint: '#F1E1DA',
   wash: '#3F6E82',
   washTint: '#DDE6E7',
+  // Added for the My Inventory redesign (Interactive Mobile Prototype).
+  white: '#FFFFFF',
+  good: '#397257',
+  amber: '#A36618',
+  amberTint: '#FFF5DF',
+  teal: '#2E7A78',
+  tealDark: '#245F5D',
+  tealTint: '#EDF8F6',
+  backdrop: 'rgba(30, 35, 40, 0.45)',
+  toast: '#20282C',
+  mint: '#9FE2C3',
 };
