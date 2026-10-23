@@ -645,6 +645,8 @@ describe('archiving members', () => {
 });
 
 describe('flag history', () => {
+  // A size no real inventory has, so clear_flag never touches a real member's flag.
+  const TSIZE = 'T-' + RUN;
   async function adminFlag(memberId: string, piece: string, color: string, size: string) {
     const { data, error } = await admin
       .from('flags')
@@ -660,7 +662,7 @@ describe('flag history', () => {
   }
 
   test('staff clear_flag keeps the row with who/when; re-flagging after a clear creates a new open flag and keeps the cleared one', async () => {
-    const args = { p_piece: 'Vests', p_color: 'Candy', p_size: '144', p_status: 'dirty', p_comment: '', p_photo_path: null };
+    const args = { p_piece: 'Vests', p_color: 'Candy', p_size: TSIZE, p_status: 'dirty', p_comment: '', p_photo_path: null };
     const first = await asMember.rpc('submit_flag', args);
     assert.equal(first.error, null);
     const clear = await asStaff.rpc('clear_flag', { p_id: first.data.id });
@@ -679,8 +681,8 @@ describe('flag history', () => {
   });
 
   test('clear_flag clears every open flag on the same piece/color/size, but not Unassigned ones', async () => {
-    const m1 = await adminFlag(member.id, 'Coats', 'Red', '300');
-    const m2 = await adminFlag(otherMember.id, 'Coats', 'Red', '300');
+    const m1 = await adminFlag(member.id, 'Coats', 'Red', TSIZE);
+    const m2 = await adminFlag(otherMember.id, 'Coats', 'Red', TSIZE);
     const u1 = await adminFlag(member.id, 'Coats', 'Purple', 'Unassigned');
     const u2 = await adminFlag(otherMember.id, 'Coats', 'Purple', 'Unassigned');
 
@@ -696,7 +698,7 @@ describe('flag history', () => {
   });
 
   test('member cannot clear a flag or set staff_note', async () => {
-    const id = await adminFlag(member.id, 'Bibbers', 'Blue', '10');
+    const id = await adminFlag(member.id, 'Bibbers', 'Blue', TSIZE);
     const clear = await asMember.rpc('clear_flag', { p_id: id });
     assert.equal(clear.error?.code, '42501');
     assert.equal((await row(id)).cleared_at, null);
@@ -711,7 +713,7 @@ describe('flag history', () => {
   });
 
   test('member cannot edit a cleared flag', async () => {
-    const id = await adminFlag(member.id, 'Pants', 'Red', '220');
+    const id = await adminFlag(member.id, 'Pants', 'Red', TSIZE);
     const clear = await asStaff.rpc('clear_flag', { p_id: id });
     assert.equal(clear.error, null);
     const upd = await asMember.from('flags').update({ comment: 'sneaky' }).eq('id', id).select('id');
@@ -720,7 +722,7 @@ describe('flag history', () => {
   });
 
   test('staff can edit color, status, comment and staff_note but not cleared_at directly', async () => {
-    const id = await adminFlag(member.id, 'Pants', 'Blue', '222');
+    const id = await adminFlag(member.id, 'Pants', 'Blue', TSIZE);
     const upd = await asStaff
       .from('flags')
       .update({ color: 'Red', status: 'dirty', comment: 'c', staff_note: 'n' })
@@ -734,5 +736,27 @@ describe('flag history', () => {
     const cl = await asStaff.from('flags').update({ cleared_at: new Date().toISOString() }).eq('id', id).select('id');
     assert.notEqual(cl.error, null);
     assert.equal((await row(id)).cleared_at, null);
+  });
+});
+
+describe('flag insert forgery', () => {
+  test('a member inserting a flag cannot forge member_name, source, staff_note, cleared_by or created_at', async () => {
+    const { data, error } = await asMember
+      .from('flags')
+      .insert({
+        member_id: member.id, piece: 'Shakos', color: 'Forge', size: 'T-' + RUN, status: 'dirty',
+        member_name: 'Someone Else', source: 'import', staff_note: 'x',
+        cleared_by: staff.id, cleared_by_name: 'staff Test', created_at: '2001-01-01T00:00:00Z',
+      })
+      .select('*')
+      .single();
+    assert.equal(error, null);
+    assert.equal(data!.member_name, 'member Test');
+    assert.equal(data!.source, 'member');
+    assert.equal(data!.staff_note, '');
+    assert.equal(data!.cleared_by, null);
+    assert.equal(data!.cleared_by_name, null);
+    assert.equal(data!.cleared_at, null);
+    assert.ok(new Date(data!.created_at).getFullYear() >= 2026);
   });
 });

@@ -489,6 +489,18 @@ drop policy if exists flags_delete_staff on public.flags;
 create or replace function public.flags_fill_member_name() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
+  -- Signed-in users (RLS inserts) cannot forge history fields; the service
+  -- role and dashboard (auth.uid() is null) can, for imports and tests.
+  if auth.uid() is not null then
+    new.member_name := '';
+    new.source := 'member';
+    new.cleared_by := null;
+    new.cleared_by_name := null;
+    new.created_at := now();
+    if not public.is_staff() then
+      new.staff_note := '';
+    end if;
+  end if;
   if new.member_name = '' and new.member_id is not null then
     select btrim(first_name || ' ' || last_name) into new.member_name
       from public.profiles where id = new.member_id;
