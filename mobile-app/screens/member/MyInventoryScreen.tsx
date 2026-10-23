@@ -11,6 +11,7 @@ import { MY_WHITE_SHIRT, UNASSIGNED_SIZE, uniformFor } from '../../constants/myU
 import { useFlags } from '../../context/FlagsContext';
 import type { Flag, FlagStatus } from '../../constants/flagsData';
 import { useAuth } from '../../context/AuthContext';
+import type { PhotoChange } from '../../lib/flagHistory';
 import { friendlyError } from '../../lib/errors';
 import { requireOnline, useConnection } from '../../hooks/useConnection';
 import TapeGutter from '../../components/TapeGutter';
@@ -98,7 +99,7 @@ export default function MyInventoryScreen(_props: Props) {
     setActiveKey(rowKey(row));
   };
 
-  const submitFlag = async (status: FlagStatus, comment: string) => {
+  const submitFlag = async (status: FlagStatus, comment: string, photo: PhotoChange) => {
     if (!activeRow || !requireOnline(isOnline)) return;
     const row = activeRow;
     const previous = row.flag;
@@ -109,7 +110,7 @@ export default function MyInventoryScreen(_props: Props) {
         size: previous?.size ?? (row.size || UNASSIGNED_SIZE),
         status,
         comment,
-        photo: { kind: 'keep' },
+        photo,
       });
     } catch (error) {
       Alert.alert("Couldn't save flag", friendlyError(error));
