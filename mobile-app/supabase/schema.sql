@@ -70,6 +70,43 @@ create table if not exists public.flags (
   unique (member_id, piece, color)
 );
 
+-- Flags are kept as history: clearing a flag stamps cleared_*, never deletes.
+alter table public.flags add column if not exists photo_path text;
+alter table public.flags add column if not exists member_name text not null default '';
+alter table public.flags add column if not exists staff_note text not null default '';
+alter table public.flags add column if not exists source text not null default 'member';
+alter table public.flags add column if not exists cleared_at timestamptz;
+alter table public.flags add column if not exists cleared_by uuid references public.profiles(id) on delete set null;
+alter table public.flags add column if not exists cleared_by_name text;
+
+do $$
+declare c record;
+begin
+  if not exists (select 1 from pg_constraint where conname = 'flags_source_check' and conrelid = 'public.flags'::regclass) then
+    alter table public.flags add constraint flags_source_check check (source in ('member', 'import'));
+  end if;
+  -- Replace the old one-flag-per-piece unique constraint with a partial index (open flags only).
+  for c in
+    select conname from pg_constraint
+    where conrelid = 'public.flags'::regclass and contype = 'u'
+  loop
+    execute format('alter table public.flags drop constraint %I', c.conname);
+  end loop;
+  -- History survives profile deletion: member_id nullable, on delete set null.
+  for c in
+    select conname from pg_constraint
+    where conrelid = 'public.flags'::regclass and contype = 'f' and confrelid = 'public.profiles'::regclass
+      and conkey = array[(select attnum from pg_attribute where attrelid = 'public.flags'::regclass and attname = 'member_id')]
+  loop
+    execute format('alter table public.flags drop constraint %I', c.conname);
+  end loop;
+end $$;
+alter table public.flags alter column member_id drop not null;
+alter table public.flags add constraint flags_member_id_fkey
+  foreign key (member_id) references public.profiles(id) on delete set null;
+create unique index if not exists flags_one_open_per_piece
+  on public.flags (member_id, piece, color) where cleared_at is null;
+
 -- Frozen copies of a member's info, written by archive_member().
 create table if not exists public.member_archives (
   id uuid primary key default gen_random_uuid(),
@@ -266,7 +303,7 @@ grant execute on function public.set_uniform_sizes(uuid, text, text, text, text)
 
 -- ---------- Archive and restore members: staff only ----------
 
--- Snapshots the member (profile + open flags), clears their flags and sizes,
+-- Snapshots the member (profile + open flags), keeps their flags, clears their sizes,
 -- and blocks login: banned_until stops password sign-in and token refresh,
 -- deleting sessions kills existing refresh tokens. RLS (is_archived) covers
 -- the up-to-an-hour an already-issued access token still works.
@@ -308,14 +345,12 @@ begin
         select jsonb_agg(jsonb_build_object(
           'piece', f.piece, 'color', f.color, 'size', f.size, 'status', f.status, 'comment', f.comment
         ) order by f.piece, f.color)
-        from public.flags f where f.member_id = target
+        from public.flags f where f.member_id = target and f.cleared_at is null
       ), '[]'::jsonb)
     ),
     auth.uid(),
     coalesce(staff_name, '')
   );
-
-  delete from public.flags where member_id = target;
 
   perform set_config('app.allow_size_change', 'on', true);
   perform set_config('app.allow_archive_change', 'on', true);
@@ -438,14 +473,115 @@ create policy flags_select on public.flags for select to authenticated
   using (member_id = auth.uid() or public.is_staff());
 drop policy if exists flags_insert_own on public.flags;
 create policy flags_insert_own on public.flags for insert to authenticated
-  with check (member_id = auth.uid() and not public.is_archived());
+  with check (member_id = auth.uid() and cleared_at is null and not public.is_archived());
 drop policy if exists flags_update_own on public.flags;
 create policy flags_update_own on public.flags for update to authenticated
-  using (member_id = auth.uid() and not public.is_archived()) with check (member_id = auth.uid());
--- Staff mark a piece "good" again by deleting its flag (a piece with no flag is good).
+  using (member_id = auth.uid() and cleared_at is null and not public.is_archived())
+  with check (member_id = auth.uid());
+drop policy if exists flags_update_staff on public.flags;
+create policy flags_update_staff on public.flags for update to authenticated
+  using (public.is_staff()) with check (public.is_staff());
+-- No delete policy: flags are history. Staff clear them with clear_flag().
 drop policy if exists flags_delete_staff on public.flags;
-create policy flags_delete_staff on public.flags for delete to authenticated
-  using (public.is_staff());
+
+-- ---------- Flag history: name stamp, update guard, submit and clear ----------
+
+create or replace function public.flags_fill_member_name() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.member_name = '' and new.member_id is not null then
+    select btrim(first_name || ' ' || last_name) into new.member_name
+      from public.profiles where id = new.member_id;
+    new.member_name := coalesce(new.member_name, '');
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists flags_fill_member_name on public.flags;
+create trigger flags_fill_member_name
+  before insert on public.flags
+  for each row execute function public.flags_fill_member_name();
+
+update public.flags f
+  set member_name = btrim(p.first_name || ' ' || p.last_name)
+  from public.profiles p
+  where f.member_id = p.id and f.member_name = '';
+
+create or replace function public.guard_flag_update() returns trigger
+language plpgsql as $$
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+  if (new.member_id, new.member_name, new.source, new.created_at,
+      new.cleared_at, new.cleared_by, new.cleared_by_name)
+     is distinct from
+     (old.member_id, old.member_name, old.source, old.created_at,
+      old.cleared_at, old.cleared_by, old.cleared_by_name)
+     and coalesce(current_setting('app.allow_flag_clear', true), '') <> 'on' then
+    raise exception 'flags can only be cleared through clear_flag' using errcode = '42501';
+  end if;
+  if new.staff_note is distinct from old.staff_note and not public.is_staff() then
+    raise exception 'only staff can edit staff notes' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_flag_update on public.flags;
+create trigger guard_flag_update
+  before update on public.flags
+  for each row execute function public.guard_flag_update();
+
+-- Members flag a piece through this: one open flag per (member, piece, color).
+create or replace function public.submit_flag(
+  p_piece text, p_color text, p_size text, p_status text, p_comment text, p_photo_path text
+) returns public.flags
+language plpgsql security invoker set search_path = public as $$
+declare
+  result public.flags;
+begin
+  insert into public.flags (member_id, piece, color, size, status, comment, photo_path)
+  values (auth.uid(), p_piece, p_color, p_size, p_status, coalesce(p_comment, ''), p_photo_path)
+  on conflict (member_id, piece, color) where cleared_at is null
+  do update set status = excluded.status, comment = excluded.comment,
+                size = excluded.size, photo_path = excluded.photo_path
+  returning * into result;
+  return result;
+end;
+$$;
+revoke all on function public.submit_flag(text, text, text, text, text, text) from public, anon;
+grant execute on function public.submit_flag(text, text, text, text, text, text) to authenticated;
+
+-- Staff clear a flag. Also clears other open flags on the same piece/color/size
+-- (the same physical item), unless the size is still Unassigned.
+create or replace function public.clear_flag(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  f public.flags%rowtype;
+  staff_name text;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can clear flags' using errcode = '42501';
+  end if;
+  select * into f from public.flags where id = p_id;
+  if not found then
+    raise exception 'no such flag' using errcode = 'P0002';
+  end if;
+  select btrim(first_name || ' ' || last_name) into staff_name from public.profiles where id = auth.uid();
+
+  perform set_config('app.allow_flag_clear', 'on', true);
+  update public.flags
+    set cleared_at = now(), cleared_by = auth.uid(), cleared_by_name = coalesce(staff_name, '')
+    where cleared_at is null
+      and (id = p_id
+           or (f.size <> 'Unassigned' and piece = f.piece and color = f.color and size = f.size));
+  perform set_config('app.allow_flag_clear', 'off', true);
+end;
+$$;
+revoke all on function public.clear_flag(uuid) from public, anon;
+grant execute on function public.clear_flag(uuid) to authenticated;
 
 -- ---------- Storage: combo photos ----------
 
