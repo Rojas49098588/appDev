@@ -15,13 +15,15 @@
 - Work on a new branch `inventory-database` created from `flag-photos-inventory` (Plan 1, not yet merged). Never commit to `master`.
 - Read the versioned Expo docs before writing Expo code (`mobile-app/AGENTS.md`); SDK 58.
 - Never run `npm audit fix --force`. No new dependencies.
-- After any schema change: `npm run db:apply`, then `npm run test:rls` must pass. `npm test` must pass every task. `npx tsc --noEmit` must add no new errors beyond the 13 pre-existing ScrollView-ref errors (Tasks 3–4 may leave errors in screens until Task 5, as stated there).
+- **Use the TEST Supabase project only.** After any schema change: `npm run db:apply:test`, then `npm run test:rls` (both read `supabase/.env.test.local`). Never run `npm run db:apply` (the live project) during this plan; the live project is updated once, at release, after the user approves a cleanup.
+- After any schema change, `npm run test:rls` must pass. `npm test` must pass every task. `npx tsc --noEmit` must add no new errors beyond the 13 pre-existing ScrollView-ref errors (Tasks 3–4 may leave errors in screens until Task 5, as stated there).
 - A piece is **piece type + color + number**. Each number exists in every color of its type; each number belongs to at most one active member; a member has the same number in every color.
 - Assigned / Unassigned / Out for repair: Assigned when an active member's `numbers` has that type → number; Out for repair is per piece (one color) and overrides the display for that color only; otherwise Unassigned.
 - One member per number is enforced by the database; a member number missing from inventory is allowed but warned about.
 - Only staff change inventory, numbers, or out-for-repair. Members can read piece types (their My Inventory needs colors).
 - Flags keep matching pieces by text (`piece` = type name, `color`, `size` = number), exactly as Plan 1 does; no foreign key from flags to pieces.
-- The placeholder data in `constants/inventoryData.ts` is moved into `supabase/seed.sql` as-is (it is replaced by real data in Plan 3); don't "fix" its uneven sizes.
+- **Inventory starts empty** (user decision: no fake data mixed with real). The placeholder list in `constants/inventoryData.ts` is deleted, not seeded; Plan 3's spreadsheet import is the first inventory data. Tests create their own throwaway piece types named with the `RUN` id and delete them afterwards. Every screen must handle zero piece types gracefully (empty state text, no crash).
+- Sample combos live only in `supabase/test-seed.sql` (test project). `supabase/seed.sql` holds only the invite code and one placeholder current game (opponent 'TBD').
 - All commands run from `mobile-app/`.
 
 ## Review Focus
@@ -30,7 +32,7 @@
 2. **A member's number isn't in inventory (typo like 1530)** → saved, and a warning is shown on that member and in Inventory. (Task 3 test `unknownNumbers lists numbers with no matching piece`.)
 3. **A member is archived** → their numbers are cleared and kept in the snapshot; their pieces show Unassigned; old archive snapshots (with `coat_size` keys) still display. (Task 2 archive RLS test; Task 3 test `rowToArchive reads old size keys and new numbers`.)
 4. **Cached data from before this change** (old `uniformSizes` accounts, no inventory cache) → rejected and refetched, no crash. (Task 3 test `isAccount rejects pre-numbers cached accounts`.)
-5. **A numbered type with no pieces yet** → doesn't appear on member screens or the staff number editor breaks nothing. (Task 3 test `memberPieceTypes skips numbered types with no pieces`.)
+5. **A numbered type with no pieces yet, or no inventory at all** (the state right after this plan) → nothing crashes; member screens show only the white shirt; staff Inventory shows "No inventory yet — import your spreadsheet" style empty text. (Task 3 test `memberPieceTypes skips numbered types with no pieces`; Task 5/6 empty states checked on device.)
 
 ---
 
@@ -46,14 +48,15 @@
   - `piece_types(id uuid pk default gen_random_uuid(), name text not null unique, kind text not null check (kind in ('numbered','counted')), colors text[] not null default '{}', stock jsonb not null default '{}'::jsonb, sort_order int not null default 0, retired boolean not null default false, created_at timestamptz not null default now())`. `stock` is only used for counted types: `{"Blue": 40}`.
   - `pieces(id uuid pk default gen_random_uuid(), piece_type_id uuid not null references piece_types(id) on delete cascade, color text not null, number text not null check (number ~ '^[0-9]+$'), out_for_repair boolean not null default false, created_at timestamptz not null default now(), unique (piece_type_id, color, number))`.
   - RLS: select for `authenticated` on both; insert/update/delete only `is_staff()`. Members and anon get nothing else.
-  - Seed with fixed ids so re-runs don't duplicate: Coats `…0000b1`, Vests `…0000b2`, Bibbers `…0000b3`, Pants `…0000b4` (numbered), Ties `…0000b5`, Belts `…0000b6` (counted), using the uuid prefix `00000000-0000-4000-8000-000000000`. Colors, sort order, retired flags, and per-color number ranges copied from `constants/inventoryData.ts` (`sizeRange(start, end, step)` → `generate_series(start, end, step)::text`). Counted stock: Ties `{"Blue":40,"Red":36,"Purple":18,"Blue bows":24,"Red bows":20}`, Belts `{"Red":48,"Blue":32}`. `on conflict do nothing` everywhere.
+  - **No seed data** for these tables (inventory starts empty).
+  - Tests: in `before`, `admin` creates a throwaway numbered type `RLS Coats ${RUN}` with colors `['Blue','Red']` and pieces `Blue/101`, `Red/101`, and a counted type `RLS Ties ${RUN}` with stock `{"Blue": 3}`; `after` deletes both types (pieces cascade).
 
 - [ ] **Step 1: Write failing RLS tests** (`describe('inventory')`)
 
 ```ts
-test('members and staff can read piece types and pieces; seeded Coats has 58 pieces', async () => {
-  // asMember: select piece_types where name='Coats' -> kind 'numbered', colors ['Blue','Red','Purple','Candy']
-  // asMember: count pieces for Coats -> 58
+test('members and staff can read piece types and pieces', async () => {
+  // asMember: select piece_types where name = `RLS Coats ${RUN}` -> kind 'numbered', colors ['Blue','Red']
+  // asMember: pieces for that type -> 2 rows
 });
 test('members cannot insert, update or delete piece types or pieces', ...);   // each -> error or 0 rows; verify via admin nothing changed
 test('staff can mark a piece out for repair and back', ...);                  // asStaff update out_for_repair true -> 1 row; then false
@@ -62,11 +65,11 @@ test('anon reads nothing from piece_types or pieces', ...);
 
 - [ ] **Step 2: Run, verify FAIL** — `npm run test:rls` (tables missing).
 
-- [ ] **Step 3: Implement** the tables, policies (follow the `combos` policy style), realtime publication entries, and seed.
+- [ ] **Step 3: Implement** the tables, policies (follow the `combos` policy style), and realtime publication entries.
 
-- [ ] **Step 4: Apply and run** — `npm run db:apply && npm run db:apply && npm run test:rls` (applied twice to prove re-runnable) → all pass.
+- [ ] **Step 4: Apply and run** — `npm run db:apply:test && npm run db:apply:test && npm run test:rls` (applied twice to prove re-runnable) → all pass.
 
-- [ ] **Step 5: Commit** — `git commit -m "Add piece_types and pieces tables with seed data"`
+- [ ] **Step 5: Commit** — `git commit -m "Add piece_types and pieces tables"`
 
 ---
 
@@ -103,7 +106,7 @@ Archiving test: assert the snapshot has `numbers` (not `coat_size`) and the prof
 
 - [ ] **Step 2: Run, verify FAIL** — `npm run test:rls`.
 - [ ] **Step 3: Implement** in `schema.sql`. Keep everything re-runnable (`add column if not exists`, guarded `do $$` migration, `drop function if exists public.set_uniform_sizes(uuid, text, text, text, text)`). Update the `create table profiles` / `alter table` lines so a fresh install never creates the old size columns.
-- [ ] **Step 4: Apply and run** — `npm run db:apply && npm run db:apply && npm run test:rls` → pass.
+- [ ] **Step 4: Apply and run** — `npm run db:apply:test && npm run db:apply:test && npm run test:rls` → pass.
 - [ ] **Step 5: Commit** — `git commit -m "Store member numbers in profiles.numbers; add set_member_numbers"`
 
 ---
@@ -247,7 +250,7 @@ test('pieceCount: numbered counts pieces, counted sums stock', ...);
 
 - [ ] **Step 1: Update docs** as listed.
 - [ ] **Step 2: Full checks** — `npm test`, `npx tsc --noEmit` (13 baseline only), `npm run test:rls`, `npx expo-doctor` (known pre-existing failures: patch-version warning, overridden SDK 57 `@expo/*` packages). Report exact output.
-- [ ] **Step 3: On-device checklist** (user runs in Expo Go; report as pending):
+- [ ] **Step 3: On-device checklist** (user runs in Expo Go against the TEST project, after Plan 3 has imported some rows, since inventory starts empty; report as pending):
   1. Member: My Inventory and My Sizes show the same pieces and numbers as before.
   2. Staff: Members → a member → edit Coats number → save; giving a number another member has shows the "already belongs to" message.
   3. Staff: set a number not in inventory → amber note on the member and the warning line in Inventory.

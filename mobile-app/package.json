@@ -41,9 +41,11 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "node --test \"tests/*.test.ts\"",
-    "test:rls": "node --env-file=supabase/.env.local --test supabase/tests/rls.test.ts",
+    "test:rls": "node --env-file=supabase/.env.test.local --test supabase/tests/rls.test.ts",
     "db:apply": "node --env-file=supabase/.env.local supabase/scripts/run-sql.mjs supabase/schema.sql supabase/seed.sql",
-    "db:check": "node --env-file=supabase/.env.local supabase/scripts/run-sql.mjs --check"
+    "db:check": "node --env-file=supabase/.env.local supabase/scripts/run-sql.mjs --check",
+    "db:apply:test": "node --env-file=supabase/.env.test.local supabase/scripts/run-sql.mjs supabase/schema.sql supabase/seed.sql supabase/test-seed.sql",
+    "db:check:test": "node --env-file=supabase/.env.test.local supabase/scripts/run-sql.mjs --check"
   },
   "private": true
 }
