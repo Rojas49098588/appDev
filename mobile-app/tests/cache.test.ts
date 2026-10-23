@@ -4,7 +4,7 @@ import { parseCache, serializeCache } from '../lib/cache.ts';
 import { isAccount, isComboList, isFlagList, isGameOrNull } from '../lib/validators.ts';
 
 test('serializeCache and parseCache round-trip valid data', () => {
-  const flags = [{ id: 'f1', memberId: 'u1', piece: 'Coats', color: 'Blue', size: '208', status: 'dirty', comment: '' }];
+  const flags = [{ id: 'f1', memberId: 'u1', piece: 'Coats', color: 'Blue', size: '208', status: 'dirty', comment: '', createdAt: '2026-10-01T00:00:00Z', memberName: 'Maya C', photoPath: null, staffNote: '', source: 'member', clearedAt: null, clearedByName: null }];
   assert.deepEqual(parseCache(serializeCache(flags, 123), isFlagList), { syncedAt: 123, data: flags });
 });
 
