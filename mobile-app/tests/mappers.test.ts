@@ -61,13 +61,17 @@ test('rowToArchive maps the snapshot, its sizes and its flags', () => {
   });
 });
 
-test('rowToFlag maps member_id to memberId', () => {
+test('rowToFlag maps history columns and the signed photo url', () => {
   const row: FlagRow = {
-    id: 'f1', member_id: 'u1', piece: 'Coats', color: 'Blue', size: '208', status: 'dirty',
-    comment: 'mud', created_at: '', updated_at: '',
+    id: 'f1', member_id: 'u1', piece: 'Coats', color: 'Blue', size: '104', status: 'repair',
+    comment: 'button', created_at: '2026-10-21T10:00:00Z', updated_at: '2026-10-21T10:00:00Z',
+    member_name: 'Jordan P', photo_path: 'u1/a.jpg', staff_note: '', source: 'member',
+    cleared_at: null, cleared_by: null, cleared_by_name: null,
   };
-  assert.deepEqual(rowToFlag(row), {
-    id: 'f1', memberId: 'u1', piece: 'Coats', color: 'Blue', size: '208', status: 'dirty', comment: 'mud',
+  assert.deepEqual(rowToFlag(row, 'https://signed'), {
+    id: 'f1', memberId: 'u1', piece: 'Coats', color: 'Blue', size: '104',
+    status: 'repair', comment: 'button', createdAt: '2026-10-21T10:00:00Z', memberName: 'Jordan P',
+    photoPath: 'u1/a.jpg', photoUrl: 'https://signed', staffNote: '', source: 'member', clearedAt: null, clearedByName: null,
   });
 });
 

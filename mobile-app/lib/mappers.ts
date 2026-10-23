@@ -80,7 +80,7 @@ export function accountUpdatesToProfile(updates: AccountUpdates): ProfileUpdate 
   return patch;
 }
 
-export function rowToFlag(row: FlagRow): Flag {
+export function rowToFlag(row: FlagRow, photoUrl?: string): Flag {
   return {
     id: row.id,
     memberId: row.member_id,
@@ -89,6 +89,14 @@ export function rowToFlag(row: FlagRow): Flag {
     size: row.size,
     status: row.status,
     comment: row.comment,
+    createdAt: row.created_at,
+    memberName: row.member_name,
+    photoPath: row.photo_path,
+    ...(photoUrl ? { photoUrl } : {}),
+    staffNote: row.staff_note,
+    source: row.source,
+    clearedAt: row.cleared_at,
+    clearedByName: row.cleared_by_name,
   };
 }
 

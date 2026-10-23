@@ -25,12 +25,21 @@ export type FlagStatus = 'dirty' | 'repair';
 
 export type Flag = {
   id: string;
-  memberId: string;
+  memberId: string | null;
   piece: string;
   color: string;
   size: string;
   status: FlagStatus;
   comment: string;
+  createdAt: string;
+  memberName: string;
+  photoPath: string | null;
+  // Signed URL for display only; never cached as a source of truth.
+  photoUrl?: string;
+  staffNote: string;
+  source: 'member' | 'import';
+  clearedAt: string | null;
+  clearedByName: string | null;
 };
 
 export type Combo = {
