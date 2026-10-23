@@ -40,7 +40,7 @@ const ITEM_NAMES: Record<string, string> = {
 const rowKey = (row: Pick<FlagTarget, 'piece' | 'color'>) => `${row.piece}-${row.color}`;
 
 export default function MyInventoryScreen(_props: Props) {
-  const { flags, addFlag, updateFlag } = useFlags();
+  const { flags, submitFlag: saveFlag } = useFlags();
   const { account } = useAuth();
   const { isOnline } = useConnection();
   // The database only sends a member their own flags; filtering by id keeps
@@ -103,11 +103,14 @@ export default function MyInventoryScreen(_props: Props) {
     const row = activeRow;
     const previous = row.flag;
     try {
-      if (previous) {
-        await updateFlag(previous.id, status, comment);
-      } else {
-        await addFlag({ piece: row.piece, color: row.color, size: row.size || UNASSIGNED_SIZE, status, comment });
-      }
+      await saveFlag({
+        piece: row.piece,
+        color: row.color,
+        size: previous?.size ?? (row.size || UNASSIGNED_SIZE),
+        status,
+        comment,
+        photo: { kind: 'keep' },
+      });
     } catch (error) {
       Alert.alert("Couldn't save flag", friendlyError(error));
       return;
@@ -119,7 +122,17 @@ export default function MyInventoryScreen(_props: Props) {
       message: `${row.color} ${row.itemName} flagged as ${STATUS_LABELS[status]}`,
       // Only staff can delete a flag, so a brand-new flag can't be undone
       // from the member side; an edit can be put back the way it was.
-      undo: previous ? () => updateFlag(previous.id, previous.status, previous.comment) : undefined,
+      undo: previous
+        ? () =>
+            saveFlag({
+              piece: previous.piece,
+              color: previous.color,
+              size: previous.size,
+              status: previous.status,
+              comment: previous.comment,
+              photo: { kind: 'keep' },
+            })
+        : undefined,
     });
   };
 

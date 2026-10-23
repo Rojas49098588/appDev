@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chipState, historyFor, openFlags } from '../lib/flagHistory.ts';
+import { chipState, historyFor, openFlags, planPhotoChange } from '../lib/flagHistory.ts';
 import { isFlagList } from '../lib/validators.ts';
 import type { Flag } from '../lib/models.ts';
 
@@ -37,4 +37,33 @@ test('openFlags drops cleared flags', () => {
 test('isFlagList rejects pre-history cached flags', () => {
   assert.equal(isFlagList([{ id: 'f', memberId: 'u', piece: 'Coats', color: 'Blue', size: '1', status: 'dirty', comment: '' }]), false);
   assert.equal(isFlagList([mk('a'), mk('b', { memberId: null, photoPath: 'x.jpg', photoUrl: 'https://s' })]), true);
+});
+
+test('keep: no upload, saves old path, deletes nothing', () => {
+  assert.deepEqual(planPhotoChange('u/a.jpg', { kind: 'keep' }, 'u/b.jpg'), {
+    upload: false, savePath: 'u/a.jpg', deleteAfterSave: null, deleteOnFailure: null,
+  });
+});
+
+test('set replaces: uploads new, deletes old after save, deletes new on failure', () => {
+  assert.deepEqual(planPhotoChange('u/a.jpg', { kind: 'set', localUri: 'file:///x.jpg' }, 'u/b.jpg'), {
+    upload: true, savePath: 'u/b.jpg', deleteAfterSave: 'u/a.jpg', deleteOnFailure: 'u/b.jpg',
+  });
+});
+
+test('set with no old photo', () => {
+  assert.deepEqual(planPhotoChange(null, { kind: 'set', localUri: 'file:///x.jpg' }, 'u/b.jpg'), {
+    upload: true, savePath: 'u/b.jpg', deleteAfterSave: null, deleteOnFailure: 'u/b.jpg',
+  });
+});
+
+test('remove: saves null and deletes old after save', () => {
+  assert.deepEqual(planPhotoChange('u/a.jpg', { kind: 'remove' }, 'u/b.jpg'), {
+    upload: false, savePath: null, deleteAfterSave: 'u/a.jpg', deleteOnFailure: null,
+  });
+});
+
+test('submitFlag removes the uploaded photo when the flag save fails', () => {
+  const plan = planPhotoChange(null, { kind: 'set', localUri: 'file:///x.jpg' }, 'u/new.jpg');
+  assert.equal(plan.deleteOnFailure, 'u/new.jpg');
 });
