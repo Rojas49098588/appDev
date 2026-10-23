@@ -1,6 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react';
 import {
+  Alert,
   Animated,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -12,9 +14,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { Flag, FlagStatus } from '../constants/flagsData';
+import type { PhotoChange } from '../lib/flagHistory';
 import { OFFLINE_DIM, useConnection } from '../hooks/useConnection';
 import { CloseIcon, DropIcon, WrenchIcon } from './icons';
 import Swatch from './Swatch';
@@ -34,7 +38,7 @@ type Props = {
   // Changes on every open so the form resets to the piece's current flag.
   openKey: number;
   onClose: () => void;
-  onSubmit: (status: FlagStatus, comment: string) => Promise<void>;
+  onSubmit: (status: FlagStatus, comment: string, photo: PhotoChange) => Promise<void>;
 };
 
 export const STATUS_LABELS: Record<FlagStatus, string> = { dirty: 'Dirty', repair: 'Needs repair' };
@@ -95,12 +99,54 @@ function SheetBody({
   );
   const [comment, setComment] = useState(target.flag?.comment ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  // undefined = untouched, string = newly picked local file, null = removed.
+  const [pickedUri, setPickedUri] = useState<string | null | undefined>(undefined);
+  const existingUrl = target.flag?.photoUrl;
+  const hadPhoto = !!target.flag?.photoPath;
+  const displayUri = pickedUri === undefined ? existingUrl : (pickedUri ?? undefined);
+
+  const pickFromLibrary = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Allow photo library access in Settings to add a photo. You can still submit the flag without one.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.5,
+    });
+    if (!result.canceled) setPickedUri(result.assets[0].uri);
+  };
+
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Allow camera access in Settings to take a photo. You can still submit the flag without one.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.5 });
+    if (!result.canceled) setPickedUri(result.assets[0].uri);
+  };
+
+  const addPhoto = () =>
+    Alert.alert('Add a photo', undefined, [
+      { text: 'Take photo', onPress: takePhoto },
+      { text: 'Choose from library', onPress: pickFromLibrary },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+
+  const photoChange = (): PhotoChange => {
+    if (typeof pickedUri === 'string') return { kind: 'set', localUri: pickedUri };
+    if (pickedUri === null && hadPhoto) return { kind: 'remove' };
+    return { kind: 'keep' };
+  };
 
   const submit = async () => {
     if (!status) return;
     setIsSaving(true);
     try {
-      await onSubmit(status, comment);
+      await onSubmit(status, comment, photoChange());
     } finally {
       setIsSaving(false);
     }
@@ -172,6 +218,25 @@ function SheetBody({
         placeholderTextColor={colors.inkFaint}
         multiline
       />
+      <Text style={styles.noteLabel}>
+        Add a photo <Text style={styles.noteOptional}>(optional)</Text>
+      </Text>
+      {displayUri ? (
+        <View style={styles.photoWrap}>
+          <Image source={{ uri: displayUri }} style={styles.photoThumb} accessibilityLabel="Flag photo" />
+          <Pressable
+            style={styles.photoRemove}
+            onPress={() => setPickedUri(null)}
+            accessibilityLabel="Remove photo"
+          >
+            <CloseIcon color={colors.white} size={14} />
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable style={styles.photoAdd} onPress={addPhoto} accessibilityRole="button" accessibilityLabel="Add photo">
+          <Text style={styles.photoAddText}>Add photo</Text>
+        </Pressable>
+      )}
       <Pressable
         style={[
           styles.submit,
@@ -256,6 +321,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.ink,
     textAlignVertical: 'top',
+  },
+  photoAdd: {
+    marginTop: 8,
+    height: 72,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.line,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoAddText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.inkSoft },
+  photoWrap: { marginTop: 8, width: 96, height: 96 },
+  photoThumb: { width: 96, height: 96, borderRadius: 14, backgroundColor: colors.paper },
+  photoRemove: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submit: {
     marginTop: 20,

@@ -64,7 +64,7 @@ export type GameRow = {
 
 export type FlagRow = {
   id: string;
-  member_id: string;
+  member_id: string | null;
   piece: string;
   color: string;
   size: string;
@@ -72,4 +72,11 @@ export type FlagRow = {
   comment: string;
   created_at: string;
   updated_at: string;
+  member_name: string;
+  photo_path: string | null;
+  staff_note: string;
+  source: 'member' | 'import';
+  cleared_at: string | null;
+  cleared_by: string | null;
+  cleared_by_name: string | null;
 };

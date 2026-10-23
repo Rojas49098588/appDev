@@ -28,7 +28,7 @@ const DIRTY_ONLY_PIECES = ['White shirt'];
 
 export default function FlagItemScreen({ navigation, route }: Props) {
   const { piece, color, size } = route.params;
-  const { flags, addFlag, updateFlag } = useFlags();
+  const { flags, submitFlag } = useFlags();
   const { account } = useAuth();
   const { isOnline } = useConnection();
   const existingFlag = flags.find(
@@ -46,11 +46,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
     if (!requireOnline(isOnline)) return;
     setIsSaving(true);
     try {
-      if (existingFlag) {
-        await updateFlag(existingFlag.id, status, comment);
-      } else {
-        await addFlag({ piece, color, size, status, comment });
-      }
+      await submitFlag({ piece, color, size, status, comment, photo: { kind: 'keep' } });
       navigation.goBack();
     } catch (error) {
       Alert.alert("Couldn't save flag", friendlyError(error));

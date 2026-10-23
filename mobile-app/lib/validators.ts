@@ -26,8 +26,11 @@ export const isAccountList = (v: unknown): v is Account[] => Array.isArray(v) &&
 
 function isFlag(v: unknown): v is Flag {
   return (
-    isObject(v) && isString(v.id) && isString(v.memberId) && isString(v.piece) && isString(v.color) &&
-    isString(v.size) && (v.status === 'dirty' || v.status === 'repair') && isString(v.comment)
+    isObject(v) && isString(v.id) && isStringOrNull(v.memberId) && isString(v.piece) && isString(v.color) &&
+    isString(v.size) && (v.status === 'dirty' || v.status === 'repair') && isString(v.comment) &&
+    isString(v.createdAt) && isString(v.memberName) && isStringOrNull(v.photoPath) && isOptionalString(v.photoUrl) &&
+    isString(v.staffNote) && (v.source === 'member' || v.source === 'import') &&
+    isStringOrNull(v.clearedAt) && isStringOrNull(v.clearedByName)
   );
 }
 

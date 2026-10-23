@@ -96,6 +96,8 @@ before(async () => {
 });
 
 after(async () => {
+  // Flags outlive their member (member_id is set null), so remove test flags explicitly.
+  if (createdUserIds.length > 0) await admin.from('flags').delete().in('member_id', createdUserIds);
   for (const id of createdUserIds) {
     await admin.auth.admin.deleteUser(id);
   }
@@ -280,17 +282,14 @@ describe('member permissions', () => {
     assert.equal(data?.length ?? 0, 0);
   });
 
-  test('can flag their own piece, and flagging it again updates the same row', async () => {
-    const flag = { member_id: member.id, piece: 'Coats', color: 'Blue', size: '208', status: 'dirty', comment: '' };
-    const first = await asMember.from('flags').upsert(flag, { onConflict: 'member_id,piece,color' }).select().single();
+  test('submit_flag creates one open flag; submitting again updates it', async () => {
+    const args = { p_piece: 'Coats', p_color: 'Blue', p_size: '208', p_status: 'dirty', p_comment: '', p_photo_path: null };
+    const first = await asMember.rpc('submit_flag', args);
+    const second = await asMember.rpc('submit_flag', { ...args, p_status: 'repair', p_comment: 'torn' });
     assert.equal(first.error, null);
-    const second = await asMember
-      .from('flags')
-      .upsert({ ...flag, status: 'repair', comment: 'torn' }, { onConflict: 'member_id,piece,color' })
-      .select()
-      .single();
     assert.equal(second.error, null);
-    assert.equal(second.data?.id, first.data?.id);
+    assert.equal(second.data.id, first.data.id);
+    assert.equal(second.data.member_name, 'member Test');
     const { data } = await admin.from('flags').select('status').eq('member_id', member.id).eq('piece', 'Coats');
     assert.deepEqual(data, [{ status: 'repair' }]);
   });
@@ -399,22 +398,17 @@ describe('staff permissions', () => {
     assert.ok(data!.some((r) => r.member_id === otherMember.id));
   });
 
-  test("can mark a member's piece good by deleting its flag", async () => {
+  test('nobody can delete flags', async () => {
     const { data: flag, error } = await admin
       .from('flags')
       .insert({ member_id: member.id, piece: 'Shakos', color: 'White', size: 'M', status: 'dirty' })
       .select('id')
       .single();
     if (error) throw error;
-    try {
-      const del = await asStaff.from('flags').delete().eq('id', flag.id).select('id');
-      assert.equal(del.error, null);
-      assert.equal(del.data?.length, 1);
-      const { data: gone } = await admin.from('flags').select('id').eq('id', flag.id);
-      assert.equal(gone?.length ?? 0, 0);
-    } finally {
-      await admin.from('flags').delete().eq('id', flag.id);
-    }
+    const del = await asStaff.from('flags').delete().eq('id', flag.id).select('id');
+    assert.equal(del.data?.length ?? 0, 0);
+    const { data: still } = await admin.from('flags').select('id').eq('id', flag.id);
+    assert.equal(still?.length, 1);
   });
 
   test('sees every profile', async () => {
@@ -589,7 +583,7 @@ describe('archiving members', () => {
     assert.ok(data!.every((row) => row.archived_at === null));
   });
 
-  test('archiving snapshots the member, clears flags and sizes, and blocks login; restore lets them back in', async () => {
+  test('archiving snapshots the member, keeps flags, clears sizes, and blocks login; restore lets them back in', async () => {
     const leaver = await createUser('leaver');
     await admin.from('profiles').update({ coat_size: '208', pant_size: '216', phone: '2145550199' }).eq('id', leaver.id);
     await admin.from('flags').insert({ member_id: leaver.id, piece: 'Coats', color: 'Blue', size: '208', status: 'repair', comment: 'torn' });
@@ -605,7 +599,7 @@ describe('archiving members', () => {
       { coat_size: '', vest_size: '', bibber_size: '', pant_size: '', archived_at: true }
     );
     const { data: flags } = await admin.from('flags').select('id').eq('member_id', leaver.id);
-    assert.equal(flags?.length, 0);
+    assert.equal(flags?.length, 1);
 
     const { data: snapshots } = await asStaff.from('member_archives').select('*').eq('member_id', leaver.id);
     assert.equal(snapshots?.length, 1);
@@ -647,5 +641,206 @@ describe('archiving members', () => {
     // Restoring someone who isn't archived is refused.
     const restoreAgain = await asStaff.rpc('restore_member', { target: leaver.id });
     assert.notEqual(restoreAgain.error, null);
+  });
+});
+
+describe('flag history', () => {
+  // A size no real inventory has, so clear_flag never touches a real member's flag.
+  const TSIZE = 'T-' + RUN;
+  async function adminFlag(memberId: string, piece: string, color: string, size: string) {
+    const { data, error } = await admin
+      .from('flags')
+      .insert({ member_id: memberId, piece, color, size, status: 'dirty' })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data.id as string;
+  }
+  async function row(id: string) {
+    const { data } = await admin.from('flags').select('*').eq('id', id).single();
+    return data!;
+  }
+
+  test('staff clear_flag keeps the row with who/when; re-flagging after a clear creates a new open flag and keeps the cleared one', async () => {
+    const args = { p_piece: 'Vests', p_color: 'Candy', p_size: TSIZE, p_status: 'dirty', p_comment: '', p_photo_path: null };
+    const first = await asMember.rpc('submit_flag', args);
+    assert.equal(first.error, null);
+    const clear = await asStaff.rpc('clear_flag', { p_id: first.data.id });
+    assert.equal(clear.error, null);
+    const second = await asMember.rpc('submit_flag', args);
+    assert.equal(second.error, null);
+    assert.notEqual(second.data.id, first.data.id);
+
+    const { data: rows } = await admin.from('flags').select('*').eq('member_id', member.id).eq('piece', 'Vests').eq('color', 'Candy');
+    assert.equal(rows?.length, 2);
+    assert.equal(rows!.filter((r) => r.cleared_at === null).length, 1);
+    const cleared = rows!.find((r) => r.cleared_at !== null)!;
+    assert.equal(cleared.id, first.data.id);
+    assert.equal(cleared.cleared_by, staff.id);
+    assert.equal(cleared.cleared_by_name, 'staff Test');
+  });
+
+  test('clear_flag clears every open flag on the same piece/color/size, but not Unassigned ones', async () => {
+    const m1 = await adminFlag(member.id, 'Coats', 'Red', TSIZE);
+    const m2 = await adminFlag(otherMember.id, 'Coats', 'Red', TSIZE);
+    const u1 = await adminFlag(member.id, 'Coats', 'Purple', 'Unassigned');
+    const u2 = await adminFlag(otherMember.id, 'Coats', 'Purple', 'Unassigned');
+
+    const c1 = await asStaff.rpc('clear_flag', { p_id: m1 });
+    assert.equal(c1.error, null);
+    assert.notEqual((await row(m1)).cleared_at, null);
+    assert.notEqual((await row(m2)).cleared_at, null);
+
+    const c2 = await asStaff.rpc('clear_flag', { p_id: u1 });
+    assert.equal(c2.error, null);
+    assert.notEqual((await row(u1)).cleared_at, null);
+    assert.equal((await row(u2)).cleared_at, null);
+  });
+
+  test('member cannot clear a flag or set staff_note', async () => {
+    const id = await adminFlag(member.id, 'Bibbers', 'Blue', TSIZE);
+    const clear = await asMember.rpc('clear_flag', { p_id: id });
+    assert.equal(clear.error?.code, '42501');
+    assert.equal((await row(id)).cleared_at, null);
+
+    const note = await asMember.from('flags').update({ staff_note: 'x' }).eq('id', id).select('id');
+    assert.notEqual(note.error, null);
+    assert.equal((await row(id)).staff_note, '');
+
+    const cl = await asMember.from('flags').update({ cleared_at: new Date().toISOString() }).eq('id', id).select('id');
+    assert.notEqual(cl.error, null);
+    assert.equal((await row(id)).cleared_at, null);
+  });
+
+  test('submit_flag keep_photo preserves the server photo_path on update', async () => {
+    const base = { p_piece: 'Skirts', p_color: 'Blue', p_size: TSIZE, p_status: 'dirty', p_comment: '' };
+    const first = await asMember.rpc('submit_flag', { ...base, p_photo_path: `${member.id}/keep-${RUN}.jpg` });
+    assert.equal(first.error, null);
+    const second = await asMember.rpc('submit_flag', { ...base, p_status: 'repair', p_photo_path: null, p_keep_photo: true });
+    assert.equal(second.error, null);
+    assert.equal(second.data.id, first.data.id);
+    assert.equal(second.data.status, 'repair');
+    assert.equal((await row(first.data.id)).photo_path, `${member.id}/keep-${RUN}.jpg`);
+  });
+
+  test('submit_flag keep_photo on a fresh insert stores null and leaves the cleared row alone', async () => {
+    const base = { p_piece: 'Skirts', p_color: 'Red', p_size: TSIZE, p_status: 'dirty', p_comment: '' };
+    const path = `${member.id}/cleared-${RUN}.jpg`;
+    const first = await asMember.rpc('submit_flag', { ...base, p_photo_path: path });
+    assert.equal(first.error, null);
+    assert.equal((await asStaff.rpc('clear_flag', { p_id: first.data.id })).error, null);
+    const second = await asMember.rpc('submit_flag', { ...base, p_photo_path: path, p_keep_photo: true });
+    assert.equal(second.error, null);
+    assert.notEqual(second.data.id, first.data.id);
+    assert.equal(second.data.photo_path, null);
+    assert.equal((await row(first.data.id)).photo_path, path);
+  });
+
+  test('member cannot edit a cleared flag', async () => {
+    const id = await adminFlag(member.id, 'Pants', 'Red', TSIZE);
+    const clear = await asStaff.rpc('clear_flag', { p_id: id });
+    assert.equal(clear.error, null);
+    const upd = await asMember.from('flags').update({ comment: 'sneaky' }).eq('id', id).select('id');
+    assert.equal(upd.data?.length ?? 0, 0);
+    assert.equal((await row(id)).comment, '');
+  });
+
+  test('staff can edit color, status, comment and staff_note but not cleared_at directly', async () => {
+    const id = await adminFlag(member.id, 'Pants', 'Blue', TSIZE);
+    const upd = await asStaff
+      .from('flags')
+      .update({ color: 'Red', status: 'dirty', comment: 'c', staff_note: 'n' })
+      .eq('id', id)
+      .select('id');
+    assert.equal(upd.error, null);
+    assert.equal(upd.data?.length, 1);
+    const r = await row(id);
+    assert.deepEqual([r.color, r.status, r.comment, r.staff_note], ['Red', 'dirty', 'c', 'n']);
+
+    const cl = await asStaff.from('flags').update({ cleared_at: new Date().toISOString() }).eq('id', id).select('id');
+    assert.notEqual(cl.error, null);
+    assert.equal((await row(id)).cleared_at, null);
+  });
+});
+
+describe('flag insert forgery', () => {
+  test('a member inserting a flag cannot forge member_name, source, staff_note, cleared_by or created_at', async () => {
+    const { data, error } = await asMember
+      .from('flags')
+      .insert({
+        member_id: member.id, piece: 'Shakos', color: 'Forge', size: 'T-' + RUN, status: 'dirty',
+        member_name: 'Someone Else', source: 'import', staff_note: 'x',
+        cleared_by: staff.id, cleared_by_name: 'staff Test', created_at: '2001-01-01T00:00:00Z',
+      })
+      .select('*')
+      .single();
+    assert.equal(error, null);
+    assert.equal(data!.member_name, 'member Test');
+    assert.equal(data!.source, 'member');
+    assert.equal(data!.staff_note, '');
+    assert.equal(data!.cleared_by, null);
+    assert.equal(data!.cleared_by_name, null);
+    assert.equal(data!.cleared_at, null);
+    assert.ok(new Date(data!.created_at).getFullYear() >= 2026);
+  });
+});
+
+describe('flag photos', () => {
+  const body = () => new Uint8Array([0xff, 0xd8, 0xff]);
+  const opts = { contentType: 'image/jpeg' };
+  const bucket = (c: SupabaseClient) => c.storage.from('flag-photos');
+
+  test('member can upload, read and delete a photo in their own folder', async () => {
+    const path = `${member.id}/t-${RUN}.jpg`;
+    try {
+      const up = await bucket(asMember).upload(path, body(), opts);
+      assert.equal(up.error, null);
+      const down = await bucket(asMember).download(path);
+      assert.equal(down.error, null);
+      const del = await bucket(asMember).remove([path]);
+      assert.equal(del.error, null);
+      const { data: listing } = await admin.storage.from('flag-photos').list(member.id, { search: `t-${RUN}.jpg` });
+      assert.ok(!listing?.some((f) => f.name === `t-${RUN}.jpg`), 'object was deleted');
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+
+  test("member cannot upload into another member's folder", async () => {
+    const path = `${otherMember.id}/x-${RUN}.jpg`;
+    try {
+      const { error } = await bucket(asMember).upload(path, body(), opts);
+      assert.notEqual(error, null);
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+
+  test("member cannot read another member's flag photo", async () => {
+    const path = `${otherMember.id}/r-${RUN}.jpg`;
+    try {
+      const up = await admin.storage.from('flag-photos').upload(path, body(), opts);
+      assert.equal(up.error, null);
+      const { error } = await bucket(asMember).download(path);
+      assert.notEqual(error, null);
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+
+  test('staff can read and delete any flag photo', async () => {
+    const path = `${member.id}/s-${RUN}.jpg`;
+    try {
+      const up = await admin.storage.from('flag-photos').upload(path, body(), opts);
+      assert.equal(up.error, null);
+      const down = await bucket(asStaff).download(path);
+      assert.equal(down.error, null);
+      const del = await bucket(asStaff).remove([path]);
+      assert.equal(del.error, null);
+      const { data: listing } = await admin.storage.from('flag-photos').list(member.id, { search: `s-${RUN}.jpg` });
+      assert.ok(!listing?.some((f) => f.name === `s-${RUN}.jpg`), 'object was deleted');
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
   });
 });

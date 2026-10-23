@@ -15,7 +15,7 @@ The repository root contains standalone scratch files with no build system conne
 
 ## mobile-app/ (Expo React Native app)
 
-`mobile-app/` is a separate Expo project (TypeScript, blank template) targeting Android and iOS. It runs on Expo SDK 57 (pinned to match the Expo Go app version available for testing on-device — see `mobile-app/AGENTS.md`, which points to versioned Expo docs that must be checked before writing Expo code, since the API surface has changed across versions).
+`mobile-app/` is a separate Expo project (TypeScript, blank template) targeting Android and iOS. It runs on Expo SDK 58 (pinned to match the Expo Go app version available for testing on-device — see `mobile-app/AGENTS.md`, which points to versioned Expo docs that must be checked before writing Expo code, since the API surface has changed across versions).
 
 Commands (run from `mobile-app/`):
 - `npm start` — start the Expo dev server (Metro + QR code for Expo Go)
@@ -38,7 +38,8 @@ Entry point is `index.ts` → `App.tsx`. Config (app name, icons, platform-speci
 - Commands (from `mobile-app/`): `npm test` (pure `lib/` unit tests), `npm run test:rls` (security rules, live project), `npm run db:apply` (schema + seed).
 - Email change is read-only in the app until custom SMTP is set up.
 - Uniform sizes (Coats/Vests/Bibbers/Pants) live on `profiles` and change only through the staff-only `set_uniform_sizes()` function; `guard_profile_update` blocks direct edits. `lib/uniform.ts` has the piece list and the size-match helper used by the Members tab filter.
-- Archiving: staff call `archive_member()` (snapshot into `member_archives`, clear flags and sizes, set `archived_at`, ban the auth user for 100 years and delete their sessions) and `restore_member()`. Use a real date for `banned_until`, never `'infinity'`, because Supabase Auth can't parse it. Archived accounts are hidden from the Members tab, and an archived user who is still signed in is signed out by `AuthContext`. Snapshots are viewed on `ArchivedMembersScreen` / `ArchivedMemberScreen` (linked from staff Home).
+- Flags are history: a flag row is never deleted. Staff clear it through `clear_flag()` (records who and when); there is at most one open flag per member/piece/color. Members submit through `submit_flag()`, not a direct insert. Staff can edit a flag's color/note (staff edit policy + guard triggers). `staff_note` is readable by the flag's member (flags_select returns all columns), so it is not secret. `submit_flag(..., p_keep_photo)` lets the server keep the open row's photo (a stale client cache can't clobber or share a cleared row's file). Photos are optional and live in the private `flag-photos` storage bucket under `<member id>/`. `FlagsContext.flags` is open flags only (what My Inventory and the staff chips use); `history` is every flag, open and cleared. `PieceHistoryScreen` (route `PieceHistory`) shows a piece's history, reached by tapping any size chip in staff Inventory (chips are tinted when they have an open flag). `archive_member()` keeps a member's flags.
+- Archiving: staff call `archive_member()` (snapshot into `member_archives`, clear sizes but keep flags (the snapshot holds open flags only), set `archived_at`, ban the auth user for 100 years and delete their sessions) and `restore_member()`. Use a real date for `banned_until`, never `'infinity'`, because Supabase Auth can't parse it. Archived accounts are hidden from the Members tab, and an archived user who is still signed in is signed out by `AuthContext`. Snapshots are viewed on `ArchivedMembersScreen` / `ArchivedMemberScreen` (linked from staff Home).
 - Setup steps for a new Supabase project are in `HANDOFF.md` → Supabase setup.
 
 ### Combos and the Catalogue
