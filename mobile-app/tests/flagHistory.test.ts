@@ -39,27 +39,27 @@ test('isFlagList rejects pre-history cached flags', () => {
   assert.equal(isFlagList([mk('a'), mk('b', { memberId: null, photoPath: 'x.jpg', photoUrl: 'https://s' })]), true);
 });
 
-test('keep: no upload, saves old path, deletes nothing', () => {
+test('keep: no upload, server keeps the path (keepPhoto), deletes nothing', () => {
   assert.deepEqual(planPhotoChange('u/a.jpg', { kind: 'keep' }, 'u/b.jpg'), {
-    upload: false, savePath: 'u/a.jpg', deleteAfterSave: null, deleteOnFailure: null,
+    upload: false, keepPhoto: true, savePath: null, deleteAfterSave: null, deleteOnFailure: null,
   });
 });
 
 test('set replaces: uploads new, deletes old after save, deletes new on failure', () => {
   assert.deepEqual(planPhotoChange('u/a.jpg', { kind: 'set', localUri: 'file:///x.jpg' }, 'u/b.jpg'), {
-    upload: true, savePath: 'u/b.jpg', deleteAfterSave: 'u/a.jpg', deleteOnFailure: 'u/b.jpg',
+    upload: true, keepPhoto: false, savePath: 'u/b.jpg', deleteAfterSave: 'u/a.jpg', deleteOnFailure: 'u/b.jpg',
   });
 });
 
 test('set with no old photo', () => {
   assert.deepEqual(planPhotoChange(null, { kind: 'set', localUri: 'file:///x.jpg' }, 'u/b.jpg'), {
-    upload: true, savePath: 'u/b.jpg', deleteAfterSave: null, deleteOnFailure: 'u/b.jpg',
+    upload: true, keepPhoto: false, savePath: 'u/b.jpg', deleteAfterSave: null, deleteOnFailure: 'u/b.jpg',
   });
 });
 
 test('remove: saves null and deletes old after save', () => {
   assert.deepEqual(planPhotoChange('u/a.jpg', { kind: 'remove' }, 'u/b.jpg'), {
-    upload: false, savePath: null, deleteAfterSave: 'u/a.jpg', deleteOnFailure: null,
+    upload: false, keepPhoto: false, savePath: null, deleteAfterSave: 'u/a.jpg', deleteOnFailure: null,
   });
 });
 

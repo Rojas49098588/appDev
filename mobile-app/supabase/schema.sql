@@ -547,24 +547,31 @@ create trigger guard_flag_update
   for each row execute function public.guard_flag_update();
 
 -- Members flag a piece through this: one open flag per (member, piece, color).
+-- p_keep_photo: "keep whatever photo the open flag has" is decided here, not by
+-- the client's possibly stale cache. On update it keeps the open row's photo_path;
+-- on insert (no open flag any more) it stores null. p_photo_path is ignored then.
+drop function if exists public.submit_flag(text, text, text, text, text, text);
 create or replace function public.submit_flag(
-  p_piece text, p_color text, p_size text, p_status text, p_comment text, p_photo_path text
+  p_piece text, p_color text, p_size text, p_status text, p_comment text, p_photo_path text,
+  p_keep_photo boolean default false
 ) returns public.flags
 language plpgsql security invoker set search_path = public as $$
 declare
   result public.flags;
 begin
   insert into public.flags (member_id, piece, color, size, status, comment, photo_path)
-  values (auth.uid(), p_piece, p_color, p_size, p_status, coalesce(p_comment, ''), p_photo_path)
+  values (auth.uid(), p_piece, p_color, p_size, p_status, coalesce(p_comment, ''),
+          case when p_keep_photo then null else p_photo_path end)
   on conflict (member_id, piece, color) where cleared_at is null
   do update set status = excluded.status, comment = excluded.comment,
-                size = excluded.size, photo_path = excluded.photo_path
+                size = excluded.size,
+                photo_path = case when p_keep_photo then flags.photo_path else excluded.photo_path end
   returning * into result;
   return result;
 end;
 $$;
-revoke all on function public.submit_flag(text, text, text, text, text, text) from public, anon;
-grant execute on function public.submit_flag(text, text, text, text, text, text) to authenticated;
+revoke all on function public.submit_flag(text, text, text, text, text, text, boolean) from public, anon;
+grant execute on function public.submit_flag(text, text, text, text, text, text, boolean) to authenticated;
 
 -- Staff clear a flag. Also clears other open flags on the same piece/color/size
 -- (the same physical item), unless the size is still Unassigned.

@@ -104,7 +104,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     Alert.alert(
       `Archive ${name}?`,
       'A snapshot of their info, sizes and flags is saved under Archived members. ' +
-        "They won't be able to log in, their sizes are unassigned and their flags are cleared. " +
+        "They won't be able to log in, their sizes are unassigned. Their open flags stay on the pieces until staff mark them good. " +
         'You can restore them later.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -161,7 +161,8 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
       'Mark as good?',
       `${flag.piece} (${flag.color}, ${flag.size}) will no longer be flagged as ${
         flag.status === 'repair' ? 'needing repair' : 'dirty'
-      }.`,
+      }. ` +
+        "This clears every open flag on that piece, including other members' flags, since it is the same physical piece.",
       [
         { text: 'Cancel', style: 'cancel' },
         {

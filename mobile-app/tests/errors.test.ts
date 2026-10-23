@@ -18,6 +18,13 @@ test('known Supabase errors get plain-language messages', () => {
   assert.equal(friendlyError({ message: 'new row violates row-level security policy' }), "You don't have permission to do that.");
 });
 
+test('a duplicate open flag gets a plain-language message', () => {
+  assert.equal(
+    friendlyError({ code: '23505', message: 'duplicate key value violates unique constraint "flags_one_open_per_piece"' }),
+    'This member already has an open flag on that color.'
+  );
+});
+
 test('unknown errors fall back to their message or a generic one', () => {
   assert.equal(friendlyError(new Error('Boom')), 'Boom');
   assert.equal(friendlyError(undefined), 'Something went wrong. Please try again.');

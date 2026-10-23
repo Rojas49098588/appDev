@@ -184,7 +184,7 @@ function SheetBody({
           style={styles.input}
           value={staffNote}
           onChangeText={setStaffNote}
-          placeholder="Visible to staff only"
+          placeholder="Staff note"
           placeholderTextColor={colors.inkFaint}
           multiline
         />

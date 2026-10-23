@@ -712,6 +712,30 @@ describe('flag history', () => {
     assert.equal((await row(id)).cleared_at, null);
   });
 
+  test('submit_flag keep_photo preserves the server photo_path on update', async () => {
+    const base = { p_piece: 'Skirts', p_color: 'Blue', p_size: TSIZE, p_status: 'dirty', p_comment: '' };
+    const first = await asMember.rpc('submit_flag', { ...base, p_photo_path: `${member.id}/keep-${RUN}.jpg` });
+    assert.equal(first.error, null);
+    const second = await asMember.rpc('submit_flag', { ...base, p_status: 'repair', p_photo_path: null, p_keep_photo: true });
+    assert.equal(second.error, null);
+    assert.equal(second.data.id, first.data.id);
+    assert.equal(second.data.status, 'repair');
+    assert.equal((await row(first.data.id)).photo_path, `${member.id}/keep-${RUN}.jpg`);
+  });
+
+  test('submit_flag keep_photo on a fresh insert stores null and leaves the cleared row alone', async () => {
+    const base = { p_piece: 'Skirts', p_color: 'Red', p_size: TSIZE, p_status: 'dirty', p_comment: '' };
+    const path = `${member.id}/cleared-${RUN}.jpg`;
+    const first = await asMember.rpc('submit_flag', { ...base, p_photo_path: path });
+    assert.equal(first.error, null);
+    assert.equal((await asStaff.rpc('clear_flag', { p_id: first.data.id })).error, null);
+    const second = await asMember.rpc('submit_flag', { ...base, p_photo_path: path, p_keep_photo: true });
+    assert.equal(second.error, null);
+    assert.notEqual(second.data.id, first.data.id);
+    assert.equal(second.data.photo_path, null);
+    assert.equal((await row(first.data.id)).photo_path, path);
+  });
+
   test('member cannot edit a cleared flag', async () => {
     const id = await adminFlag(member.id, 'Pants', 'Red', TSIZE);
     const clear = await asStaff.rpc('clear_flag', { p_id: id });

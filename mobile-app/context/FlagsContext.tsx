@@ -142,6 +142,7 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
           p_status: input.status,
           p_comment: input.comment,
           p_photo_path: plan.savePath,
+          p_keep_photo: plan.keepPhoto,
         })
         .single();
       if (saveError) {
@@ -151,11 +152,13 @@ export function FlagsProvider({ children }: { children: ReactNode }) {
         }
         throw saveError;
       }
-      if (plan.deleteAfterSave) {
+      const row = data as FlagRow;
+      // Only delete the old file if the save updated that same flag. If staff cleared it
+      // and our cache was stale, the old file belongs to a cleared row's history.
+      if (plan.deleteAfterSave && existing && row.id === existing.id) {
         const { error: removeError } = await supabase.storage.from(BUCKET).remove([plan.deleteAfterSave]);
         if (removeError) console.warn('Could not remove replaced flag photo', removeError);
       }
-      const row = data as FlagRow;
       commit(upsertById(itemsRef.current, toFlags([row], await signedUrlsFor([row]).catch(() => new Map()))[0]));
     },
     [userId, commit, itemsRef]

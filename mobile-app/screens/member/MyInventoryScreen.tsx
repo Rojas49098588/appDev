@@ -123,7 +123,8 @@ export default function MyInventoryScreen(_props: Props) {
       message: `${row.color} ${row.itemName} flagged as ${STATUS_LABELS[status]}`,
       // Only staff can delete a flag, so a brand-new flag can't be undone
       // from the member side; an edit can be put back the way it was.
-      undo: previous
+      // A changed photo can't be put back, so no Undo then.
+      undo: previous && photo.kind === 'keep'
         ? () =>
             saveFlag({
               piece: previous.piece,

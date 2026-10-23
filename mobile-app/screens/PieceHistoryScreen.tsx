@@ -110,7 +110,7 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
                         cleared by {entry.clearedByName} {formatShortDate(entry.clearedAt)}
                       </Text>
                     )}
-                    {entry.staffNote ? <Text style={styles.staffNote}>{entry.staffNote}</Text> : null}
+                    {entry.staffNote ? <Text style={styles.staffNote}>Staff note: {entry.staffNote}</Text> : null}
                     {entry.source === 'import' && <Text style={styles.meta}>from spreadsheet</Text>}
                   </View>
                 </Pressable>

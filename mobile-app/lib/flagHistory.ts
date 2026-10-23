@@ -24,12 +24,13 @@ export type PhotoChange = { kind: 'keep' } | { kind: 'set'; localUri: string } |
 
 // What to upload, save and delete for a flag's photo. Old files are only
 // deleted after the flag saves; a freshly uploaded file is deleted if it fails.
+// keep is a server decision (submit_flag's p_keep_photo), so savePath is null.
 export function planPhotoChange(
   oldPath: string | null,
   change: PhotoChange,
   newPath: string
-): { upload: boolean; savePath: string | null; deleteAfterSave: string | null; deleteOnFailure: string | null } {
-  if (change.kind === 'keep') return { upload: false, savePath: oldPath, deleteAfterSave: null, deleteOnFailure: null };
-  if (change.kind === 'remove') return { upload: false, savePath: null, deleteAfterSave: oldPath, deleteOnFailure: null };
-  return { upload: true, savePath: newPath, deleteAfterSave: oldPath, deleteOnFailure: newPath };
+): { upload: boolean; keepPhoto: boolean; savePath: string | null; deleteAfterSave: string | null; deleteOnFailure: string | null } {
+  if (change.kind === 'keep') return { upload: false, keepPhoto: true, savePath: null, deleteAfterSave: null, deleteOnFailure: null };
+  if (change.kind === 'remove') return { upload: false, keepPhoto: false, savePath: null, deleteAfterSave: oldPath, deleteOnFailure: null };
+  return { upload: true, keepPhoto: false, savePath: newPath, deleteAfterSave: oldPath, deleteOnFailure: newPath };
 }
