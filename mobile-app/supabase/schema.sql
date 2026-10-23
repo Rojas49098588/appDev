@@ -611,6 +611,41 @@ drop policy if exists combo_images_delete on storage.objects;
 create policy combo_images_delete on storage.objects for delete to authenticated
   using (bucket_id = 'combo-images' and public.is_staff());
 
+-- ---------- Storage: flag photos ----------
+-- Private. Path convention: <member uuid>/<anything>.jpg. Members write and read
+-- only their own folder (and not while archived); staff read and delete anything.
+-- No update policy: photos are replaced, never edited.
+
+insert into storage.buckets (id, name, public)
+values ('flag-photos', 'flag-photos', false)
+on conflict (id) do nothing;
+
+drop policy if exists flag_photos_select on storage.objects;
+create policy flag_photos_select on storage.objects for select to authenticated
+  using (
+    bucket_id = 'flag-photos'
+    and (
+      public.is_staff()
+      or ((storage.foldername(name))[1] = auth.uid()::text and not public.is_archived())
+    )
+  );
+drop policy if exists flag_photos_insert on storage.objects;
+create policy flag_photos_insert on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'flag-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+    and not public.is_archived()
+  );
+drop policy if exists flag_photos_delete on storage.objects;
+create policy flag_photos_delete on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'flag-photos'
+    and (
+      public.is_staff()
+      or ((storage.foldername(name))[1] = auth.uid()::text and not public.is_archived())
+    )
+  );
+
 -- ---------- Realtime ----------
 
 do $$

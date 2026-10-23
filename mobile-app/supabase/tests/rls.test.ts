@@ -760,3 +760,63 @@ describe('flag insert forgery', () => {
     assert.ok(new Date(data!.created_at).getFullYear() >= 2026);
   });
 });
+
+describe('flag photos', () => {
+  const body = () => new Uint8Array([0xff, 0xd8, 0xff]);
+  const opts = { contentType: 'image/jpeg' };
+  const bucket = (c: SupabaseClient) => c.storage.from('flag-photos');
+
+  test('member can upload, read and delete a photo in their own folder', async () => {
+    const path = `${member.id}/t-${RUN}.jpg`;
+    try {
+      const up = await bucket(asMember).upload(path, body(), opts);
+      assert.equal(up.error, null);
+      const down = await bucket(asMember).download(path);
+      assert.equal(down.error, null);
+      const del = await bucket(asMember).remove([path]);
+      assert.equal(del.error, null);
+      const { data: listing } = await admin.storage.from('flag-photos').list(member.id, { search: `t-${RUN}.jpg` });
+      assert.ok(!listing?.some((f) => f.name === `t-${RUN}.jpg`), 'object was deleted');
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+
+  test("member cannot upload into another member's folder", async () => {
+    const path = `${otherMember.id}/x-${RUN}.jpg`;
+    try {
+      const { error } = await bucket(asMember).upload(path, body(), opts);
+      assert.notEqual(error, null);
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+
+  test("member cannot read another member's flag photo", async () => {
+    const path = `${otherMember.id}/r-${RUN}.jpg`;
+    try {
+      const up = await admin.storage.from('flag-photos').upload(path, body(), opts);
+      assert.equal(up.error, null);
+      const { error } = await bucket(asMember).download(path);
+      assert.notEqual(error, null);
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+
+  test('staff can read and delete any flag photo', async () => {
+    const path = `${member.id}/s-${RUN}.jpg`;
+    try {
+      const up = await admin.storage.from('flag-photos').upload(path, body(), opts);
+      assert.equal(up.error, null);
+      const down = await bucket(asStaff).download(path);
+      assert.equal(down.error, null);
+      const del = await bucket(asStaff).remove([path]);
+      assert.equal(del.error, null);
+      const { data: listing } = await admin.storage.from('flag-photos').list(member.id, { search: `s-${RUN}.jpg` });
+      assert.ok(!listing?.some((f) => f.name === `s-${RUN}.jpg`), 'object was deleted');
+    } finally {
+      await admin.storage.from('flag-photos').remove([path]);
+    }
+  });
+});
