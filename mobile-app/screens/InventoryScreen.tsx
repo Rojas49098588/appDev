@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../navigation/types';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { PIECES, type Piece } from '../constants/inventoryData';
@@ -10,9 +12,13 @@ import TapeGutter from '../components/TapeGutter';
 import PieceCard from '../components/PieceCard';
 import { BackChevronIcon, PlusIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
+import { chipState } from '../lib/flagHistory';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Inventory'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'Inventory'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 type FilterKey = 'good' | 'repair' | 'dirty' | 'retired';
 
@@ -195,6 +201,10 @@ export default function InventoryScreen({ navigation }: Props) {
                 repairCount={counts.repairCount}
                 dirtyCount={counts.dirtyCount}
                 onFlagPress={handleFlagPress}
+                onSizePress={(color, size) =>
+                  navigation.navigate('PieceHistory', { piece: piece.name, color, size })
+                }
+                chipStateFor={(c, s) => chipState(flags, piece.name, c, s)}
               />
             );
           })}

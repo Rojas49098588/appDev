@@ -10,13 +10,20 @@ export default function PieceCard({
   repairCount,
   dirtyCount,
   onFlagPress,
+  onSizePress,
+  chipStateFor,
 }: {
   piece: Piece;
   repairCount: number;
   dirtyCount: number;
   onFlagPress: (piece: Piece, kind: 'repair' | 'dirty') => void;
+  onSizePress: (color: string, size: string) => void;
+  chipStateFor: (color: string, size: string) => 'repair' | 'dirty' | null;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const hasTintedChip =
+    piece.breakdown.type === 'graded' &&
+    piece.breakdown.groups.some((g) => g.sizes.some((size) => chipStateFor(g.color, size) !== null));
 
   return (
     <View style={styles.piece}>
@@ -71,11 +78,31 @@ export default function PieceCard({
                     showsHorizontalScrollIndicator={false}
                     style={styles.chipStrip}
                   >
-                    {group.sizes.map((size) => (
-                      <View key={size} style={styles.sizeChip}>
-                        <Text style={styles.sizeChipText}>{size}</Text>
-                      </View>
-                    ))}
+                    {group.sizes.map((size) => {
+                      const state = chipStateFor(group.color, size);
+                      return (
+                        <Pressable
+                          key={size}
+                          style={[
+                            styles.sizeChip,
+                            state === 'repair' && styles.sizeChipRepair,
+                            state === 'dirty' && styles.sizeChipDirty,
+                          ]}
+                          onPress={() => onSizePress(group.color, size)}
+                          accessibilityLabel={`${group.color} ${size} history`}
+                        >
+                          <Text
+                            style={[
+                              styles.sizeChipText,
+                              state === 'repair' && styles.sizeChipTextRepair,
+                              state === 'dirty' && styles.sizeChipTextDirty,
+                            ]}
+                          >
+                            {size}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
                   </ScrollView>
                 </View>
               ))
@@ -92,6 +119,11 @@ export default function PieceCard({
                   </View>
                 ));
           })()}
+          {hasTintedChip && (
+            <Text style={styles.legend}>
+              <Text style={{ color: colors.rust }}>Repair</Text> · <Text style={{ color: colors.wash }}>Dirty</Text>
+            </Text>
+          )}
         </View>
       )}
     </View>
@@ -210,6 +242,11 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: colors.inkSoft,
   },
+  sizeChipRepair: { borderColor: colors.rust, backgroundColor: colors.rustTint },
+  sizeChipDirty: { borderColor: colors.wash, backgroundColor: colors.washTint },
+  sizeChipTextRepair: { color: colors.rust },
+  sizeChipTextDirty: { color: colors.wash },
+  legend: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft },
   styleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
