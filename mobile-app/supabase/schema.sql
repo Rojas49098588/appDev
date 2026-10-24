@@ -25,13 +25,43 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
--- Uniform sizes (one per piece, same across colors; '' = not assigned) and
--- archive state. Added with `add column if not exists` so db:apply can be re-run.
-alter table public.profiles add column if not exists coat_size text not null default '';
-alter table public.profiles add column if not exists vest_size text not null default '';
-alter table public.profiles add column if not exists bibber_size text not null default '';
-alter table public.profiles add column if not exists pant_size text not null default '';
+-- Member numbers, keyed by piece_types.name ({"Coats":"185"}; no entry = not
+-- assigned), and archive state. Added with `add column if not exists` so
+-- db:apply can be re-run.
+alter table public.profiles add column if not exists numbers jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists archived_at timestamptz;
+
+-- One-time migration from the old fixed size columns. Runs only while they exist,
+-- so re-running is a no-op; data is copied before the columns are dropped.
+do $$
+declare
+  dup record;
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'profiles' and column_name = 'coat_size') then
+    update public.profiles set numbers = numbers
+      || case when btrim(coat_size) <> '' then jsonb_build_object('Coats', btrim(coat_size)) else '{}'::jsonb end
+      || case when btrim(vest_size) <> '' then jsonb_build_object('Vests', btrim(vest_size)) else '{}'::jsonb end
+      || case when btrim(bibber_size) <> '' then jsonb_build_object('Bibbers', btrim(bibber_size)) else '{}'::jsonb end
+      || case when btrim(pant_size) <> '' then jsonb_build_object('Pants', btrim(pant_size)) else '{}'::jsonb end;
+    -- Report (don't fail on) numbers shared by active members: set_member_numbers
+    -- only checks new or changed numbers, so staff can still edit these members.
+    for dup in
+      select t.type, t.num, string_agg(btrim(p.first_name || ' ' || p.last_name), ', ' order by p.first_name) as names
+      from public.profiles p
+      cross join lateral (values ('Coats', btrim(p.coat_size)), ('Vests', btrim(p.vest_size)),
+                                 ('Bibbers', btrim(p.bibber_size)), ('Pants', btrim(p.pant_size))) as t(type, num)
+      where p.archived_at is null and t.num <> ''
+      group by t.type, t.num
+      having count(*) > 1
+    loop
+      raise notice 'duplicate % number % held by: %', dup.type, dup.num, dup.names;
+    end loop;
+    alter table public.profiles
+      drop column coat_size, drop column vest_size, drop column bibber_size, drop column pant_size;
+  end if;
+end $$;
+drop function if exists public.set_uniform_sizes(uuid, text, text, text, text);
 
 create table if not exists public.combos (
   id uuid primary key default gen_random_uuid(),
@@ -106,6 +136,29 @@ alter table public.flags add constraint flags_member_id_fkey
   foreign key (member_id) references public.profiles(id) on delete set null;
 create unique index if not exists flags_one_open_per_piece
   on public.flags (member_id, piece, color) where cleared_at is null;
+
+-- Uniform inventory. Numbered types (Coats...) have one pieces row per physical piece;
+-- counted types (Ties...) just track stock per color in piece_types.stock.
+create table if not exists public.piece_types (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  kind text not null check (kind in ('numbered', 'counted')),
+  colors text[] not null default '{}',
+  stock jsonb not null default '{}'::jsonb,
+  sort_order int not null default 0,
+  retired boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.pieces (
+  id uuid primary key default gen_random_uuid(),
+  piece_type_id uuid not null references public.piece_types(id) on delete cascade,
+  color text not null,
+  number text not null check (number ~ '^[0-9]+$'),
+  out_for_repair boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (piece_type_id, color, number)
+);
 
 -- Frozen copies of a member's info, written by archive_member().
 create table if not exists public.member_archives (
@@ -212,7 +265,7 @@ create trigger on_auth_user_email_updated
   for each row when (old.email is distinct from new.email)
   execute function public.sync_profile_email();
 
--- ---------- Profile guard: role, sizes and archive state only via their functions; email only via auth ----------
+-- ---------- Profile guard: role, numbers and archive state only via their functions; email only via auth ----------
 
 create or replace function public.guard_profile_update() returns trigger
 language plpgsql as $$
@@ -232,10 +285,9 @@ begin
      and coalesce(current_setting('app.allow_role_change', true), '') <> 'on' then
     raise exception 'only staff can change roles' using errcode = '42501';
   end if;
-  if (new.coat_size, new.vest_size, new.bibber_size, new.pant_size)
-       is distinct from (old.coat_size, old.vest_size, old.bibber_size, old.pant_size)
-     and coalesce(current_setting('app.allow_size_change', true), '') <> 'on' then
-    raise exception 'only staff can change uniform sizes' using errcode = '42501';
+  if new.numbers is distinct from old.numbers
+     and coalesce(current_setting('app.allow_number_change', true), '') <> 'on' then
+    raise exception 'only staff can change member numbers' using errcode = '42501';
   end if;
   if new.archived_at is distinct from old.archived_at
      and coalesce(current_setting('app.allow_archive_change', true), '') <> 'on' then
@@ -273,37 +325,74 @@ $$;
 revoke all on function public.set_role(uuid, text) from public, anon;
 grant execute on function public.set_role(uuid, text) to authenticated;
 
--- ---------- Uniform sizes: staff only ----------
+-- ---------- Member numbers: staff only ----------
 
-create or replace function public.set_uniform_sizes(target uuid, coat text, vest text, bibber text, pant text)
+create or replace function public.set_member_numbers(target uuid, new_numbers jsonb)
 returns void
 language plpgsql security definer set search_path = public as $$
 declare
-  sizes text[] := array[btrim(coalesce(coat, '')), btrim(coalesce(vest, '')),
-                        btrim(coalesce(bibber, '')), btrim(coalesce(pant, ''))];
+  cleaned jsonb := '{}'::jsonb;
+  kv record;
+  val text;
+  holder text;
 begin
   if not public.is_staff() then
-    raise exception 'only staff can change uniform sizes' using errcode = '42501';
+    raise exception 'only staff can change member numbers' using errcode = '42501';
   end if;
-  if exists (select 1 from unnest(sizes) as s where s !~ '^[0-9]*$') then
-    raise exception 'invalid size' using errcode = '22023';
+  if new_numbers is null or jsonb_typeof(new_numbers) <> 'object' then
+    raise exception 'invalid number' using errcode = '22023';
   end if;
-  perform set_config('app.allow_size_change', 'on', true);
-  update public.profiles
-    set coat_size = sizes[1], vest_size = sizes[2], bibber_size = sizes[3], pant_size = sizes[4]
-    where id = target;
+  for kv in select key, value from jsonb_each(new_numbers) loop
+    if jsonb_typeof(kv.value) <> 'string' then
+      raise exception 'invalid number' using errcode = '22023';
+    end if;
+    val := btrim(kv.value #>> '{}');
+    if val = '' then
+      continue;
+    end if;
+    if val !~ '^[0-9]+$' then
+      raise exception 'invalid number' using errcode = '22023';
+    end if;
+    cleaned := cleaned || jsonb_build_object(kv.key, val);
+  end loop;
+
+  -- Serialize number assignment so two concurrent calls can't both pass the
+  -- uniqueness check below and hand out the same number.
+  lock table public.profiles in share row exclusive mode;
+
+  -- Only new or changed numbers are checked, so a pre-existing duplicate never
+  -- blocks editing the member's other numbers.
+  for kv in
+    select c.key, c.value from jsonb_each_text(cleaned) c
+    where (select numbers ->> c.key from public.profiles where id = target) is distinct from c.value
+  loop
+    select btrim(p.first_name || ' ' || p.last_name) into holder
+      from public.profiles p
+      where p.id <> target and p.archived_at is null and p.numbers ->> kv.key = kv.value
+      limit 1;
+    if holder is not null then
+      raise exception 'number % for % already belongs to %', kv.value, kv.key, holder using errcode = '23505';
+    end if;
+  end loop;
+
+  if exists (select 1 from public.profiles where id = target and archived_at is not null) then
+    raise exception 'this member is archived' using errcode = '22023';
+  end if;
+
+  perform set_config('app.allow_number_change', 'on', true);
+  update public.profiles set numbers = cleaned where id = target;
   if not found then
     raise exception 'no such user' using errcode = 'P0002';
   end if;
-  perform set_config('app.allow_size_change', 'off', true);
+  perform set_config('app.allow_number_change', 'off', true);
 end;
 $$;
-revoke all on function public.set_uniform_sizes(uuid, text, text, text, text) from public, anon;
-grant execute on function public.set_uniform_sizes(uuid, text, text, text, text) to authenticated;
+revoke all on function public.set_member_numbers(uuid, jsonb) from public, anon;
+grant execute on function public.set_member_numbers(uuid, jsonb) to authenticated;
 
 -- ---------- Archive and restore members: staff only ----------
 
--- Snapshots the member (profile + open flags), keeps their flags, clears their sizes,
+-- Snapshots the member (profile + open flags), keeps their flags, clears their numbers,
 -- and blocks login: banned_until stops password sign-in and token refresh,
 -- deleting sessions kills existing refresh tokens. RLS (is_archived) covers
 -- the up-to-an-hour an already-issued access token still works.
@@ -339,8 +428,7 @@ begin
       'email', p.email, 'first_name', p.first_name, 'last_name', p.last_name,
       'instrument', p.instrument, 'phone', p.phone, 'shoe_gender', p.shoe_gender,
       'shoe_size', p.shoe_size, 'height_feet', p.height_feet, 'height_inches', p.height_inches,
-      'weight', p.weight, 'coat_size', p.coat_size, 'vest_size', p.vest_size,
-      'bibber_size', p.bibber_size, 'pant_size', p.pant_size,
+      'weight', p.weight, 'numbers', p.numbers,
       'flags', coalesce((
         select jsonb_agg(jsonb_build_object(
           'piece', f.piece, 'color', f.color, 'size', f.size, 'status', f.status, 'comment', f.comment
@@ -352,12 +440,12 @@ begin
     coalesce(staff_name, '')
   );
 
-  perform set_config('app.allow_size_change', 'on', true);
+  perform set_config('app.allow_number_change', 'on', true);
   perform set_config('app.allow_archive_change', 'on', true);
   update public.profiles
-    set coat_size = '', vest_size = '', bibber_size = '', pant_size = '', archived_at = now()
+    set numbers = '{}'::jsonb, archived_at = now()
     where id = target;
-  perform set_config('app.allow_size_change', 'off', true);
+  perform set_config('app.allow_number_change', 'off', true);
   perform set_config('app.allow_archive_change', 'off', true);
 
   -- A real date, not 'infinity': Supabase Auth can't parse infinity and
@@ -459,6 +547,28 @@ drop policy if exists combos_insert on public.combos;
 create policy combos_insert on public.combos for insert to authenticated with check (public.is_staff());
 drop policy if exists combos_delete on public.combos;
 create policy combos_delete on public.combos for delete to authenticated using (public.is_staff());
+
+alter table public.piece_types enable row level security;
+drop policy if exists piece_types_select on public.piece_types;
+create policy piece_types_select on public.piece_types for select to authenticated using (true);
+drop policy if exists piece_types_insert on public.piece_types;
+create policy piece_types_insert on public.piece_types for insert to authenticated with check (public.is_staff());
+drop policy if exists piece_types_update on public.piece_types;
+create policy piece_types_update on public.piece_types for update to authenticated
+  using (public.is_staff()) with check (public.is_staff());
+drop policy if exists piece_types_delete on public.piece_types;
+create policy piece_types_delete on public.piece_types for delete to authenticated using (public.is_staff());
+
+alter table public.pieces enable row level security;
+drop policy if exists pieces_select on public.pieces;
+create policy pieces_select on public.pieces for select to authenticated using (true);
+drop policy if exists pieces_insert on public.pieces;
+create policy pieces_insert on public.pieces for insert to authenticated with check (public.is_staff());
+drop policy if exists pieces_update on public.pieces;
+create policy pieces_update on public.pieces for update to authenticated
+  using (public.is_staff()) with check (public.is_staff());
+drop policy if exists pieces_delete on public.pieces;
+create policy pieces_delete on public.pieces for delete to authenticated using (public.is_staff());
 
 alter table public.games enable row level security;
 drop policy if exists games_select on public.games;
@@ -659,7 +769,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['profiles', 'combos', 'games', 'flags'] loop
+  foreach t in array array['profiles', 'combos', 'games', 'flags', 'piece_types', 'pieces'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

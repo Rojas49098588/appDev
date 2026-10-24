@@ -12,9 +12,9 @@ import type { MemberArchiveRow } from '../lib/rows';
 import { rowToArchive } from '../lib/mappers';
 import { friendlyError } from '../lib/errors';
 import { formatShortDate } from '../lib/format';
-import { UNIFORM_PIECES } from '../lib/uniform';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useInventory } from '../context/InventoryContext';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
@@ -29,6 +29,7 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
   const { archiveId } = route.params;
   const { restoreMember } = useAuth();
   const { isOnline } = useConnection();
+  const { pieceTypes } = useInventory();
   const [archive, setArchive] = useState<MemberArchive | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -86,6 +87,13 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
   };
 
   const renderSnapshot = (a: MemberArchive) => {
+    // Every key in the snapshot, in today's type order; names no longer in inventory last.
+    const typeOrder = new Map(pieceTypes.map((t, i) => [t.name, i]));
+    const numberKeys = Object.keys(a.numbers).sort((x, y) => {
+      const ix = typeOrder.get(x) ?? Infinity;
+      const iy = typeOrder.get(y) ?? Infinity;
+      return ix === iy ? x.localeCompare(y) : ix - iy;
+    });
     const hasHeight = a.height.feet !== '' || a.height.inches !== '';
     const infoRows = [
       { label: 'Email', value: a.email || NOT_PROVIDED },
@@ -125,11 +133,12 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Uniform sizes at archive</Text>
-          {UNIFORM_PIECES.map(({ piece, key }) => (
+          {numberKeys.length === 0 && <Text style={styles.infoValueMuted}>No sizes were assigned.</Text>}
+          {numberKeys.map((key) => (
             <View key={key} style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{piece}</Text>
-              <Text style={[styles.infoValue, !a.uniformSizes[key] && styles.infoValueMuted]}>
-                {a.uniformSizes[key] || NO_SIZE}
+              <Text style={styles.infoLabel}>{key}</Text>
+              <Text style={[styles.infoValue, !a.numbers[key] && styles.infoValueMuted]}>
+                {a.numbers[key] || NO_SIZE}
               </Text>
             </View>
           ))}

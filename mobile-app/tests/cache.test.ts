@@ -28,7 +28,7 @@ test('isAccount requires an id (old on-device accounts without one are rejected)
   const account = {
     id: 'u1', email: 'a@b.co', firstName: 'A', lastName: 'B', instrument: 'Tuba', role: 'Member', phone: '',
     shoeSize: { gender: "Men's", size: '' }, height: { feet: '', inches: '' }, weight: '',
-    uniformSizes: { coats: '', vests: '', bibbers: '', pants: '' }, archivedAt: null,
+    numbers: {}, archivedAt: null,
   };
   assert.equal(isAccount(account), true);
   const { id: _id, ...legacy } = account;
@@ -39,12 +39,13 @@ test('isAccount rejects accounts cached before uniform sizes and archiving exist
   const account = {
     id: 'u1', email: 'a@b.co', firstName: 'A', lastName: 'B', instrument: 'Tuba', role: 'Member', phone: '',
     shoeSize: { gender: "Men's", size: '' }, height: { feet: '', inches: '' }, weight: '',
-    uniformSizes: { coats: '208', vests: '', bibbers: '', pants: '' }, archivedAt: '2026-10-07T00:00:00Z',
+    numbers: { Coats: '208' }, archivedAt: '2026-10-07T00:00:00Z',
   };
   assert.equal(isAccount(account), true);
-  const { uniformSizes: _sizes, ...noSizes } = account;
+  const { numbers: _sizes, ...noSizes } = account;
   assert.equal(isAccount(noSizes), false);
   const { archivedAt: _archived, ...noArchive } = account;
   assert.equal(isAccount(noArchive), false);
-  assert.equal(isAccount({ ...account, uniformSizes: { coats: 208 } }), false);
+  assert.equal(isAccount({ ...account, numbers: { Coats: 208 } }), false);
+  assert.equal(isAccount({ ...noSizes, uniformSizes: { coats: '208', vests: '', bibbers: '', pants: '' } }), false);
 });

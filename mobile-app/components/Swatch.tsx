@@ -6,7 +6,7 @@ import { colors } from '../constants/colors';
 const BLUE = '#346FA3';
 const RED = '#A8483D';
 
-// Uniform color names from constants/inventoryData.ts.
+// Uniform color names from piece types' colors (InventoryContext).
 const SWATCHES: Record<string, string> = {
   Blue: BLUE,
   Red: RED,

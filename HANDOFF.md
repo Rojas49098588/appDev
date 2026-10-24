@@ -101,14 +101,23 @@ For a new Supabase project (or to rebuild this one), from `mobile-app/`:
 6. Change the invite code from the seed value: Table Editor → `settings` → `invite_code`.
 7. Before building an APK with EAS, set the two app variables as EAS environment variables, because EAS builds don't upload the git-ignored `.env.local`. Use `eas env:create` (once for `EXPO_PUBLIC_SUPABASE_URL`, once for `EXPO_PUBLIC_SUPABASE_ANON_KEY`, for the environment you build with, e.g. `preview`), or expo.dev → your project → Environment variables. Don't put them in `eas.json`. A build without them opens to "App is missing its Supabase settings" instead of crashing.
 8. Users created from the dashboard (Authentication → Add user) need `invite_code` in their user metadata, or the database rejects them. Add `first_name`, `last_name` and `instrument` too, or those start blank.
-9. `npm run test:rls` creates and deletes test users and briefly changes the current game's combo slots. Once real members exist, run it against a **separate test project** (point `supabase/.env.local` at it), not the live one.
+9. `npm run test:rls` creates and deletes test users and briefly changes the current game's combo slots, so it always runs against a separate **test project**. Create one, fill `supabase/.env.test.local` from `supabase/.env.test.example`, then `npm run db:apply:test` (schema, seed and sample combos from `test-seed.sql`) and `npm run db:check:test`. `npm run db:apply` is the live project only.
+
+**Release note for Plans 1–2.** Before running `npm run db:apply` on the live project:
+- (a) The new app build must ship at the same time. Old builds call `set_uniform_sizes` and read `coat_size`, which the migration drops, so they break.
+- (b) Watch the output while it runs for "duplicate ... number" notices from the migration (two active members with the same old size) and resolve those members.
+- (c) Clean up test/sample data on live first (a separate, approved step).
+- (d) Live inventory starts empty: member screens show only the white shirt until the Plan 3 import.
+- (e) Plans 2 and 3 ship together: run the import immediately after the live `db:apply`.
+- (f) Plan 3 must create the piece types named exactly `Coats`, `Vests`, `Bibbers`, `Pants` (migrated numbers and old flags match on those names).
+- (g) Until the import, members' existing open flags on those pieces don't appear on My Inventory (staff still see them on the member profile).
 
 ### Follow-ups
 
 From the spec's "Out of scope" list:
 1. Staff resolve/clear flags (next feature; needs one update/delete policy plus UI).
 2. Forgot-password / reset email.
-3. Inventory catalogue and member uniform assignments in the database.
+3. ~~Inventory catalogue and member uniform assignments in the database.~~ Done (Plans 1-2).
 4. Offline writes / sync queue.
 5. Staff-side "Edit game day" (opponent, date, instructions) and season schedule.
 6. Turning on email confirmation for production.

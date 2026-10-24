@@ -21,6 +21,9 @@ export function friendlyError(error: unknown): string {
   if (code === '42501' || code === 'PGRST116' || /row-level security|permission denied/i.test(message)) {
     return "You don't have permission to do that.";
   }
-  if (code === '23505') return 'This member already has an open flag on that color.';
+  if (code === '23505' && /already belongs to/i.test(message)) return message;
+  if (code === '23505' && /flags_one_open_per_piece/.test(message)) {
+    return 'This member already has an open flag on that color.';
+  }
   return message || 'Something went wrong. Please try again.';
 }

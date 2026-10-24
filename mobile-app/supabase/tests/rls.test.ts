@@ -498,56 +498,120 @@ describe('staff permissions', () => {
   });
 });
 
-describe('uniform sizes', () => {
-  const sizeColumns = 'coat_size, vest_size, bibber_size, pant_size';
-  const blank = { coat_size: '', vest_size: '', bibber_size: '', pant_size: '' };
+describe('member numbers', () => {
+  // Digits only, unlikely to be real: '9' / '8' + last 8 digits of the clock.
+  const n1 = '9' + String(Date.now()).slice(-8);
+  const n2 = '8' + String(Date.now()).slice(-8);
 
-  // Service-role updates bypass the size guard (auth.uid() is null).
-  async function resetSizes(id: string) {
-    await admin.from('profiles').update(blank).eq('id', id);
+  // Service-role updates bypass the guard (auth.uid() is null).
+  async function resetNumbers(...ids: string[]) {
+    await admin.from('profiles').update({ numbers: {} }).in('id', ids);
   }
 
-  test('a member cannot change their own sizes directly', async () => {
+  test('a member cannot change their own numbers directly', async () => {
     try {
-      const { error } = await asMember.from('profiles').update({ coat_size: '208' }).eq('id', member.id);
+      const { error } = await asMember.from('profiles').update({ numbers: { Coats: '1' } }).eq('id', member.id);
       assert.notEqual(error, null);
-      const { data } = await admin.from('profiles').select(sizeColumns).eq('id', member.id).single();
-      assert.deepEqual(data, blank);
+      const { data } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(data?.numbers, {});
     } finally {
-      await resetSizes(member.id);
+      await resetNumbers(member.id);
     }
   });
 
-  test('a member cannot call set_uniform_sizes', async () => {
+  test('a member cannot call set_member_numbers', async () => {
     try {
-      const self = await asMember.rpc('set_uniform_sizes', { target: member.id, coat: '208', vest: '', bibber: '', pant: '' });
-      assert.notEqual(self.error, null);
-      const other = await asMember.rpc('set_uniform_sizes', { target: otherMember.id, coat: '208', vest: '', bibber: '', pant: '' });
-      assert.notEqual(other.error, null);
-      const { data } = await admin.from('profiles').select('id, coat_size').in('id', [member.id, otherMember.id]);
-      assert.ok(data!.every((row) => row.coat_size === ''));
+      const self = await asMember.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1 } });
+      assert.equal(self.error?.code, '42501');
+      const other = await asMember.rpc('set_member_numbers', { target: otherMember.id, new_numbers: { Coats: n1 } });
+      assert.equal(other.error?.code, '42501');
+      const { data } = await admin.from('profiles').select('numbers').in('id', [member.id, otherMember.id]);
+      assert.ok(data!.every((row) => Object.keys(row.numbers).length === 0));
     } finally {
-      await resetSizes(member.id);
-      await resetSizes(otherMember.id);
+      await resetNumbers(member.id, otherMember.id);
     }
   });
 
-  test("staff can set a member's sizes, trimmed", async () => {
+  test("staff can set a member's numbers, trimmed, empties dropped", async () => {
     try {
-      const { error } = await asStaff.rpc('set_uniform_sizes', { target: member.id, coat: ' 208 ', vest: '', bibber: '212', pant: '208' });
+      const { error } = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: ` ${n1} `, Vests: '' } });
       assert.equal(error, null);
-      const { data } = await admin.from('profiles').select(sizeColumns).eq('id', member.id).single();
-      assert.deepEqual(data, { coat_size: '208', vest_size: '', bibber_size: '212', pant_size: '208' });
+      const { data } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(data?.numbers, { Coats: n1 });
     } finally {
-      await resetSizes(member.id);
+      await resetNumbers(member.id);
     }
   });
 
-  test('staff cannot set a non-numeric size', async () => {
-    const { error } = await asStaff.rpc('set_uniform_sizes', { target: member.id, coat: '20B', vest: '', bibber: '', pant: '' });
-    assert.notEqual(error, null);
-    const { data } = await admin.from('profiles').select('coat_size').eq('id', member.id).single();
-    assert.equal(data?.coat_size, '');
+  test('staff cannot set a non-numeric number', async () => {
+    const { error } = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: '18a' } });
+    assert.equal(error?.code, '22023');
+    const { data } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+    assert.deepEqual(data?.numbers, {});
+  });
+
+  test('set_member_numbers refuses a number held by another active member', async () => {
+    try {
+      const first = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1 } });
+      assert.equal(first.error, null);
+      const second = await asStaff.rpc('set_member_numbers', { target: otherMember.id, new_numbers: { Coats: n1 } });
+      assert.equal(second.error?.code, '23505');
+      assert.equal(second.error!.message, `number ${n1} for Coats already belongs to member Test`);
+      const { data } = await admin.from('profiles').select('numbers').eq('id', otherMember.id).single();
+      assert.deepEqual(data?.numbers, {});
+      // The same number under a different type is fine, and so is re-saving your own.
+      const diff = await asStaff.rpc('set_member_numbers', { target: otherMember.id, new_numbers: { Vests: n1 } });
+      assert.equal(diff.error, null);
+      const again = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1, Pants: n2 } });
+      assert.equal(again.error, null);
+    } finally {
+      await resetNumbers(member.id, otherMember.id);
+    }
+  });
+
+  test('an existing duplicate never blocks saving other numbers', async () => {
+    const n3 = '7' + String(Date.now()).slice(-8);
+    try {
+      // Bypass the function to create a legacy duplicate.
+      await admin.from('profiles').update({ numbers: { Coats: n1 } }).in('id', [member.id, otherMember.id]);
+      const vests = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1, Vests: n2 } });
+      assert.equal(vests.error, null);
+      const same = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1, Vests: n2 } });
+      assert.equal(same.error, null);
+      await admin.from('profiles').update({ numbers: { Coats: n3 } }).eq('id', otherMember.id);
+      const clash = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n3 } });
+      assert.equal(clash.error?.code, '23505');
+      const { data } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(data?.numbers, { Coats: n1, Vests: n2 });
+    } finally {
+      await resetNumbers(member.id, otherMember.id);
+    }
+  });
+
+  test('a number held by an archived member can be reused', async () => {
+    const leaver = await createUser('numleaver');
+    try {
+      const archive = await asStaff.rpc('archive_member', { target: leaver.id });
+      assert.equal(archive.error, null);
+      // archive_member clears numbers, so write one straight onto the archived profile.
+      const write = await admin.from('profiles').update({ numbers: { Coats: n2 } }).eq('id', leaver.id);
+      assert.equal(write.error, null);
+      const { error } = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n2 } });
+      assert.equal(error, null);
+    } finally {
+      await resetNumbers(member.id);
+    }
+  });
+
+  test('set_member_numbers refuses an archived member', async () => {
+    const leaver = await createUser('numarch');
+    const archive = await asStaff.rpc('archive_member', { target: leaver.id });
+    assert.equal(archive.error, null);
+    const { error } = await asStaff.rpc('set_member_numbers', { target: leaver.id, new_numbers: { Coats: n2 } });
+    assert.equal(error?.code, '22023');
+    assert.match(error!.message, /archived/);
+    const { data } = await admin.from('profiles').select('numbers').eq('id', leaver.id).single();
+    assert.deepEqual(data?.numbers, {});
   });
 });
 
@@ -583,9 +647,9 @@ describe('archiving members', () => {
     assert.ok(data!.every((row) => row.archived_at === null));
   });
 
-  test('archiving snapshots the member, keeps flags, clears sizes, and blocks login; restore lets them back in', async () => {
+  test('archiving snapshots the member, keeps flags, clears numbers, and blocks login; restore lets them back in', async () => {
     const leaver = await createUser('leaver');
-    await admin.from('profiles').update({ coat_size: '208', pant_size: '216', phone: '2145550199' }).eq('id', leaver.id);
+    await admin.from('profiles').update({ numbers: { Coats: '208', Pants: '216' }, phone: '2145550199' }).eq('id', leaver.id);
     await admin.from('flags').insert({ member_id: leaver.id, piece: 'Coats', color: 'Blue', size: '208', status: 'repair', comment: 'torn' });
     const asLeaver = await signIn(leaver.email);
 
@@ -593,10 +657,10 @@ describe('archiving members', () => {
     assert.equal(archive.error, null);
 
     const { data: profile } = await admin
-      .from('profiles').select('coat_size, vest_size, bibber_size, pant_size, archived_at').eq('id', leaver.id).single();
+      .from('profiles').select('numbers, archived_at').eq('id', leaver.id).single();
     assert.deepEqual(
       { ...profile, archived_at: profile?.archived_at !== null },
-      { coat_size: '', vest_size: '', bibber_size: '', pant_size: '', archived_at: true }
+      { numbers: {}, archived_at: true }
     );
     const { data: flags } = await admin.from('flags').select('id').eq('member_id', leaver.id);
     assert.equal(flags?.length, 1);
@@ -606,8 +670,8 @@ describe('archiving members', () => {
     const snap = snapshots![0];
     assert.equal(snap.archived_by_name, 'staff Test');
     assert.equal(snap.restored_at, null);
-    assert.equal(snap.snapshot.coat_size, '208');
-    assert.equal(snap.snapshot.pant_size, '216');
+    assert.deepEqual(snap.snapshot.numbers, { Coats: '208', Pants: '216' });
+    assert.equal('coat_size' in snap.snapshot, false);
     assert.equal(snap.snapshot.phone, '2145550199');
     assert.deepEqual(snap.snapshot.flags, [{ piece: 'Coats', color: 'Blue', size: '208', status: 'repair', comment: 'torn' }]);
 
@@ -631,8 +695,8 @@ describe('archiving members', () => {
 
     const restore = await asStaff.rpc('restore_member', { target: leaver.id });
     assert.equal(restore.error, null);
-    const { data: restored } = await admin.from('profiles').select('archived_at, coat_size').eq('id', leaver.id).single();
-    assert.deepEqual(restored, { archived_at: null, coat_size: '' });
+    const { data: restored } = await admin.from('profiles').select('archived_at, numbers').eq('id', leaver.id).single();
+    assert.deepEqual(restored, { archived_at: null, numbers: {} });
     const { data: stamped } = await admin.from('member_archives').select('restored_at, restored_by_name').eq('member_id', leaver.id).single();
     assert.notEqual(stamped?.restored_at, null);
     assert.equal(stamped?.restored_by_name, 'staff Test');
@@ -842,5 +906,99 @@ describe('flag photos', () => {
     } finally {
       await admin.storage.from('flag-photos').remove([path]);
     }
+  });
+});
+
+describe('inventory', () => {
+  const coatsName = `RLS Coats ${RUN}`;
+  const tiesName = `RLS Ties ${RUN}`;
+  let coatsId: string;
+  let tiesId: string;
+  let bluePieceId: string;
+
+  before(async () => {
+    const coats = await admin
+      .from('piece_types')
+      .insert({ name: coatsName, kind: 'numbered', colors: ['Blue', 'Red'] })
+      .select('id')
+      .single();
+    assert.equal(coats.error, null);
+    coatsId = coats.data!.id;
+    const ties = await admin
+      .from('piece_types')
+      .insert({ name: tiesName, kind: 'counted', stock: { Blue: 3 } })
+      .select('id')
+      .single();
+    assert.equal(ties.error, null);
+    tiesId = ties.data!.id;
+    const pieces = await admin
+      .from('pieces')
+      .insert([
+        { piece_type_id: coatsId, color: 'Blue', number: '101' },
+        { piece_type_id: coatsId, color: 'Red', number: '101' },
+      ])
+      .select('id, color');
+    assert.equal(pieces.error, null);
+    bluePieceId = pieces.data!.find((p) => p.color === 'Blue')!.id;
+  });
+
+  after(async () => {
+    await admin.from('piece_types').delete().in('name', [coatsName, tiesName]);
+  });
+
+  test('members and staff can read piece types and pieces', async () => {
+    for (const client of [asMember, asStaff]) {
+      const types = await client.from('piece_types').select('kind, colors').eq('name', coatsName);
+      assert.equal(types.error, null);
+      assert.equal(types.data?.length, 1);
+      assert.equal(types.data![0].kind, 'numbered');
+      assert.deepEqual(types.data![0].colors, ['Blue', 'Red']);
+      const pieces = await client.from('pieces').select('id').eq('piece_type_id', coatsId);
+      assert.equal(pieces.error, null);
+      assert.equal(pieces.data?.length, 2);
+    }
+  });
+
+  test('members cannot insert, update or delete piece types or pieces', async () => {
+    const insType = await asMember.from('piece_types').insert({ name: `RLS Bad ${RUN}`, kind: 'counted' }).select();
+    assert.ok(insType.error || (insType.data?.length ?? 0) === 0);
+    const insPiece = await asMember
+      .from('pieces')
+      .insert({ piece_type_id: coatsId, color: 'Blue', number: '202' })
+      .select();
+    assert.ok(insPiece.error || (insPiece.data?.length ?? 0) === 0);
+    const updType = await asMember.from('piece_types').update({ retired: true }).eq('id', coatsId).select();
+    assert.ok(updType.error || (updType.data?.length ?? 0) === 0);
+    const updPiece = await asMember.from('pieces').update({ out_for_repair: true }).eq('id', bluePieceId).select();
+    assert.ok(updPiece.error || (updPiece.data?.length ?? 0) === 0);
+    const delPiece = await asMember.from('pieces').delete().eq('id', bluePieceId).select();
+    assert.ok(delPiece.error || (delPiece.data?.length ?? 0) === 0);
+    const delType = await asMember.from('piece_types').delete().eq('id', tiesId).select();
+    assert.ok(delType.error || (delType.data?.length ?? 0) === 0);
+
+    const types = await admin.from('piece_types').select('name, retired').in('name', [coatsName, tiesName, `RLS Bad ${RUN}`]);
+    assert.equal(types.data?.length, 2);
+    assert.ok(types.data!.every((t) => t.retired === false));
+    const pieces = await admin.from('pieces').select('color, number, out_for_repair').eq('piece_type_id', coatsId);
+    assert.equal(pieces.data?.length, 2);
+    assert.ok(pieces.data!.every((p) => p.out_for_repair === false && p.number === '101'));
+  });
+
+  test('staff can mark a piece out for repair and back', async () => {
+    const out = await asStaff.from('pieces').update({ out_for_repair: true }).eq('id', bluePieceId).select();
+    assert.equal(out.error, null);
+    assert.equal(out.data?.length, 1);
+    assert.equal(out.data![0].out_for_repair, true);
+    const back = await asStaff.from('pieces').update({ out_for_repair: false }).eq('id', bluePieceId).select();
+    assert.equal(back.error, null);
+    assert.equal(back.data?.length, 1);
+    assert.equal(back.data![0].out_for_repair, false);
+  });
+
+  test('anon reads nothing from piece_types or pieces', async () => {
+    const types = await anon.from('piece_types').select('id');
+    assert.ok(types.error || (types.data?.length ?? 0) === 0);
+    const pieces = await anon.from('pieces').select('id');
+    assert.ok(pieces.error || (pieces.data?.length ?? 0) === 0);
   });
 });

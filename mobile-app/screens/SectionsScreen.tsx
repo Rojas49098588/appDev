@@ -22,8 +22,9 @@ import { useFlags } from '../context/FlagsContext';
 import { useAuth } from '../context/AuthContext';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
-import type { UniformSizes } from '../lib/models';
-import { digitsOnly, matchesUniformSize, UNIFORM_PIECES } from '../lib/uniform';
+import { useInventory } from '../context/InventoryContext';
+import type { MemberNumbers } from '../lib/models';
+import { digitsOnly, matchesNumber } from '../lib/uniform';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Sections'>,
@@ -47,7 +48,7 @@ type RosterMember = {
   height?: { feet: string; inches: string };
   weight?: string;
   role?: Role;
-  uniformSizes?: UniformSizes;
+  numbers?: MemberNumbers;
 };
 
 export default function SectionsScreen({ navigation, route }: Props) {
@@ -56,6 +57,8 @@ export default function SectionsScreen({ navigation, route }: Props) {
   const [statusFilters, setStatusFilters] = useState<Set<StatusKey>>(new Set());
   const { flags } = useFlags();
   const { accounts } = useAuth();
+  const { pieceTypes } = useInventory();
+  const numberedTypes = pieceTypes.filter((t) => t.kind === 'numbered' && !t.retired);
   // Uniform size filter: active once a piece is picked and a size typed.
   const [sizePiece, setSizePiece] = useState<string | null>(null);
   const [sizeQuery, setSizeQuery] = useState('');
@@ -94,7 +97,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
         height: match?.height,
         weight: match?.weight,
         role: match?.role,
-        uniformSizes: match?.uniformSizes,
+        numbers: match?.numbers,
       };
     });
 
@@ -109,7 +112,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
         height: a.height,
         weight: a.weight,
         role: a.role,
-        uniformSizes: a.uniformSizes,
+        numbers: a.numbers,
       }));
 
     return [...fromRoster, ...newSignUps];
@@ -181,7 +184,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
       const matchesSection = !sectionFilter || member.section === sectionFilter;
       if (!matchesSection) return false;
 
-      if (isSizeFiltering && !matchesUniformSize(member.uniformSizes, sizePiece, sizeQuery)) return false;
+      if (isSizeFiltering && !matchesNumber(member.numbers, sizePiece, sizeQuery)) return false;
 
       if (statusFilters.size === 0) return true;
       const memberFlags = flagsFor(member);
@@ -355,7 +358,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.chipsContent}
                 >
-                  {UNIFORM_PIECES.map(({ piece }) => {
+                  {numberedTypes.map(({ name: piece }) => {
                     const active = sizePiece === piece;
                     return (
                       <Pressable
@@ -371,7 +374,13 @@ export default function SectionsScreen({ navigation, route }: Props) {
                 <View style={styles.sizeRow}>
                   <TextInput
                     style={[styles.sizeInput, !sizePiece && styles.sizeInputDisabled]}
-                    placeholder={sizePiece ? `${sizePiece} size, e.g. 208` : 'Pick a piece, then enter a size'}
+                    placeholder={
+                      sizePiece
+                        ? `${sizePiece} size, e.g. 208`
+                        : numberedTypes.length === 0
+                          ? 'No numbered pieces in inventory yet.'
+                          : 'Pick a piece, then enter a size'
+                    }
                     placeholderTextColor={colors.inkFaint}
                     value={sizeQuery}
                     onChangeText={(text) => setSizeQuery(digitsOnly(text))}

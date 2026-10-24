@@ -2,8 +2,30 @@ import type { HeightValue, Role } from '../navigation/types';
 
 export type ShoeSize = { gender: "Men's" | "Women's"; size: string };
 
-// One size per piece, the same across colors. '' means not assigned yet.
-export type UniformSizes = { coats: string; vests: string; bibbers: string; pants: string };
+// Piece type name -> the member's number for it (digits). Missing/'' means none.
+export type MemberNumbers = Record<string, string>;
+
+export type PieceKind = 'numbered' | 'counted';
+
+export type PieceType = {
+  id: string;
+  name: string;
+  kind: PieceKind;
+  colors: string[];
+  stock: Record<string, number>;
+  sortOrder: number;
+  retired: boolean;
+};
+
+export type InventoryPiece = {
+  id: string;
+  pieceTypeId: string;
+  // The type's name, filled by the mapper from the types list.
+  pieceType: string;
+  color: string;
+  number: string;
+  outForRepair: boolean;
+};
 
 export type Account = {
   id: string;
@@ -16,7 +38,7 @@ export type Account = {
   shoeSize: ShoeSize;
   height: HeightValue;
   weight: string;
-  uniformSizes: UniformSizes;
+  numbers: MemberNumbers;
   // ISO timestamp; null while the account is active.
   archivedAt: string | null;
 };
@@ -84,6 +106,6 @@ export type MemberArchive = {
   shoeSize: ShoeSize;
   height: HeightValue;
   weight: string;
-  uniformSizes: UniformSizes;
+  numbers: MemberNumbers;
   flags: ArchivedFlag[];
 };

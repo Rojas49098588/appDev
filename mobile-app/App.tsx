@@ -24,11 +24,13 @@ import MemberProfileScreen from './screens/MemberProfileScreen';
 import AddComboScreen from './screens/AddComboScreen';
 import ComboDetailScreen from './screens/ComboDetailScreen';
 import PieceHistoryScreen from './screens/PieceHistoryScreen';
+import PieceTableScreen from './screens/PieceTableScreen';
 import ArchivedMembersScreen from './screens/ArchivedMembersScreen';
 import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
 import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { InventoryProvider } from './context/InventoryContext';
 import { GameProvider } from './context/GameContext';
 import { CombosProvider } from './context/CombosContext';
 import { supabaseConfigError } from './lib/supabase';
@@ -123,6 +125,11 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="PieceTable"
+            component={PieceTableScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="ComboDetail"
             component={ComboDetailScreen}
             options={{ headerShown: false }}
@@ -182,7 +189,9 @@ export default function App() {
         <FlagsProvider>
           <GameProvider>
             <CombosProvider>
-              <AppNavigator onReady={onLayoutRootView} />
+              <InventoryProvider>
+                <AppNavigator onReady={onLayoutRootView} />
+              </InventoryProvider>
             </CombosProvider>
           </GameProvider>
         </FlagsProvider>
