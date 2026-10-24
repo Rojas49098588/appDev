@@ -29,6 +29,7 @@ import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
 import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { InventoryProvider } from './context/InventoryContext';
 import { GameProvider } from './context/GameContext';
 import { CombosProvider } from './context/CombosContext';
 import { supabaseConfigError } from './lib/supabase';
@@ -182,7 +183,9 @@ export default function App() {
         <FlagsProvider>
           <GameProvider>
             <CombosProvider>
-              <AppNavigator onReady={onLayoutRootView} />
+              <InventoryProvider>
+                <AppNavigator onReady={onLayoutRootView} />
+              </InventoryProvider>
             </CombosProvider>
           </GameProvider>
         </FlagsProvider>

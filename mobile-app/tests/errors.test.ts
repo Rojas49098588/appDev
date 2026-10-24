@@ -39,3 +39,22 @@ test('a banned (archived) account gets the archived message', () => {
   assert.equal(friendlyError({ code: 'user_banned', message: 'User is banned' }), ARCHIVED_MESSAGE);
   assert.equal(friendlyError({ message: 'User is banned' }), ARCHIVED_MESSAGE);
 });
+
+test('friendlyError passes through the number-taken message', () => {
+  const message = 'number 185 for Coats already belongs to Jane Doe';
+  assert.equal(friendlyError({ code: '23505', message }), message);
+});
+
+test('friendlyError only maps flags_one_open_per_piece to the open-flag message', () => {
+  assert.equal(
+    friendlyError({ code: '23505', message: 'duplicate key value violates unique constraint "flags_one_open_per_piece"' }),
+    'This member already has an open flag on that color.'
+  );
+});
+
+test('an unrelated 23505 is not called an open-flag conflict', () => {
+  assert.notEqual(
+    friendlyError({ code: '23505', message: 'duplicate key value violates unique constraint "pieces_unique"' }),
+    'This member already has an open flag on that color.'
+  );
+});

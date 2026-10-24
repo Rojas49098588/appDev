@@ -11,7 +11,7 @@ import {
 import { Alert } from 'react-native';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import type { Role, UserParams } from '../navigation/types';
-import type { Account, ShoeSize, UniformSizes } from '../lib/models';
+import type { Account, MemberNumbers, ShoeSize } from '../lib/models';
 import type { ProfileRow } from '../lib/rows';
 import { accountUpdatesToProfile, profileToAccount, type AccountUpdates } from '../lib/mappers';
 import { isAccount, isAccountList } from '../lib/validators';
@@ -22,7 +22,7 @@ import { ARCHIVED_MESSAGE } from '../lib/errors';
 import { hasSession, supabase } from '../lib/supabase';
 import { useOnReconnect } from '../hooks/useConnection';
 
-export type { Account, ShoeSize, UniformSizes };
+export type { Account, MemberNumbers, ShoeSize };
 
 export type SignUpInput = {
   email: string;
@@ -50,7 +50,7 @@ type AuthContextValue = {
   updateAccount: (updates: AccountUpdates) => Promise<void>;
   setAccountRole: (id: string, role: Role) => Promise<void>;
   // Staff only (enforced by the database).
-  setUniformSizes: (id: string, sizes: UniformSizes) => Promise<void>;
+  setMemberNumbers: (id: string, numbers: MemberNumbers) => Promise<void>;
   archiveMember: (id: string) => Promise<void>;
   restoreMember: (id: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -347,25 +347,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [commitAccounts]
   );
 
-  const setUniformSizes = useCallback(
-    async (id: string, sizes: UniformSizes) => {
-      const trimmed: UniformSizes = {
-        coats: sizes.coats.trim(),
-        vests: sizes.vests.trim(),
-        bibbers: sizes.bibbers.trim(),
-        pants: sizes.pants.trim(),
-      };
-      const { error } = await supabase.rpc('set_uniform_sizes', {
-        target: id,
-        coat: trimmed.coats,
-        vest: trimmed.vests,
-        bibber: trimmed.bibbers,
-        pant: trimmed.pants,
-      });
+  const setMemberNumbers = useCallback(
+    async (id: string, numbers: MemberNumbers) => {
+      const trimmed: MemberNumbers = {};
+      for (const [name, value] of Object.entries(numbers)) {
+        const v = value.trim();
+        if (v) trimmed[name] = v;
+      }
+      const { error } = await supabase.rpc('set_member_numbers', { target: id, new_numbers: trimmed });
       if (error) throw error;
-      commitAccounts(accountsRef.current.map((a) => (a.id === id ? { ...a, uniformSizes: trimmed } : a)));
+      commitAccounts(accountsRef.current.map((a) => (a.id === id ? { ...a, numbers: trimmed } : a)));
       const current = accountRef.current;
-      if (current?.id === id) commitAccount({ ...current, uniformSizes: trimmed });
+      if (current?.id === id) commitAccount({ ...current, numbers: trimmed });
     },
     [commitAccount, commitAccounts]
   );
@@ -413,14 +406,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logOut,
       updateAccount,
       setAccountRole,
-      setUniformSizes,
+      setMemberNumbers,
       archiveMember,
       restoreMember,
       changePassword,
     }),
     [
       session, account, accounts, isLoading, sessionVersion, checkInviteCode, signUp, logIn, logOut,
-      updateAccount, setAccountRole, setUniformSizes, archiveMember, restoreMember, changePassword,
+      updateAccount, setAccountRole, setMemberNumbers, archiveMember, restoreMember, changePassword,
     ]
   );
 
