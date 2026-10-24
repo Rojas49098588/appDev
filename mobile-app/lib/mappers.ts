@@ -1,9 +1,9 @@
-import type { Account, Combo, Flag, Game, MemberArchive, UniformSizes } from './models.ts';
-import type { ArchiveSnapshot, ComboRow, FlagRow, GameRow, MemberArchiveRow, ProfileRow } from './rows.ts';
+import type { Account, Combo, Flag, Game, InventoryPiece, MemberArchive, MemberNumbers, PieceType } from './models.ts';
+import type { ArchiveSnapshot, ComboRow, FlagRow, GameRow, MemberArchiveRow, PieceRow, PieceTypeRow, ProfileRow } from './rows.ts';
 import { formatGameDate, formatShortDate } from './format.ts';
 
-// Sizes and archive state only change through staff-only database functions.
-export type AccountUpdates = Partial<Omit<Account, 'id' | 'role' | 'uniformSizes' | 'archivedAt'>>;
+// Numbers and archive state only change through staff-only database functions.
+export type AccountUpdates = Partial<Omit<Account, 'id' | 'role' | 'numbers' | 'archivedAt'>>;
 
 export type ProfileUpdate = Partial<
   Pick<
@@ -12,13 +12,19 @@ export type ProfileUpdate = Partial<
   >
 >;
 
-function rowToUniformSizes(row: Pick<ProfileRow, 'coat_size' | 'vest_size' | 'bibber_size' | 'pant_size'>): UniformSizes {
-  return {
-    coats: row.coat_size ?? '',
-    vests: row.vest_size ?? '',
-    bibbers: row.bibber_size ?? '',
-    pants: row.pant_size ?? '',
-  };
+// Old snapshots (taken before numbers existed) hold four fixed size columns.
+const OLD_SIZE_KEYS: [keyof ArchiveSnapshot, string][] = [
+  ['coat_size', 'Coats'], ['vest_size', 'Vests'], ['bibber_size', 'Bibbers'], ['pant_size', 'Pants'],
+];
+
+function snapshotNumbers(s: ArchiveSnapshot): MemberNumbers {
+  if (s.numbers) return { ...s.numbers };
+  const out: MemberNumbers = {};
+  for (const [key, name] of OLD_SIZE_KEYS) {
+    const v = s[key];
+    if (typeof v === 'string' && v !== '') out[name] = v;
+  }
+  return out;
 }
 
 export function profileToAccount(row: ProfileRow): Account {
@@ -33,7 +39,7 @@ export function profileToAccount(row: ProfileRow): Account {
     shoeSize: { gender: row.shoe_gender ?? "Men's", size: row.shoe_size },
     height: { feet: row.height_feet, inches: row.height_inches },
     weight: row.weight,
-    uniformSizes: rowToUniformSizes(row),
+    numbers: row.numbers ?? {},
     archivedAt: row.archived_at ?? null,
   };
 }
@@ -55,7 +61,7 @@ export function rowToArchive(row: MemberArchiveRow): MemberArchive {
     shoeSize: { gender: s.shoe_gender ?? "Men's", size: s.shoe_size },
     height: { feet: s.height_feet, inches: s.height_inches },
     weight: s.weight,
-    uniformSizes: rowToUniformSizes(s),
+    numbers: snapshotNumbers(s),
     flags: (s.flags ?? []).map(({ piece, color, size, status, comment }) => ({ piece, color, size, status, comment })),
   };
 }
@@ -121,5 +127,28 @@ export function rowToGame(row: GameRow, postedByName: string): Game {
     afterGameInstructions: row.after_game_instructions,
     instructionsPostedBy: postedByName,
     instructionsUpdatedAt: formatShortDate(row.instructions_updated_at),
+  };
+}
+
+export function rowToPieceType(row: PieceTypeRow): PieceType {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    colors: row.colors,
+    stock: row.stock,
+    sortOrder: row.sort_order,
+    retired: row.retired,
+  };
+}
+
+export function rowToPiece(row: PieceRow, typeName: string): InventoryPiece {
+  return {
+    id: row.id,
+    pieceTypeId: row.piece_type_id,
+    pieceType: typeName,
+    color: row.color,
+    number: row.number,
+    outForRepair: row.out_for_repair,
   };
 }

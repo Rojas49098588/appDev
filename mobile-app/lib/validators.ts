@@ -1,4 +1,4 @@
-import type { Account, Combo, Flag, Game } from './models.ts';
+import type { Account, Combo, Flag, Game, InventoryPiece, PieceType } from './models.ts';
 
 // Runtime shape checks for data read back from the on-device cache.
 
@@ -9,15 +9,14 @@ const isOptionalString = (v: unknown) => v === undefined || typeof v === 'string
 
 export function isAccount(v: unknown): v is Account {
   if (!isObject(v)) return false;
-  const { shoeSize, height, uniformSizes } = v;
+  const { shoeSize, height, numbers } = v;
   return (
     isString(v.id) && isString(v.email) && isString(v.firstName) && isString(v.lastName) &&
     isString(v.instrument) && (v.role === 'Member' || v.role === 'Staff') && isString(v.phone) &&
     isString(v.weight) &&
     isObject(shoeSize) && (shoeSize.gender === "Men's" || shoeSize.gender === "Women's") && isString(shoeSize.size) &&
     isObject(height) && isString(height.feet) && isString(height.inches) &&
-    isObject(uniformSizes) && isString(uniformSizes.coats) && isString(uniformSizes.vests) &&
-    isString(uniformSizes.bibbers) && isString(uniformSizes.pants) &&
+    isObject(numbers) && Object.values(numbers).every(isString) && v.uniformSizes === undefined &&
     isStringOrNull(v.archivedAt)
   );
 }
@@ -55,3 +54,23 @@ function isGame(v: unknown): v is Game {
 }
 
 export const isGameOrNull = (v: unknown): v is Game | null => v === null || isGame(v);
+
+function isPieceType(v: unknown): v is PieceType {
+  return (
+    isObject(v) && isString(v.id) && isString(v.name) && (v.kind === 'numbered' || v.kind === 'counted') &&
+    Array.isArray(v.colors) && v.colors.every(isString) &&
+    isObject(v.stock) && Object.values(v.stock).every((n) => typeof n === 'number') &&
+    typeof v.sortOrder === 'number' && typeof v.retired === 'boolean'
+  );
+}
+
+export const isPieceTypeList = (v: unknown): v is PieceType[] => Array.isArray(v) && v.every(isPieceType);
+
+function isPiece(v: unknown): v is InventoryPiece {
+  return (
+    isObject(v) && isString(v.id) && isString(v.pieceTypeId) && isString(v.pieceType) && isString(v.color) &&
+    isString(v.number) && typeof v.outForRepair === 'boolean'
+  );
+}
+
+export const isPieceList = (v: unknown): v is InventoryPiece[] => Array.isArray(v) && v.every(isPiece);

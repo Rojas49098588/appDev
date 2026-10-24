@@ -13,20 +13,23 @@ export type ProfileRow = {
   height_feet: string;
   height_inches: string;
   weight: string;
-  coat_size: string;
-  vest_size: string;
-  bibber_size: string;
-  pant_size: string;
+  numbers: Record<string, string>;
   archived_at: string | null;
   created_at: string;
 };
 
 // archive_member() builds the snapshot from the profile row plus open flags.
+// New snapshots have `numbers`; older ones have the four *_size keys instead.
 export type ArchiveSnapshot = Pick<
   ProfileRow,
   | 'email' | 'first_name' | 'last_name' | 'instrument' | 'phone' | 'shoe_gender' | 'shoe_size'
-  | 'height_feet' | 'height_inches' | 'weight' | 'coat_size' | 'vest_size' | 'bibber_size' | 'pant_size'
+  | 'height_feet' | 'height_inches' | 'weight'
 > & {
+  numbers?: Record<string, string>;
+  coat_size?: string;
+  vest_size?: string;
+  bibber_size?: string;
+  pant_size?: string;
   flags: Pick<FlagRow, 'piece' | 'color' | 'size' | 'status' | 'comment'>[];
 };
 
@@ -79,4 +82,24 @@ export type FlagRow = {
   cleared_at: string | null;
   cleared_by: string | null;
   cleared_by_name: string | null;
+};
+
+export type PieceTypeRow = {
+  id: string;
+  name: string;
+  kind: 'numbered' | 'counted';
+  colors: string[];
+  stock: Record<string, number>;
+  sort_order: number;
+  retired: boolean;
+  created_at: string;
+};
+
+export type PieceRow = {
+  id: string;
+  piece_type_id: string;
+  color: string;
+  number: string;
+  out_for_repair: boolean;
+  created_at: string;
 };

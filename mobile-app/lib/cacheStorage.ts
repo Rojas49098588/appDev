@@ -7,6 +7,8 @@ export const CACHE_KEYS = {
   flags: 'mustang.cache.flags.v1',
   combos: 'mustang.cache.combos.v1',
   game: 'mustang.cache.game.v1',
+  pieceTypes: 'mustang.cache.pieceTypes.v1',
+  pieces: 'mustang.cache.pieces.v1',
 } as const;
 
 // Pre-Supabase storage keys. Their data is discarded (fresh start).
