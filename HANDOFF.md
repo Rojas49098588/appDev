@@ -105,15 +105,16 @@ For a new Supabase project (or to rebuild this one), from `mobile-app/`:
 
 **Release note for Plans 1–2.** Before running `npm run db:apply` on the live project:
 - (a) The new app build must ship at the same time. Old builds call `set_uniform_sizes` and read `coat_size`, which the migration drops, so they break.
-- (b) Watch the output for "duplicate ... number" notices from the migration (two active members with the same old size) and resolve those members.
+- (b) Watch the output while it runs for "duplicate ... number" notices from the migration (two active members with the same old size) and resolve those members.
 - (c) Clean up test/sample data on live first (a separate, approved step).
+- (d) Live inventory starts empty: member screens show only the white shirt until the Plan 3 import.
 
 ### Follow-ups
 
 From the spec's "Out of scope" list:
 1. Staff resolve/clear flags (next feature; needs one update/delete policy plus UI).
 2. Forgot-password / reset email.
-3. Inventory catalogue and member uniform assignments in the database.
+3. ~~Inventory catalogue and member uniform assignments in the database.~~ Done (Plans 1-2).
 4. Offline writes / sync queue.
 5. Staff-side "Edit game day" (opponent, date, instructions) and season schedule.
 6. Turning on email confirmation for production.
