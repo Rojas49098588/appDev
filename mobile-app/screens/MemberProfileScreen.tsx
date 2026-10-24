@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -41,7 +41,7 @@ const numbersKey = (numbers: MemberNumbers) =>
 export default function MemberProfileScreen({ navigation, route }: Props) {
   const { id, name, section, email, phone, height, weight } = route.params;
   const { account, accounts, setAccountRole, setMemberNumbers, archiveMember } = useAuth();
-  const { pieceTypes, pieces } = useInventory();
+  const { pieceTypes, pieces, syncedAt, error: inventoryError } = useInventory();
   const { isOnline } = useConnection();
   const [role, setRole] = useState(route.params.role ?? 'Member');
   const { flags, clearFlag } = useFlags();
@@ -64,7 +64,13 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     setSizes(JSON.parse(savedSizesKey) as MemberNumbers);
   }, [savedSizesKey]);
 
-  const numberedTypes = pieceTypes.filter((t) => t.kind === 'numbered' && !t.retired);
+  // One field per non-retired numbered type, plus any number the member already holds
+  // for a name with no type yet (migrated numbers stay visible and editable before the import).
+  const numberFields = useMemo(() => {
+    const names = pieceTypes.filter((t) => t.kind === 'numbered' && !t.retired).map((t) => t.name);
+    const extra = Object.keys(savedSizes).filter((key) => !names.includes(key) && savedSizes[key] !== '');
+    return [...names, ...extra];
+  }, [pieceTypes, savedSizes]);
   // Saved numbers that have no matching piece in inventory, by type name.
   const missingNumbers = new Map(
     unknownNumbers(accounts, pieces)
@@ -257,21 +263,22 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           {isRealAccount && (
             <View style={[styles.card, styles.sizesCard]}>
               <Text style={styles.cardTitle}>Uniform sizes</Text>
-              {numberedTypes.length === 0 && (
+              {inventoryError !== null && <Text style={styles.noFlags}>{inventoryError}</Text>}
+              {numberFields.length === 0 && inventoryError === null && syncedAt !== null && (
                 <Text style={styles.noFlags}>No numbered pieces in inventory yet.</Text>
               )}
               <View style={styles.sizesGrid}>
-                {numberedTypes.map((type) => {
-                  const value = numberFor(sizes, type.name);
-                  const missing = missingNumbers.get(type.name);
+                {numberFields.map((typeName) => {
+                  const value = numberFor(sizes, typeName);
+                  const missing = missingNumbers.get(typeName);
                   return (
-                    <View key={type.id} style={styles.sizeField}>
-                      <Text style={styles.sizeLabel}>{type.name}</Text>
+                    <View key={typeName} style={styles.sizeField}>
+                      <Text style={styles.sizeLabel}>{typeName}</Text>
                       <TextInput
                         style={styles.sizeInput}
                         value={value}
                         onChangeText={(text) => {
-                          setSizes((prev) => ({ ...prev, [type.name]: digitsOnly(text) }));
+                          setSizes((prev) => ({ ...prev, [typeName]: digitsOnly(text) }));
                           setJustSavedSizes(false);
                         }}
                         onFocus={focusNumericField}
@@ -283,14 +290,14 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
                       />
                       {missing !== undefined && missing === value && (
                         <Text style={styles.missingNumberText}>
-                          No {type.name} {missing} in inventory.
+                          No {typeName} {missing} in inventory.
                         </Text>
                       )}
                     </View>
                   );
                 })}
               </View>
-              {numberedTypes.length > 0 && (
+              {numberFields.length > 0 && (
                 <Pressable
                   style={[
                     styles.saveSizesButton,

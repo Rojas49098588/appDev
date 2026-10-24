@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assignmentFor, mapPiecesToTypes, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
+  assignmentFor, fetchAllPages, mapPiecesToTypes, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
 } from '../lib/inventory.ts';
 import type { Account, InventoryPiece, PieceType } from '../lib/models.ts';
 
@@ -19,14 +19,15 @@ const type = (name: string, kind: 'numbered' | 'counted', over: Partial<PieceTyp
 
 const maya = acct('u1', 'Maya', { Coats: '104' });
 
-test('ownerIndex ignores archived members and staff', () => {
+test('ownerIndex ignores archived members but counts staff holders', () => {
   const owners = ownerIndex([
     maya,
     acct('u2', 'Old', { Coats: '96' }, { archivedAt: '2026-10-01T00:00:00Z' }),
     acct('s1', 'Staff', { Coats: '97' }, { role: 'Staff' }),
   ]);
-  assert.deepEqual([...owners.keys()], ['Coats|104']);
+  assert.deepEqual([...owners.keys()], ['Coats|104', 'Coats|97']);
   assert.equal(owners.get('Coats|104')?.id, 'u1');
+  assert.equal(owners.get('Coats|97')?.id, 's1');
 });
 
 test('assignmentFor: assigned, unassigned, out for repair keeps owner', () => {
@@ -45,9 +46,11 @@ test('unknownNumbers lists numbers with no matching piece', () => {
     acct('u1', 'Maya', { Coats: '1530' }),
     acct('u2', 'Jo', { Coats: '104', Vests: '' }),
     acct('u3', 'Gone', { Coats: '999' }, { archivedAt: '2026-10-01T00:00:00Z' }),
+    acct('s1', 'Staff', { Pants: '77' }, { role: 'Staff' }),
   ];
   assert.deepEqual(unknownNumbers(accounts, [piece('p1', 'Coats', 'Blue', '104')]), [
     { memberId: 'u1', memberName: 'Maya X', pieceType: 'Coats', number: '1530' },
+    { memberId: 's1', memberName: 'Staff X', pieceType: 'Pants', number: '77' },
   ]);
 });
 
@@ -90,4 +93,27 @@ test('mapPiecesToTypes names pieces and reports pieces whose type is missing', (
   const out = mapPiecesToTypes([row('a', 't1'), row('b', 't2'), row('c', 't2')], types);
   assert.deepEqual(out.pieces.map((p) => [p.id, p.pieceType]), [['a', 'Coats']]);
   assert.deepEqual(out.unknownTypeIds, ['t2']);
+});
+
+test('fetchAllPages keeps going until a short page', async () => {
+  const total = 2300;
+  const calls: [number, number][] = [];
+  const rows = await fetchAllPages<number>(async (from, to) => {
+    calls.push([from, to]);
+    return Array.from({ length: Math.max(0, Math.min(to + 1, total) - from) }, (_, i) => from + i);
+  });
+  assert.equal(rows.length, total);
+  assert.equal(rows[2299], 2299);
+  assert.deepEqual(calls, [[0, 999], [1000, 1999], [2000, 2999]]);
+});
+
+test('fetchAllPages: an exact multiple costs one extra empty page; empty table is one call', async () => {
+  const calls: number[] = [];
+  const exact = await fetchAllPages<number>(async (from, to) => {
+    calls.push(from);
+    return from >= 2000 ? [] : Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  });
+  assert.equal(exact.length, 2000);
+  assert.deepEqual(calls, [0, 1000, 2000]);
+  assert.deepEqual(await fetchAllPages<number>(async () => []), []);
 });

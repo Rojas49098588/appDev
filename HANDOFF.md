@@ -108,6 +108,9 @@ For a new Supabase project (or to rebuild this one), from `mobile-app/`:
 - (b) Watch the output while it runs for "duplicate ... number" notices from the migration (two active members with the same old size) and resolve those members.
 - (c) Clean up test/sample data on live first (a separate, approved step).
 - (d) Live inventory starts empty: member screens show only the white shirt until the Plan 3 import.
+- (e) Plans 2 and 3 ship together: run the import immediately after the live `db:apply`.
+- (f) Plan 3 must create the piece types named exactly `Coats`, `Vests`, `Bibbers`, `Pants` (migrated numbers and old flags match on those names).
+- (g) Until the import, members' existing open flags on those pieces don't appear on My Inventory (staff still see them on the member profile).
 
 ### Follow-ups
 

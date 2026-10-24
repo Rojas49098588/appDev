@@ -29,6 +29,7 @@ create table if not exists public.profiles (
 -- assigned), and archive state. Added with `add column if not exists` so
 -- db:apply can be re-run.
 alter table public.profiles add column if not exists numbers jsonb not null default '{}'::jsonb;
+alter table public.profiles add column if not exists archived_at timestamptz;
 
 -- One-time migration from the old fixed size columns. Runs only while they exist,
 -- so re-running is a no-op; data is copied before the columns are dropped.
@@ -61,7 +62,6 @@ begin
   end if;
 end $$;
 drop function if exists public.set_uniform_sizes(uuid, text, text, text, text);
-alter table public.profiles add column if not exists archived_at timestamptz;
 
 create table if not exists public.combos (
   id uuid primary key default gen_random_uuid(),
@@ -374,6 +374,10 @@ begin
       raise exception 'number % for % already belongs to %', kv.value, kv.key, holder using errcode = '23505';
     end if;
   end loop;
+
+  if exists (select 1 from public.profiles where id = target and archived_at is not null) then
+    raise exception 'this member is archived' using errcode = '22023';
+  end if;
 
   perform set_config('app.allow_number_change', 'on', true);
   update public.profiles set numbers = cleaned where id = target;

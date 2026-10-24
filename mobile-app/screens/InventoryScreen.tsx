@@ -45,7 +45,7 @@ export default function InventoryScreen({ navigation }: Props) {
   const [searchText, setSearchText] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const { flags } = useFlags();
-  const { pieceTypes, pieces } = useInventory();
+  const { pieceTypes, pieces, syncedAt, error: inventoryError } = useInventory();
   const { accounts } = useAuth();
   const [assignFilter, setAssignFilter] = useState<AssignKey>('all');
   const owners = useMemo(() => ownerIndex(accounts), [accounts]);
@@ -262,7 +262,7 @@ export default function InventoryScreen({ navigation }: Props) {
             <Text style={styles.summaryBold}>{unassignedTotal}</Text> unassigned
           </Text>
 
-          {unknown.length > 0 && (
+          {pieces.length > 0 && unknown.length > 0 && (
             <Pressable onPress={showUnknown}>
               <Text style={styles.unknownWarning}>
                 {unknown.length} member {unknown.length === 1 ? 'number isn\u2019t' : 'numbers aren\u2019t'} in inventory
@@ -270,7 +270,11 @@ export default function InventoryScreen({ navigation }: Props) {
             </Pressable>
           )}
 
-          {pieceTypes.length === 0 && (
+          {inventoryError !== null && <Text style={styles.empty}>{inventoryError}</Text>}
+          {pieceTypes.length === 0 && inventoryError === null && syncedAt === null && (
+            <Text style={styles.empty}>Loading inventory…</Text>
+          )}
+          {pieceTypes.length === 0 && inventoryError === null && syncedAt !== null && (
             <Text style={styles.empty}>No inventory yet. Import your spreadsheet to get started.</Text>
           )}
 

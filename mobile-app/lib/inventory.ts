@@ -9,9 +9,10 @@ export type Assignment =
 
 const keyOf = (pieceType: string, number: string) => `${pieceType}|${number}`;
 const fullName = (a: Account) => `${a.firstName} ${a.lastName}`.trim();
-const isActiveMember = (a: Account) => a.role === 'Member' && a.archivedAt === null;
+// Matches set_member_numbers: every non-archived profile (staff included) can hold a number.
+const isActiveMember = (a: Account) => a.archivedAt === null;
 
-// Who holds each `${pieceType}|${number}`: active members only (not staff, not archived).
+// Who holds each `${pieceType}|${number}`: every non-archived account, any role.
 export function ownerIndex(accounts: Account[]): Map<string, Account> {
   const owners = new Map<string, Account>();
   for (const account of accounts) {
@@ -31,7 +32,7 @@ export function assignmentFor(piece: InventoryPiece, owners: Map<string, Account
   return owner ? { state: 'assigned', memberId: owner.id, memberName: fullName(owner) } : { state: 'unassigned' };
 }
 
-// Active members' numbers that have no piece of that type and number.
+// Non-archived accounts' numbers that have no piece of that type and number.
 export function unknownNumbers(
   accounts: Account[],
   pieces: InventoryPiece[]
@@ -100,4 +101,18 @@ export function mapPiecesToTypes(
     else pieces.push(rowToPiece(row, name));
   }
   return { pieces, unknownTypeIds: [...unknown] };
+}
+
+// Pages through a table past Supabase's 1000-row response cap. `fetchPage(from, to)`
+// returns the rows in [from, to]; a page shorter than `pageSize` is the last one.
+export async function fetchAllPages<T>(
+  fetchPage: (from: number, to: number) => Promise<T[]>,
+  pageSize = 1000
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const page = await fetchPage(from, from + pageSize - 1);
+    all.push(...page);
+    if (page.length < pageSize) return all;
+  }
 }

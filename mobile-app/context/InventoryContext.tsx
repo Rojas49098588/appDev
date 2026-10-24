@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { InventoryPiece, PieceType } from '../lib/models';
 import type { PieceRow, PieceTypeRow } from '../lib/rows';
 import { rowToPiece, rowToPieceType } from '../lib/mappers';
-import { mapPiecesToTypes } from '../lib/inventory';
+import { fetchAllPages, mapPiecesToTypes } from '../lib/inventory';
 import { isPieceList, isPieceTypeList } from '../lib/validators';
 import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS } from '../lib/cacheStorage';
@@ -53,14 +53,21 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       // Types first, then pieces, so a piece never outruns its type unless one was
       // added in between; that case is refetched once below.
       const fetchTypes = async () => {
-        const result = await supabase.from('piece_types').select('*').order('sort_order');
-        if (result.error) throw result.error;
-        return (result.data as PieceTypeRow[]).map(rowToPieceType);
+        // Paged (Supabase caps a response at 1000 rows); stable order so pages don't overlap.
+        const typeRows = await fetchAllPages<PieceTypeRow>(async (from, to) => {
+          const result = await supabase.from('piece_types').select('*')
+            .order('created_at').order('id').range(from, to);
+          if (result.error) throw result.error;
+          return result.data as PieceTypeRow[];
+        });
+        return typeRows.map(rowToPieceType);
       };
       let nextTypes = await fetchTypes();
-      const pieceResult = await supabase.from('pieces').select('*').order('created_at');
-      if (pieceResult.error) throw pieceResult.error;
-      const rows = pieceResult.data as PieceRow[];
+      const rows = await fetchAllPages<PieceRow>(async (from, to) => {
+        const result = await supabase.from('pieces').select('*').order('created_at').order('id').range(from, to);
+        if (result.error) throw result.error;
+        return result.data as PieceRow[];
+      });
       let mapped = mapPiecesToTypes(rows, nextTypes);
       if (mapped.unknownTypeIds.length > 0) {
         nextTypes = await fetchTypes();

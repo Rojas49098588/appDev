@@ -591,14 +591,27 @@ describe('member numbers', () => {
   test('a number held by an archived member can be reused', async () => {
     const leaver = await createUser('numleaver');
     try {
-      await admin.from('profiles').update({ numbers: { Coats: n2 } }).eq('id', leaver.id);
       const archive = await asStaff.rpc('archive_member', { target: leaver.id });
       assert.equal(archive.error, null);
+      // archive_member clears numbers, so write one straight onto the archived profile.
+      const write = await admin.from('profiles').update({ numbers: { Coats: n2 } }).eq('id', leaver.id);
+      assert.equal(write.error, null);
       const { error } = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n2 } });
       assert.equal(error, null);
     } finally {
       await resetNumbers(member.id);
     }
+  });
+
+  test('set_member_numbers refuses an archived member', async () => {
+    const leaver = await createUser('numarch');
+    const archive = await asStaff.rpc('archive_member', { target: leaver.id });
+    assert.equal(archive.error, null);
+    const { error } = await asStaff.rpc('set_member_numbers', { target: leaver.id, new_numbers: { Coats: n2 } });
+    assert.equal(error?.code, '22023');
+    assert.match(error!.message, /archived/);
+    const { data } = await admin.from('profiles').select('numbers').eq('id', leaver.id).single();
+    assert.deepEqual(data?.numbers, {});
   });
 });
 
