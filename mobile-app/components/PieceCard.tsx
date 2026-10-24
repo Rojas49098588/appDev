@@ -15,6 +15,7 @@ export default function PieceCard({
   dirtyCount,
   onFlagPress,
   onSizePress,
+  onSeeAll,
   chipStateFor,
   assignmentFor,
   matches,
@@ -26,6 +27,7 @@ export default function PieceCard({
   dirtyCount: number;
   onFlagPress: (piece: PieceType, kind: 'repair' | 'dirty') => void;
   onSizePress: (color: string, size: string) => void;
+  onSeeAll?: () => void;
   chipStateFor: (color: string, size: string) => 'repair' | 'dirty' | null;
   assignmentFor: (piece: InventoryPiece) => Assignment;
   // Whether a piece passes the screen's active filters (only matching chips render).
@@ -151,6 +153,11 @@ export default function PieceCard({
                   </View>
                 ));
           })()}
+          {piece.kind === 'numbered' && onSeeAll && (
+            <Pressable onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`}>
+              <Text style={styles.seeAll}>See every {piece.name} {'›'}</Text>
+            </Pressable>
+          )}
           {piece.kind === 'numbered' && (present.size > 0 || hasTintedChip) && (
             <Text style={styles.legend}>
               {[
@@ -289,6 +296,13 @@ const styles = StyleSheet.create({
   sizeChipDirty: { borderColor: colors.wash, backgroundColor: colors.washTint },
   sizeChipTextRepair: { color: colors.rust },
   sizeChipTextDirty: { color: colors.wash },
+  seeAll: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.ink,
+    textDecorationLine: 'underline',
+    marginBottom: 8,
+  },
   legend: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft },
   styleRow: {
     flexDirection: 'row',

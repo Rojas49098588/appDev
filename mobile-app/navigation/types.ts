@@ -31,6 +31,7 @@ export type RootStackParamList = {
   MemberProfile: MemberProfileParams;
   FlagItem: { piece: string; color: string; size: string };
   PieceHistory: { piece: string; color: string; size: string };
+  PieceTable: { pieceTypeId: string };
   AddCombo: undefined;
   ComboDetail: { comboId: string };
   ArchivedMembers: undefined;

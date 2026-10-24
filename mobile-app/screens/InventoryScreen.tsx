@@ -284,6 +284,7 @@ export default function InventoryScreen({ navigation }: Props) {
                 repairCount={counts.repairCount}
                 dirtyCount={counts.dirtyCount}
                 onFlagPress={handleFlagPress}
+                onSeeAll={() => navigation.navigate('PieceTable', { pieceTypeId: piece.id })}
                 onSizePress={(color, size) =>
                   navigation.navigate('PieceHistory', { piece: piece.name, color, size })
                 }

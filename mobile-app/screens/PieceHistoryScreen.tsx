@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -8,6 +8,8 @@ import { fonts } from '../constants/fonts';
 import type { Flag } from '../lib/models';
 import { useFlags } from '../context/FlagsContext';
 import { useInventory } from '../context/InventoryContext';
+import { useAuth } from '../context/AuthContext';
+import { ownerIndex } from '../lib/inventory';
 import { historyFor } from '../lib/flagHistory';
 import { formatShortDate } from '../lib/format';
 import { friendlyError } from '../lib/errors';
@@ -25,7 +27,8 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
   const { piece, color, size } = route.params;
   const { history, clearFlag, editFlag } = useFlags();
   const { isOnline } = useConnection();
-  const { pieceTypes } = useInventory();
+  const { pieceTypes, pieces, setOutForRepair } = useInventory();
+  const { accounts } = useAuth();
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [editing, setEditing] = useState<Flag | null>(null);
 
@@ -35,6 +38,25 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
   // The type's colors; just this piece's color if the type is gone or has none.
   const typeColors = pieceTypes.find((t) => t.name === piece)?.colors ?? [];
   const colorOptions = typeColors.length > 0 ? typeColors : [color];
+
+  const type = pieceTypes.find((t) => t.name === piece);
+  const inventoryPiece = type
+    ? pieces.find((p) => p.pieceTypeId === type.id && p.color === color && p.number === size)
+    : undefined;
+  const owner = useMemo(
+    () => ownerIndex(accounts).get(`${piece}|${size}`) ?? null,
+    [accounts, piece, size]
+  );
+
+  const handleOutForRepair = async (value: boolean) => {
+    if (!inventoryPiece || !requireOnline(isOnline)) return;
+    try {
+      await setOutForRepair(inventoryPiece.id, value);
+      successBuzz();
+    } catch (error) {
+      Alert.alert("Couldn't update piece", friendlyError(error));
+    }
+  };
 
   const handleMarkGood = () => {
     if (!openEntry || !requireOnline(isOnline)) return;
@@ -68,6 +90,23 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
             </Text>
             <View style={styles.headerSideButton} />
           </View>
+
+          {inventoryPiece && (
+            <View style={styles.ownerRow}>
+              <Text style={styles.ownerText}>
+                {owner ? `With ${`${owner.firstName} ${owner.lastName}`.trim()}` : 'Unassigned'}
+              </Text>
+              <View style={styles.repairToggle}>
+                <Text style={styles.ownerText}>Out for repair</Text>
+                <Switch
+                  value={inventoryPiece.outForRepair}
+                  onValueChange={handleOutForRepair}
+                  disabled={!isOnline}
+                  trackColor={{ true: colors.amber }}
+                />
+              </View>
+            </View>
+          )}
 
           {openEntry && (
             <Pressable style={[styles.markGood, !isOnline && OFFLINE_DIM]} onPress={handleMarkGood}>
@@ -151,6 +190,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.ink,
   },
+  ownerRow: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    padding: 12,
+    marginBottom: 14,
+    gap: 6,
+  },
+  ownerText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink },
+  repairToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   markGood: {
     backgroundColor: colors.ink,
     paddingVertical: 12,
