@@ -143,12 +143,11 @@ test('buildPreview skips notes already imported for that member', () => {
     member(2, 'Lee Ann', { Coats: '10' }, 'torn sleeve'),
     member(3, 'Lee Ann', { Coats: '10' }, 'torn sleeve again'),
     member(4, 'Ray Bob', { Coats: '11' }, 'missing button'),
-    member(5, 'Ray Bob', { Vests: '4' }, 'no coat so no note'),
   ];
   const first = buildPreview(rows, accounts, allTypes, [], none);
   assert.deepEqual(first.notes, [
-    { memberName: 'Ann Lee', pieceType: 'Coats', number: '10', text: 'torn sleeve' },
-    { memberName: 'Bob Ray', pieceType: 'Coats', number: '11', text: 'missing button' },
+    { memberId: '1', memberName: 'Ann Lee', pieceType: 'Coats', number: '10', current: null, text: 'torn sleeve' },
+    { memberId: '2', memberName: 'Bob Ray', pieceType: 'Coats', number: '11', current: null, text: 'missing button' },
   ]);
   const again = buildPreview(rows, accounts, allTypes, [], [{ memberName: 'Ann Lee', pieceType: 'Coats' }]);
   assert.deepEqual(again.notes.map((n) => n.memberName), ['Bob Ray']);
@@ -194,4 +193,73 @@ test('toPayload drops keep-app choices', () => {
   const payload = toPayload(plan);
   assert.deepEqual(payload.numbers, [{ memberId: '2', pieceType: 'Coats', number: '21' }]);
   assert.deepEqual(payload.piecesToAdd, plan.piecesToAdd);
+});
+
+test('equal-then-different numbers for one member and type is reported, not dropped', () => {
+  const accounts = [acct('1', 'Ann', 'Lee', { Coats: '10' })];
+  const plan = buildPreview([member(2, 'Lee Ann', { Coats: '10' }), member(3, 'Lee Ann', { Coats: '11' })], accounts, allTypes, [], none);
+  assert.deepEqual(plan.problems.map((p) => p.message), ['Line 3: Ann Lee has two Coats numbers in the sheet']);
+  assert.deepEqual(plan.numbers, []);
+});
+
+test('a repairs note with no coat number is reported as a problem', () => {
+  const accounts = [acct('1', 'Ann', 'Lee'), acct('2', 'Bob', 'Ray', { Coats: '20' })];
+  const rows = [member(2, 'Lee Ann', { Vests: '4' }, 'torn'), member(3, 'Ray Bob', { Vests: '5' }, 'loose')];
+  const plan = buildPreview(rows, accounts, allTypes, [], none);
+  assert.deepEqual(plan.problems.map((p) => p.message), ['Line 2: repairs note for "Ann Lee" skipped (no coat number)']);
+  // Bob has a current coat, so his note lands on it.
+  assert.deepEqual(plan.notes, [{ memberId: '2', memberName: 'Bob Ray', pieceType: 'Coats', number: '20', current: '20', text: 'loose' }]);
+});
+
+test('note follows the coat number after import: keep-app uses the current number', () => {
+  const accounts = [acct('1', 'Ann', 'Lee', { Coats: '10' })];
+  const plan = buildPreview([member(2, 'Lee Ann', { Coats: '11' }, 'torn')], accounts, allTypes, [], none);
+  assert.equal(plan.notes[0].number, '11');
+  assert.equal(toPayload(plan).notes[0].number, '11');
+  plan.numbers[0].choice = 'app';
+  assert.equal(toPayload(plan).notes[0].number, '10');
+  assert.equal('memberId' in toPayload(plan).notes[0], false);
+});
+
+test('a clash-skipped coat change puts the note on the current number', () => {
+  const accounts = [acct('1', 'Ann', 'Lee', { Coats: '10' }), acct('3', 'Cy', 'Poe', { Coats: '30' })];
+  const plan = buildPreview([member(2, 'Lee Ann', { Coats: '30' }, 'torn')], accounts, allTypes, [], none);
+  assert.deepEqual(plan.numbers, []);
+  assert.equal(plan.notes[0].number, '10');
+  assert.equal(toPayload(plan).notes[0].number, '10');
+});
+
+test('problems are sorted by line', () => {
+  const rows: SheetRow[] = [
+    { line: 2, kind: 'repair_shop', pieceType: 'Vests', number: '5', color: 'Blue' },
+    member(3, 'Nobody Here', {}),
+    { line: 4, kind: 'invalid', reason: 'No name', raw: [] },
+  ];
+  const plan = buildPreview(rows, [], allTypes, [], none);
+  assert.deepEqual(plan.problems.map((p) => p.line), [2, 3, 4]);
+  const swapped = buildPreview([rows[1], rows[0]], [], allTypes, [], none);
+  assert.deepEqual(swapped.problems.map((p) => p.line), [2, 3]);
+});
+
+test('an invalid row becomes a Line n problem', () => {
+  const plan = buildPreview([{ line: 7, kind: 'invalid', reason: 'No name', raw: [] }], [], allTypes, [], none);
+  assert.deepEqual(plan.problems, [{ line: 7, message: 'Line 7: No name' }]);
+});
+
+test('Addison Sew on a new type is validated against DEFAULT_COLORS', () => {
+  const rows: SheetRow[] = [
+    { line: 2, kind: 'repair_shop', pieceType: 'Bibbers', number: '3', color: 'White' },
+    { line: 3, kind: 'repair_shop', pieceType: 'Bibbers', number: '4', color: 'Red' },
+  ];
+  const plan = buildPreview(rows, [], [], [], none);
+  assert.deepEqual(plan.outForRepair, [{ pieceType: 'Bibbers', color: 'White', number: '3' }]);
+  assert.deepEqual(plan.problems.map((p) => p.message), ["Line 3: Red isn't a Bibbers color"]);
+});
+
+test('toPayload carries typesToCreate and notes', () => {
+  const accounts = [acct('1', 'Ann', 'Lee')];
+  const plan = buildPreview([member(2, 'Lee Ann', { Vests: '5', Coats: '9' }, 'torn')], accounts, [], [], none);
+  const payload = toPayload(plan);
+  assert.deepEqual(payload.typesToCreate.map((t) => t.name), ['Vests', 'Coats']);
+  assert.deepEqual(payload.notes, [{ memberName: 'Ann Lee', pieceType: 'Coats', number: '9', text: 'torn' }]);
 });

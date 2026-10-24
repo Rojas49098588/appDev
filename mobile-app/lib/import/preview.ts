@@ -29,7 +29,9 @@ export type ImportPlan = {
   piecesToAdd: { pieceType: string; number: string }[];
   outForRepair: { pieceType: string; color: string; number: string }[];
   numbers: NumberChange[];
-  notes: { memberName: string; pieceType: 'Coats'; number: string; text: string }[];
+  // `number` is the coat number after import with the default choices; toPayload re-resolves it
+  // from `numbers` (staff may flip a choice) using memberId and `current`.
+  notes: { memberId: string; memberName: string; pieceType: 'Coats'; number: string; current: string | null; text: string }[];
   problems: { line: number; message: string }[];
 };
 
@@ -161,7 +163,7 @@ export function buildPreview(
     claimants.get(k)!.set(c.account.id, c.account);
   }
   const owners = ownerIndex(accounts);
-  const handled = new Set<string>(); // memberId|type: the first number in the sheet wins
+  const handled = new Map<string, string>(); // memberId|type -> first number in the sheet (it wins)
   for (const c of claims) {
     const k = keyOf(c.pieceType, c.number);
     const name = fullName(c.account);
@@ -174,13 +176,12 @@ export function buildPreview(
     }
     const hk = `${c.account.id}|${c.pieceType}`;
     if (handled.has(hk)) {
-      const prior = plan.numbers.find((n) => n.memberId === c.account.id && n.pieceType === c.pieceType);
-      if (prior && prior.sheet !== c.number) {
+      if (handled.get(hk) !== c.number) {
         problem(c.line, `Line ${c.line}: ${name} has two ${c.pieceType} numbers in the sheet`);
       }
       continue;
     }
-    handled.add(hk);
+    handled.set(hk, c.number);
     const current = c.account.numbers[c.pieceType] || null;
     if (current === c.number) continue;
     plan.numbers.push({
@@ -194,17 +195,25 @@ export function buildPreview(
     });
   }
 
-  // Notes from Repairs text on member rows with a coat number.
+  // Notes from Repairs text on member rows. The note goes on the coat number the member will
+  // have after import: the sheet's if that change is applied, otherwise the current one.
   const noted = new Set(existingImportNotes.filter((n) => n.pieceType === 'Coats').map((n) => n.memberName));
   for (const { row, account } of matchedRows) {
-    const coat = row.numbers.Coats;
-    if (!row.repairs || !coat) continue;
+    if (!row.repairs) continue;
     const memberName = fullName(account);
     if (noted.has(memberName)) continue;
+    const current = account.numbers.Coats || null;
+    const change = plan.numbers.find((n) => n.memberId === account.id && n.pieceType === 'Coats');
+    const number = change ? change.sheet : current;
+    if (!number) {
+      problem(row.line, `Line ${row.line}: repairs note for "${memberName}" skipped (no coat number)`);
+      continue;
+    }
     noted.add(memberName);
-    plan.notes.push({ memberName, pieceType: 'Coats', number: coat, text: row.repairs });
+    plan.notes.push({ memberId: account.id, memberName, pieceType: 'Coats', number, current, text: row.repairs });
   }
 
+  plan.problems.sort((a, b) => a.line - b.line);
   return plan;
 }
 
@@ -216,6 +225,10 @@ export function toPayload(plan: ImportPlan): ImportPayload {
     numbers: plan.numbers
       .filter((n) => n.choice === 'sheet')
       .map((n) => ({ memberId: n.memberId, pieceType: n.pieceType, number: n.sheet })),
-    notes: plan.notes,
+    notes: plan.notes.flatMap((n) => {
+      const change = plan.numbers.find((c) => c.memberId === n.memberId && c.pieceType === 'Coats');
+      const number = change ? (change.choice === 'sheet' ? change.sheet : change.current) : n.current;
+      return number ? [{ memberName: n.memberName, pieceType: n.pieceType, number, text: n.text }] : [];
+    }),
   };
 }
