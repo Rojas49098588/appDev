@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPreview, matchName, toPayload, DEFAULT_COLORS } from '../lib/import/preview.ts';
+import { buildPreview, matchName, toPayload, DEFAULT_COLORS, countPiecesToAdd, isNothingToDo } from '../lib/import/preview.ts';
 import type { SheetRow } from '../lib/import/rows.ts';
 import type { Account, InventoryPiece, PieceType } from '../lib/models.ts';
 
@@ -271,4 +271,23 @@ test('toPayload applies a change with no current number even if choice is app', 
   const payload = toPayload(plan);
   assert.deepEqual(payload.numbers, [{ memberId: '1', pieceType: 'Coats', number: '11' }]);
   assert.equal(payload.notes[0].number, '11');
+});
+
+test('countPiecesToAdd multiplies numbers by colors, using planned colors for new types', () => {
+  const plan = {
+    typesToCreate: [{ name: 'Vests', colors: ['Candy', 'Red'] }],
+    piecesToAdd: [
+      { pieceType: 'Coats', number: '1' },
+      { pieceType: 'Coats', number: '2' },
+      { pieceType: 'Vests', number: '5' },
+    ],
+    outForRepair: [], numbers: [], notes: [], problems: [],
+  };
+  assert.equal(countPiecesToAdd(plan, [type('Coats', ['Blue', 'Red', 'Purple', 'Candy'])]), 4 + 4 + 2);
+});
+
+test('isNothingToDo ignores problems', () => {
+  const plan = { typesToCreate: [], piecesToAdd: [], outForRepair: [], numbers: [], notes: [], problems: [{ line: 2, message: 'x' }] };
+  assert.equal(isNothingToDo(plan), true);
+  assert.equal(isNothingToDo({ ...plan, piecesToAdd: [{ pieceType: 'Coats', number: '1' }] }), false);
 });

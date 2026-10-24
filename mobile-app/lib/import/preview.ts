@@ -236,3 +236,24 @@ export function toPayload(plan: ImportPlan): ImportPayload {
     }),
   };
 }
+
+/** Pieces the plan will create: each number in every color of its type (new types use the plan's colors). */
+export function countPiecesToAdd(plan: ImportPlan, types: PieceType[]): number {
+  return plan.piecesToAdd.reduce((total, p) => {
+    const colors =
+      types.find((t) => t.name === p.pieceType)?.colors ??
+      plan.typesToCreate.find((t) => t.name === p.pieceType)?.colors ??
+      [];
+    return total + colors.length;
+  }, 0);
+}
+
+export function isNothingToDo(plan: ImportPlan): boolean {
+  return (
+    plan.typesToCreate.length === 0 &&
+    plan.piecesToAdd.length === 0 &&
+    plan.outForRepair.length === 0 &&
+    plan.numbers.length === 0 &&
+    plan.notes.length === 0
+  );
+}
