@@ -16,6 +16,8 @@ export default function PieceCard({
   onFlagPress,
   onSizePress,
   onSeeAll,
+  onAddColor,
+  onAddNumber,
   chipStateFor,
   assignmentFor,
   matches,
@@ -28,6 +30,8 @@ export default function PieceCard({
   onFlagPress: (piece: PieceType, kind: 'repair' | 'dirty') => void;
   onSizePress: (color: string, size: string) => void;
   onSeeAll?: () => void;
+  onAddColor?: () => void;
+  onAddNumber?: () => void;
   chipStateFor: (color: string, size: string) => 'repair' | 'dirty' | null;
   assignmentFor: (piece: InventoryPiece) => Assignment;
   // Whether a piece passes the screen's active filters (only matching chips render).
@@ -157,6 +161,20 @@ export default function PieceCard({
             <Pressable onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`}>
               <Text style={styles.seeAll}>See every {piece.name} {'›'}</Text>
             </Pressable>
+          )}
+          {piece.kind === 'numbered' && (onAddColor || onAddNumber) && (
+            <View style={styles.addLinks}>
+              {onAddColor && (
+                <Pressable onPress={onAddColor} accessibilityLabel={`Add color to ${piece.name}`}>
+                  <Text style={styles.seeAll}>Add color</Text>
+                </Pressable>
+              )}
+              {onAddNumber && (
+                <Pressable onPress={onAddNumber} accessibilityLabel={`Add number to ${piece.name}`}>
+                  <Text style={styles.seeAll}>Add number</Text>
+                </Pressable>
+              )}
+            </View>
           )}
           {piece.kind === 'numbered' && (present.size > 0 || hasTintedChip) && (
             <Text style={styles.legend}>
@@ -303,6 +321,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     marginBottom: 8,
   },
+  addLinks: { flexDirection: 'row', gap: 18 },
   legend: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft },
   styleRow: {
     flexDirection: 'row',

@@ -33,6 +33,7 @@ export type RootStackParamList = {
   PieceHistory: { piece: string; color: string; size: string };
   PieceTable: { pieceTypeId: string };
   ImportInventory: undefined;
+  AddPieceType: undefined;
   AddCombo: undefined;
   ComboDetail: { comboId: string };
   ArchivedMembers: undefined;

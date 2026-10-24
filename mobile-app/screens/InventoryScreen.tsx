@@ -10,6 +10,9 @@ import { fonts } from '../constants/fonts';
 import type { InventoryPiece, PieceType } from '../lib/models';
 import TapeGutter from '../components/TapeGutter';
 import PieceCard from '../components/PieceCard';
+import AddInventorySheet from '../components/AddInventorySheet';
+import AddColorSheet from '../components/AddColorSheet';
+import AddNumberSheet from '../components/AddNumberSheet';
 import { BackChevronIcon, PlusIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
 import { useInventory } from '../context/InventoryContext';
@@ -43,6 +46,9 @@ const FILTER_CHIPS: { key: FilterKey; label: string }[] = [
 
 export default function InventoryScreen({ navigation }: Props) {
   const [searchText, setSearchText] = useState('');
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [colorTarget, setColorTarget] = useState<PieceType | null>(null);
+  const [numberTarget, setNumberTarget] = useState<PieceType | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const { flags } = useFlags();
   const { pieceTypes, pieces, syncedAt, error: inventoryError } = useInventory();
@@ -143,9 +149,8 @@ export default function InventoryScreen({ navigation }: Props) {
     navigation.navigate('Sections', { piece: piece.name, status: kind, section: undefined });
   };
 
-  const handleAddPress = () => {
-    Alert.alert('Coming soon', 'Adding a new piece isn’t available yet.');
-  };
+  // Staff only: this screen is mounted by MainTabs, which only staff reach (members get MemberTabs).
+  const handleAddPress = () => setAddMenuOpen(true);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -288,6 +293,8 @@ export default function InventoryScreen({ navigation }: Props) {
                 repairCount={counts.repairCount}
                 dirtyCount={counts.dirtyCount}
                 onFlagPress={handleFlagPress}
+                onAddColor={() => setColorTarget(piece)}
+                onAddNumber={() => setNumberTarget(piece)}
                 onSeeAll={() => navigation.navigate('PieceTable', { pieceTypeId: piece.id })}
                 onSizePress={(color, size) =>
                   navigation.navigate('PieceHistory', { piece: piece.name, color, size })
@@ -300,6 +307,28 @@ export default function InventoryScreen({ navigation }: Props) {
           })}
         </ScrollView>
       </View>
+      <AddInventorySheet
+        visible={addMenuOpen}
+        onClose={() => setAddMenuOpen(false)}
+        onImport={() => {
+          setAddMenuOpen(false);
+          navigation.navigate('ImportInventory');
+        }}
+        onNewType={() => {
+          setAddMenuOpen(false);
+          navigation.navigate('AddPieceType');
+        }}
+      />
+      <AddColorSheet
+        piece={colorTarget}
+        numberCount={
+          colorTarget
+            ? new Set(pieces.filter((p) => p.pieceTypeId === colorTarget.id).map((p) => p.number)).size
+            : 0
+        }
+        onClose={() => setColorTarget(null)}
+      />
+      <AddNumberSheet piece={numberTarget} onClose={() => setNumberTarget(null)} />
     </SafeAreaView>
   );
 }

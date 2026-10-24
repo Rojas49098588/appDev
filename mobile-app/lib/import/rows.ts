@@ -48,6 +48,57 @@ export function normalizeNumber(raw: string): string | null {
   return t.replace(/^0+(?=\d)/, '');
 }
 
+export const MAX_NUMBER_LIST = 1000;
+
+/**
+ * Parses what staff type into the numbers box: a list ("104, 112 120"), a range
+ * ("104 to 232 every 4", step defaults to 1, both ends included when they fall on the step),
+ * or a mix separated by commas. Numbers are normalized and de-duplicated in order.
+ */
+export function parseNumberList(text: string): { numbers: string[]; error: string | null } {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const fail = (error: string) => ({ numbers: [] as string[], error });
+  const add = (n: string): string | null => {
+    if (!seen.has(n)) {
+      seen.add(n);
+      out.push(n);
+    }
+    return out.length > MAX_NUMBER_LIST ? `That is more than ${MAX_NUMBER_LIST} numbers` : null;
+  };
+
+  for (const part of text.split(/[,;\n]+/).map((p) => p.trim()).filter(Boolean)) {
+    const range = part.match(/^(\S+)\s+to\s+(\S+)(?:\s+every\s+(\S+))?$/i);
+    if (range) {
+      const start = normalizeNumber(range[1]);
+      if (start === null) return fail(`"${range[1]}" isn't a number`);
+      const end = normalizeNumber(range[2]);
+      if (end === null) return fail(`"${range[2]}" isn't a number`);
+      const stepText = range[3] ?? '1';
+      const step = /^\d+$/.test(stepText) ? parseInt(stepText, 10) : 0;
+      if (step < 1) return fail('every must be at least 1');
+      const a = parseInt(start, 10);
+      const b = parseInt(end, 10);
+      if (a > b) return fail(`In "${part}" the start must not be after the end`);
+      if (Math.floor((b - a) / step) + 1 > MAX_NUMBER_LIST) {
+        return fail(`That range is more than ${MAX_NUMBER_LIST} numbers`);
+      }
+      for (let n = a; n <= b; n += step) {
+        const err = add(String(n));
+        if (err) return fail(err);
+      }
+      continue;
+    }
+    for (const token of part.split(/\s+/)) {
+      const n = normalizeNumber(token);
+      if (n === null) return fail(`"${token}" isn't a number`);
+      const err = add(n);
+      if (err) return fail(err);
+    }
+  }
+  return { numbers: out, error: null };
+}
+
 const PIECE_COLUMNS: { type: PieceName; key: 'coats' | 'bibbers' | 'vests'; label: string }[] = [
   { type: 'Coats', key: 'coats', label: 'Coat #' },
   { type: 'Bibbers', key: 'bibbers', label: 'BIBBER #' },
