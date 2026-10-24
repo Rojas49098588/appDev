@@ -263,3 +263,12 @@ test('toPayload carries typesToCreate and notes', () => {
   assert.deepEqual(payload.typesToCreate.map((t) => t.name), ['Vests', 'Coats']);
   assert.deepEqual(payload.notes, [{ memberName: 'Ann Lee', pieceType: 'Coats', number: '9', text: 'torn' }]);
 });
+
+test('toPayload applies a change with no current number even if choice is app', () => {
+  const accounts = [acct('1', 'Ann', 'Lee')];
+  const plan = buildPreview([member(2, 'Lee Ann', { Coats: '11' }, 'torn')], accounts, allTypes, [], none);
+  plan.numbers[0].choice = 'app';
+  const payload = toPayload(plan);
+  assert.deepEqual(payload.numbers, [{ memberId: '1', pieceType: 'Coats', number: '11' }]);
+  assert.equal(payload.notes[0].number, '11');
+});

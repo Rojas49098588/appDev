@@ -217,17 +217,21 @@ export function buildPreview(
   return plan;
 }
 
+// A change with no current number has nothing to keep, so it always applies. The UI only offers
+// the sheet/app toggle when current is non-null and differs from the sheet.
+const applies = (n: NumberChange) => n.current === null || n.choice === 'sheet';
+
 export function toPayload(plan: ImportPlan): ImportPayload {
   return {
     typesToCreate: plan.typesToCreate,
     piecesToAdd: plan.piecesToAdd,
     outForRepair: plan.outForRepair,
     numbers: plan.numbers
-      .filter((n) => n.choice === 'sheet')
+      .filter(applies)
       .map((n) => ({ memberId: n.memberId, pieceType: n.pieceType, number: n.sheet })),
     notes: plan.notes.flatMap((n) => {
       const change = plan.numbers.find((c) => c.memberId === n.memberId && c.pieceType === 'Coats');
-      const number = change ? (change.choice === 'sheet' ? change.sheet : change.current) : n.current;
+      const number = change ? (applies(change) ? change.sheet : change.current) : n.current;
       return number ? [{ memberName: n.memberName, pieceType: n.pieceType, number, text: n.text }] : [];
     }),
   };
