@@ -257,3 +257,10 @@ export function isNothingToDo(plan: ImportPlan): boolean {
     plan.notes.length === 0
   );
 }
+
+/** Student numbers toPayload will write: brand-new ones vs ones replacing an existing number. */
+export function countNumberChanges(plan: ImportPlan): { added: number; replaced: number } {
+  const sent = plan.numbers.filter(applies);
+  const added = sent.filter((n) => n.current === null).length;
+  return { added, replaced: sent.length - added };
+}

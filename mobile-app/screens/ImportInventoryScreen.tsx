@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { parseCsv } from '../lib/import/csv';
 import { classifyRows, findColumns } from '../lib/import/rows';
 import {
   buildPreview,
+  countNumberChanges,
   countPiecesToAdd,
   isNothingToDo,
   toPayload,
@@ -43,6 +44,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
   const [fileName, setFileName] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -89,15 +91,17 @@ export default function ImportInventoryScreen({ navigation }: Props) {
   };
 
   const handleImport = () => {
-    if (!plan || saving || !requireOnline(isOnline)) return;
+    if (!plan || savingRef.current || !requireOnline(isOnline)) return;
     const payload = toPayload(plan);
+    const { added, replaced } = countNumberChanges(plan);
     const lines = [
       payload.typesToCreate.length ? plural(payload.typesToCreate.length, 'new piece type') : null,
       payload.piecesToAdd.length
         ? `${plural(payload.piecesToAdd.length, 'number')} (${plural(countPiecesToAdd(plan, pieceTypes), 'piece')})`
         : null,
       payload.outForRepair.length ? `${plural(payload.outForRepair.length, 'piece')} out for repair` : null,
-      payload.numbers.length ? `${plural(payload.numbers.length, 'student number')} set` : null,
+      added ? `${added} new student ${added === 1 ? 'number' : 'numbers'}` : null,
+      replaced ? `${replaced} replace an existing number` : null,
       payload.notes.length ? plural(payload.notes.length, 'repair note') : null,
     ].filter(Boolean);
     Alert.alert('Import this sheet?', lines.join('\n'), [
@@ -105,6 +109,8 @@ export default function ImportInventoryScreen({ navigation }: Props) {
       {
         text: 'Import',
         onPress: async () => {
+          if (savingRef.current) return;
+          savingRef.current = true;
           setSaving(true);
           try {
             const summary = await importInventory(payload);
@@ -113,6 +119,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
           } catch (error) {
             Alert.alert("Couldn't import", friendlyError(error));
           } finally {
+            savingRef.current = false;
             setSaving(false);
           }
         },
@@ -272,7 +279,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
             renderResult(result, plan)
           ) : (
             <>
-              <Pressable style={[styles.pick, loading && OFFLINE_DIM]} onPress={handlePick} disabled={loading}>
+              <Pressable style={[styles.pick, loading && OFFLINE_DIM]} onPress={handlePick} disabled={loading || saving}>
                 {loading ? (
                   <ActivityIndicator color={colors.ink} />
                 ) : (

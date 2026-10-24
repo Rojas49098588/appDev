@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPreview, matchName, toPayload, DEFAULT_COLORS, countPiecesToAdd, isNothingToDo } from '../lib/import/preview.ts';
+import { buildPreview, matchName, toPayload, DEFAULT_COLORS, countPiecesToAdd, isNothingToDo, countNumberChanges } from '../lib/import/preview.ts';
 import type { SheetRow } from '../lib/import/rows.ts';
 import type { Account, InventoryPiece, PieceType } from '../lib/models.ts';
 
@@ -290,4 +290,14 @@ test('isNothingToDo ignores problems', () => {
   const plan = { typesToCreate: [], piecesToAdd: [], outForRepair: [], numbers: [], notes: [], problems: [{ line: 2, message: 'x' }] };
   assert.equal(isNothingToDo(plan), true);
   assert.equal(isNothingToDo({ ...plan, piecesToAdd: [{ pieceType: 'Coats', number: '1' }] }), false);
+});
+
+test('countNumberChanges splits new numbers from replacements and honors choice', () => {
+  const ch = (memberId: string, current: string | null, choice: 'sheet' | 'app') =>
+    ({ line: 2, memberId, memberName: memberId, pieceType: 'Coats', sheet: '9', current, choice });
+  const plan = {
+    typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [], problems: [],
+    numbers: [ch('a', null, 'sheet'), ch('b', '5', 'sheet'), ch('c', '6', 'app')],
+  };
+  assert.deepEqual(countNumberChanges(plan), { added: 1, replaced: 1 });
 });
