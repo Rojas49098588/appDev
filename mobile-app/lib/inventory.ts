@@ -50,6 +50,24 @@ export function unknownNumbers(
   return out;
 }
 
+// Active accounts sharing a type + number (possible after the live migration copied old sizes).
+export function duplicateNumbers(
+  accounts: Account[]
+): { pieceType: string; number: string; members: string[] }[] {
+  const holders = new Map<string, { pieceType: string; number: string; members: string[] }>();
+  for (const account of accounts) {
+    if (!isActiveMember(account)) continue;
+    for (const [pieceType, number] of Object.entries(account.numbers)) {
+      if (number === '') continue;
+      const key = keyOf(pieceType, number);
+      const entry = holders.get(key);
+      if (entry) entry.members.push(fullName(account));
+      else holders.set(key, { pieceType, number, members: [fullName(account)] });
+    }
+  }
+  return [...holders.values()].filter((h) => h.members.length > 1);
+}
+
 // One row per distinct number of this type, numerically sorted, a cell per color.
 export function numberRows(
   type: PieceType,

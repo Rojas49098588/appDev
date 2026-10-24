@@ -1,7 +1,7 @@
 import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assignmentFor, batchByWindow, fetchAllPages, mapPiecesToTypes, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
+  assignmentFor, batchByWindow, fetchAllPages, mapPiecesToTypes, memberPieceTypes, duplicateNumbers, numberRows, ownerIndex, pieceCount, unknownNumbers,
 } from '../lib/inventory.ts';
 import type { Account, InventoryPiece, PieceType } from '../lib/models.ts';
 
@@ -153,4 +153,17 @@ test('batchByWindow cancel drops pending items', () => {
   } finally {
     mock.timers.reset();
   }
+});
+
+test('duplicateNumbers finds shared numbers among active accounts only', () => {
+  const accounts = [
+    acct('a', 'Ann', { Coats: '153', Vests: '9' }),
+    acct('b', 'Bob', { Coats: '153', Vests: '10' }),
+    acct('c', 'Cy', { Coats: '153' }, { archivedAt: '2026-01-01T00:00:00Z' }),
+    acct('d', 'Di', { Bibbers: '153', Vests: '' }),
+    acct('e', 'Ed', { Vests: '' }),
+  ];
+  assert.deepEqual(duplicateNumbers(accounts), [
+    { pieceType: 'Coats', number: '153', members: ['Ann X', 'Bob X'] },
+  ]);
 });

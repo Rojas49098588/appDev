@@ -18,7 +18,7 @@ import { useFlags } from '../context/FlagsContext';
 import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
 import { chipState } from '../lib/flagHistory';
-import { assignmentFor, ownerIndex, unknownNumbers } from '../lib/inventory';
+import { assignmentFor, duplicateNumbers, ownerIndex, unknownNumbers } from '../lib/inventory';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = CompositeScreenProps<
@@ -56,6 +56,7 @@ export default function InventoryScreen({ navigation }: Props) {
   const [assignFilter, setAssignFilter] = useState<AssignKey>('all');
   const owners = useMemo(() => ownerIndex(accounts), [accounts]);
   const unknown = useMemo(() => unknownNumbers(accounts, pieces), [accounts, pieces]);
+  const duplicates = useMemo(() => duplicateNumbers(accounts), [accounts]);
   const unassignedTotal = useMemo(
     () => pieces.filter((p) => assignmentFor(p, owners).state === 'unassigned').length,
     [pieces, owners]
@@ -141,8 +142,13 @@ export default function InventoryScreen({ navigation }: Props) {
 
   const showUnknown = () =>
     Alert.alert(
-      'Not in inventory',
-      unknown.map((u) => `${u.memberName} — ${u.pieceType} ${u.number}`).join('\n')
+      unknown.length === 0 ? 'Shared numbers' : 'Number warnings',
+      [
+        ...unknown.map((u) => `${u.memberName} — ${u.pieceType} ${u.number} isn’t in inventory`),
+        ...duplicates.map(
+          (d) => `${d.pieceType} ${d.number} is assigned to ${d.members.length} people: ${d.members.join(', ')}`
+        ),
+      ].join('\n')
     );
 
   const handleFlagPress = (piece: PieceType, kind: 'repair' | 'dirty') => {
@@ -271,6 +277,14 @@ export default function InventoryScreen({ navigation }: Props) {
             <Pressable onPress={showUnknown}>
               <Text style={styles.unknownWarning}>
                 {unknown.length} member {unknown.length === 1 ? 'number isn\u2019t' : 'numbers aren\u2019t'} in inventory
+              </Text>
+            </Pressable>
+          )}
+
+          {duplicates.length > 0 && (
+            <Pressable onPress={showUnknown}>
+              <Text style={styles.unknownWarning}>
+                {duplicates.map((d) => `${d.pieceType} ${d.number} is assigned to ${d.members.length} people`).join(' · ')}
               </Text>
             </Pressable>
           )}
