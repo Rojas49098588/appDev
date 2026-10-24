@@ -191,6 +191,26 @@ language sql immutable as $$
   select upper(btrim(coalesce(code, '')));
 $$;
 
+-- Piece and member numbers: trimmed digits, leading zeros stripped ('085' -> '85',
+-- '000' -> '0'). Null for anything that isn't digits, so writers can refuse it.
+create or replace function public.normalize_number(t text) returns text
+language sql immutable set search_path = public as $$
+  select case when btrim(t) ~ '^[0-9]+$' then coalesce(nullif(ltrim(btrim(t), '0'), ''), '0') end;
+$$;
+
+-- normalize_number, but raises for a missing or non-digit number.
+create or replace function public.require_number(t text) returns text
+language plpgsql immutable set search_path = public as $$
+declare
+  n text := public.normalize_number(t);
+begin
+  if n is null then
+    raise exception 'invalid number' using errcode = '22023';
+  end if;
+  return n;
+end;
+$$;
+
 create or replace function public.check_invite_code(code text) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (
@@ -327,14 +347,70 @@ grant execute on function public.set_role(uuid, text) to authenticated;
 
 -- ---------- Member numbers: staff only ----------
 
+-- The one place member numbers are written (set_member_numbers, import_inventory).
+-- cleaned: {type: normalized number}. merge = keep the member's other numbers.
+-- Rule: one active member per type + number; only new or changed numbers are
+-- checked, so a pre-existing duplicate never blocks editing the member's other
+-- numbers. Returns how many numbers were new or changed.
+create or replace function public.apply_member_numbers(target uuid, cleaned jsonb, merge boolean)
+returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  current_numbers jsonb;
+  final jsonb;
+  kv record;
+  holder text;
+  changed int := 0;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can change member numbers' using errcode = '42501';
+  end if;
+
+  -- Serialize number assignment so two concurrent calls can't both pass the
+  -- uniqueness check below and hand out the same number.
+  lock table public.profiles in share row exclusive mode;
+
+  select numbers into current_numbers from public.profiles where id = target;
+  if not found then
+    raise exception 'no such user' using errcode = 'P0002';
+  end if;
+  final := case when merge then current_numbers || cleaned else cleaned end;
+
+  for kv in
+    select c.key, c.value from jsonb_each_text(cleaned) c
+    where current_numbers ->> c.key is distinct from c.value
+  loop
+    changed := changed + 1;
+    select btrim(p.first_name || ' ' || p.last_name) into holder
+      from public.profiles p
+      where p.id <> target and p.archived_at is null
+        and public.normalize_number(p.numbers ->> kv.key) = kv.value
+      limit 1;
+    if holder is not null then
+      raise exception 'number % for % already belongs to %', kv.value, kv.key, holder using errcode = '23505';
+    end if;
+  end loop;
+
+  if exists (select 1 from public.profiles where id = target and archived_at is not null) then
+    raise exception 'this member is archived' using errcode = '22023';
+  end if;
+
+  if final is distinct from current_numbers then
+    perform set_config('app.allow_number_change', 'on', true);
+    update public.profiles set numbers = final where id = target;
+    perform set_config('app.allow_number_change', 'off', true);
+  end if;
+  return changed;
+end;
+$$;
+revoke all on function public.apply_member_numbers(uuid, jsonb, boolean) from public, anon, authenticated;
+
 create or replace function public.set_member_numbers(target uuid, new_numbers jsonb)
 returns void
 language plpgsql security definer set search_path = public as $$
 declare
   cleaned jsonb := '{}'::jsonb;
   kv record;
-  val text;
-  holder text;
 begin
   if not public.is_staff() then
     raise exception 'only staff can change member numbers' using errcode = '42501';
@@ -346,45 +422,13 @@ begin
     if jsonb_typeof(kv.value) <> 'string' then
       raise exception 'invalid number' using errcode = '22023';
     end if;
-    val := btrim(kv.value #>> '{}');
-    if val = '' then
+    if btrim(kv.value #>> '{}') = '' then
       continue;
     end if;
-    if val !~ '^[0-9]+$' then
-      raise exception 'invalid number' using errcode = '22023';
-    end if;
-    cleaned := cleaned || jsonb_build_object(kv.key, val);
+    cleaned := cleaned || jsonb_build_object(kv.key, public.require_number(kv.value #>> '{}'));
   end loop;
 
-  -- Serialize number assignment so two concurrent calls can't both pass the
-  -- uniqueness check below and hand out the same number.
-  lock table public.profiles in share row exclusive mode;
-
-  -- Only new or changed numbers are checked, so a pre-existing duplicate never
-  -- blocks editing the member's other numbers.
-  for kv in
-    select c.key, c.value from jsonb_each_text(cleaned) c
-    where (select numbers ->> c.key from public.profiles where id = target) is distinct from c.value
-  loop
-    select btrim(p.first_name || ' ' || p.last_name) into holder
-      from public.profiles p
-      where p.id <> target and p.archived_at is null and p.numbers ->> kv.key = kv.value
-      limit 1;
-    if holder is not null then
-      raise exception 'number % for % already belongs to %', kv.value, kv.key, holder using errcode = '23505';
-    end if;
-  end loop;
-
-  if exists (select 1 from public.profiles where id = target and archived_at is not null) then
-    raise exception 'this member is archived' using errcode = '22023';
-  end if;
-
-  perform set_config('app.allow_number_change', 'on', true);
-  update public.profiles set numbers = cleaned where id = target;
-  if not found then
-    raise exception 'no such user' using errcode = 'P0002';
-  end if;
-  perform set_config('app.allow_number_change', 'off', true);
+  perform public.apply_member_numbers(target, cleaned, false);
 end;
 $$;
 revoke all on function public.set_member_numbers(uuid, jsonb) from public, anon;
@@ -601,9 +645,13 @@ language plpgsql security definer set search_path = public as $$
 begin
   -- Signed-in users (RLS inserts) cannot forge history fields; the service
   -- role and dashboard (auth.uid() is null) can, for imports and tests.
+  -- import_inventory sets app.allow_import_flags (transaction-local) so its
+  -- rows keep source 'import' and the sheet's member_name.
   if auth.uid() is not null then
-    new.member_name := '';
-    new.source := 'member';
+    if coalesce(current_setting('app.allow_import_flags', true), '') <> 'on' then
+      new.member_name := '';
+      new.source := 'member';
+    end if;
     new.cleared_by := null;
     new.cleared_by_name := null;
     new.created_at := now();
@@ -711,6 +759,314 @@ end;
 $$;
 revoke all on function public.clear_flag(uuid) from public, anon;
 grant execute on function public.clear_flag(uuid) to authenticated;
+
+-- ---------- Inventory: piece checks, import and adding inventory (staff only) ----------
+
+-- A piece belongs to a numbered type and uses one of its colors.
+create or replace function public.pieces_check_type() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  t public.piece_types%rowtype;
+begin
+  select * into t from public.piece_types where id = new.piece_type_id;
+  if not found then
+    return new; -- the foreign key rejects it
+  end if;
+  if t.kind <> 'numbered' then
+    raise exception '% is not a numbered type', t.name using errcode = '22023';
+  end if;
+  if not (new.color = any(t.colors)) then
+    raise exception '% is not a % color', new.color, t.name using errcode = '22023';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists pieces_check_type on public.pieces;
+create trigger pieces_check_type
+  before insert or update of piece_type_id, color on public.pieces
+  for each row execute function public.pieces_check_type();
+
+-- Trimmed, non-blank entries of a text array, in order.
+create or replace function public.clean_list(items text[]) returns text[]
+language sql immutable set search_path = public as $$
+  select coalesce(array_agg(btrim(x.item) order by x.i), '{}')
+  from unnest(coalesce(items, '{}')) with ordinality as x(item, i)
+  where btrim(x.item) <> '';
+$$;
+
+-- The piece type with exactly this name, or a 22023 error.
+create or replace function public.piece_type_named(p_name text) returns public.piece_types
+language plpgsql stable security definer set search_path = public as $$
+declare
+  t public.piece_types%rowtype;
+begin
+  select * into t from public.piece_types where name = btrim(coalesce(p_name, ''));
+  if not found then
+    raise exception 'no piece type named %', p_name using errcode = '22023';
+  end if;
+  return t;
+end;
+$$;
+revoke all on function public.piece_type_named(text) from public, anon, authenticated;
+
+-- Applies a spreadsheet import in one transaction (any error rolls it all back).
+-- A merge: never deletes pieces or clears numbers; re-running the same payload
+-- changes nothing. Payload shape: lib/import/preview.ts ImportPayload.
+create or replace function public.import_inventory(payload jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  item jsonb;
+  m record;
+  t public.piece_types%rowtype;
+  n text;
+  v_name text;
+  v_colors text[];
+  cnt int;
+  types_created int := 0;
+  pieces_added int := 0;
+  marked int := 0;
+  numbers_set int := 0;
+  notes_added int := 0;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can import inventory' using errcode = '42501';
+  end if;
+  if payload is null or jsonb_typeof(payload) <> 'object' then
+    raise exception 'invalid import' using errcode = '22023';
+  end if;
+
+  -- 1. Types first: the other lists may refer to them.
+  for item in select * from jsonb_array_elements(coalesce(payload -> 'typesToCreate', '[]')) loop
+    v_name := btrim(coalesce(item ->> 'name', ''));
+    if v_name = '' then
+      raise exception 'invalid import' using errcode = '22023';
+    end if;
+    if exists (select 1 from public.piece_types where name = v_name) then
+      continue;
+    end if;
+    v_colors := public.clean_list(array(select jsonb_array_elements_text(coalesce(item -> 'colors', '[]'))));
+    if cardinality(v_colors) = 0 then
+      raise exception 'a numbered type needs at least one color' using errcode = '22023';
+    end if;
+    insert into public.piece_types (name, kind, colors, sort_order)
+    values (v_name, 'numbered', v_colors, (select coalesce(max(sort_order), -1) + 1 from public.piece_types));
+    types_created := types_created + 1;
+  end loop;
+
+  -- 2. Each number in every color of its type.
+  for item in select * from jsonb_array_elements(coalesce(payload -> 'piecesToAdd', '[]')) loop
+    t := public.piece_type_named(item ->> 'pieceType');
+    n := public.require_number(item ->> 'number');
+    insert into public.pieces (piece_type_id, color, number)
+      select t.id, c, n from unnest(t.colors) as c
+      on conflict (piece_type_id, color, number) do nothing;
+    get diagnostics cnt = row_count;
+    pieces_added := pieces_added + cnt;
+  end loop;
+
+  -- 3. Out for repair, creating the piece if it doesn't exist yet.
+  for item in select * from jsonb_array_elements(coalesce(payload -> 'outForRepair', '[]')) loop
+    t := public.piece_type_named(item ->> 'pieceType');
+    n := public.require_number(item ->> 'number');
+    insert into public.pieces (piece_type_id, color, number, out_for_repair)
+      values (t.id, btrim(coalesce(item ->> 'color', '')), n, true)
+      on conflict (piece_type_id, color, number) do update set out_for_repair = true
+      where pieces.out_for_repair = false;
+    get diagnostics cnt = row_count;
+    marked := marked + cnt;
+  end loop;
+
+  -- 4. Numbers, merged into each member's numbers (same rule as set_member_numbers).
+  for m in
+    select e ->> 'memberId' as member_id,
+           jsonb_object_agg(btrim(e ->> 'pieceType'), public.require_number(e ->> 'number')) as nums
+    from jsonb_array_elements(coalesce(payload -> 'numbers', '[]')) as e
+    group by e ->> 'memberId'
+    order by e ->> 'memberId'
+  loop
+    numbers_set := numbers_set + public.apply_member_numbers(m.member_id::uuid, m.nums, true);
+  end loop;
+
+  -- 5. Notes: staff-only repair history (member_id null), one per color, once per name + piece.
+  perform set_config('app.allow_import_flags', 'on', true);
+  for item in select * from jsonb_array_elements(coalesce(payload -> 'notes', '[]')) loop
+    t := public.piece_type_named(item ->> 'pieceType');
+    n := public.require_number(item ->> 'number');
+    v_name := btrim(coalesce(item ->> 'memberName', ''));
+    if v_name = '' then
+      raise exception 'invalid import' using errcode = '22023';
+    end if;
+    if exists (select 1 from public.flags
+               where source = 'import' and member_name = v_name and piece = t.name) then
+      continue;
+    end if;
+    insert into public.flags (member_id, member_name, piece, color, size, status, comment, source)
+      select null, v_name, t.name, c, n, 'repair', coalesce(item ->> 'text', ''), 'import'
+      from unnest(t.colors) as c;
+    notes_added := notes_added + 1;
+  end loop;
+  perform set_config('app.allow_import_flags', 'off', true);
+
+  return jsonb_build_object(
+    'typesCreated', types_created, 'piecesAdded', pieces_added, 'markedOutForRepair', marked,
+    'numbersSet', numbers_set, 'notesAdded', notes_added
+  );
+end;
+$$;
+revoke all on function public.import_inventory(jsonb) from public, anon;
+grant execute on function public.import_inventory(jsonb) to authenticated;
+
+-- New piece type. Numbered: every number x color becomes a piece. Counted:
+-- p_stock is {color: whole number >= 0} for colors in p_colors.
+create or replace function public.create_piece_type(
+  p_name text, p_kind text, p_colors text[], p_numbers text[], p_stock jsonb
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_name text := btrim(coalesce(p_name, ''));
+  v_colors text[] := public.clean_list(p_colors);
+  v_numbers text[];
+  v_stock jsonb := '{}'::jsonb;
+  dup text;
+  kv record;
+  new_id uuid;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can add inventory' using errcode = '42501';
+  end if;
+  if v_name = '' then
+    raise exception 'a piece type needs a name' using errcode = '22023';
+  end if;
+  if p_kind is null or p_kind not in ('numbered', 'counted') then
+    raise exception 'invalid piece kind' using errcode = '22023';
+  end if;
+  select min(c) into dup from unnest(v_colors) as c group by lower(c) having count(*) > 1 limit 1;
+  if dup is not null then
+    raise exception '% is listed twice as a color', dup using errcode = '22023';
+  end if;
+  if exists (select 1 from public.piece_types where lower(name) = lower(v_name)) then
+    raise exception 'a piece type named % already exists', v_name using errcode = '23505';
+  end if;
+
+  if p_kind = 'numbered' then
+    if cardinality(v_colors) = 0 then
+      raise exception 'a numbered type needs at least one color' using errcode = '22023';
+    end if;
+    select coalesce(array_agg(distinct public.require_number(x)), '{}') into v_numbers
+      from unnest(public.clean_list(p_numbers)) as x;
+  else
+    if p_stock is not null and jsonb_typeof(p_stock) <> 'object' then
+      raise exception 'invalid stock' using errcode = '22023';
+    end if;
+    for kv in select key, value from jsonb_each(coalesce(p_stock, '{}'::jsonb)) loop
+      if not (kv.key = any(v_colors)) then
+        raise exception '% is not a % color', kv.key, v_name using errcode = '22023';
+      end if;
+      if jsonb_typeof(kv.value) <> 'number' then
+        raise exception 'stock must be a whole number, 0 or more' using errcode = '22023';
+      end if;
+      if (kv.value #>> '{}')::numeric < 0 or (kv.value #>> '{}')::numeric <> trunc((kv.value #>> '{}')::numeric) then
+        raise exception 'stock must be a whole number, 0 or more' using errcode = '22023';
+      end if;
+      v_stock := v_stock || jsonb_build_object(kv.key, (kv.value #>> '{}')::int);
+    end loop;
+  end if;
+
+  begin
+    insert into public.piece_types (name, kind, colors, stock, sort_order)
+    values (v_name, p_kind, v_colors, v_stock, (select coalesce(max(sort_order), -1) + 1 from public.piece_types))
+    returning id into new_id;
+  exception when unique_violation then
+    raise exception 'a piece type named % already exists', v_name using errcode = '23505';
+  end;
+
+  if p_kind = 'numbered' then
+    insert into public.pieces (piece_type_id, color, number)
+      select new_id, c, x from unnest(v_colors) as c cross join unnest(v_numbers) as x;
+  end if;
+  return new_id;
+end;
+$$;
+revoke all on function public.create_piece_type(text, text, text[], text[], jsonb) from public, anon;
+grant execute on function public.create_piece_type(text, text, text[], text[], jsonb) to authenticated;
+
+-- Adds a color to a type, and that color for every number the type already has.
+-- Returns pieces created.
+create or replace function public.add_piece_color(p_type uuid, p_color text) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  t public.piece_types%rowtype;
+  v_color text := btrim(coalesce(p_color, ''));
+  cnt int := 0;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can add inventory' using errcode = '42501';
+  end if;
+  if v_color = '' then
+    raise exception 'a color needs a name' using errcode = '22023';
+  end if;
+  select * into t from public.piece_types where id = p_type for update;
+  if not found then
+    raise exception 'no such piece type' using errcode = 'P0002';
+  end if;
+  if exists (select 1 from unnest(t.colors) as c where lower(c) = lower(v_color)) then
+    raise exception '% is already a % color', v_color, t.name using errcode = '22023';
+  end if;
+
+  update public.piece_types set colors = colors || v_color where id = p_type;
+  if t.kind = 'numbered' then
+    insert into public.pieces (piece_type_id, color, number)
+      select distinct p_type, v_color, p.number from public.pieces p where p.piece_type_id = p_type
+      on conflict (piece_type_id, color, number) do nothing;
+    get diagnostics cnt = row_count;
+  end if;
+  return cnt;
+end;
+$$;
+revoke all on function public.add_piece_color(uuid, text) from public, anon;
+grant execute on function public.add_piece_color(uuid, text) to authenticated;
+
+-- Adds one number to a numbered type in the given colors (all must be the type's).
+-- Returns pieces created (colors that already have the number are skipped).
+create or replace function public.add_piece_number(p_type uuid, p_number text, p_colors text[]) returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  t public.piece_types%rowtype;
+  n text;
+  v_colors text[] := public.clean_list(p_colors);
+  c text;
+  cnt int;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can add inventory' using errcode = '42501';
+  end if;
+  select * into t from public.piece_types where id = p_type;
+  if not found then
+    raise exception 'no such piece type' using errcode = 'P0002';
+  end if;
+  if t.kind <> 'numbered' then
+    raise exception '% is not a numbered type', t.name using errcode = '22023';
+  end if;
+  n := public.require_number(p_number);
+  if cardinality(v_colors) = 0 then
+    raise exception 'pick at least one color' using errcode = '22023';
+  end if;
+  foreach c in array v_colors loop
+    if not (c = any(t.colors)) then
+      raise exception '% is not a % color', c, t.name using errcode = '22023';
+    end if;
+  end loop;
+
+  insert into public.pieces (piece_type_id, color, number)
+    select distinct p_type, x, n from unnest(v_colors) as x
+    on conflict (piece_type_id, color, number) do nothing;
+  get diagnostics cnt = row_count;
+  return cnt;
+end;
+$$;
+revoke all on function public.add_piece_number(uuid, text, text[]) from public, anon;
+grant execute on function public.add_piece_number(uuid, text, text[]) to authenticated;
 
 -- ---------- Storage: combo photos ----------
 
