@@ -33,6 +33,8 @@ alter table public.profiles add column if not exists numbers jsonb not null defa
 -- One-time migration from the old fixed size columns. Runs only while they exist,
 -- so re-running is a no-op; data is copied before the columns are dropped.
 do $$
+declare
+  dup record;
 begin
   if exists (select 1 from information_schema.columns
              where table_schema = 'public' and table_name = 'profiles' and column_name = 'coat_size') then
@@ -41,6 +43,19 @@ begin
       || case when btrim(vest_size) <> '' then jsonb_build_object('Vests', btrim(vest_size)) else '{}'::jsonb end
       || case when btrim(bibber_size) <> '' then jsonb_build_object('Bibbers', btrim(bibber_size)) else '{}'::jsonb end
       || case when btrim(pant_size) <> '' then jsonb_build_object('Pants', btrim(pant_size)) else '{}'::jsonb end;
+    -- Report (don't fail on) numbers shared by active members: set_member_numbers
+    -- only checks new or changed numbers, so staff can still edit these members.
+    for dup in
+      select t.type, t.num, string_agg(btrim(p.first_name || ' ' || p.last_name), ', ' order by p.first_name) as names
+      from public.profiles p
+      cross join lateral (values ('Coats', btrim(p.coat_size)), ('Vests', btrim(p.vest_size)),
+                                 ('Bibbers', btrim(p.bibber_size)), ('Pants', btrim(p.pant_size))) as t(type, num)
+      where p.archived_at is null and t.num <> ''
+      group by t.type, t.num
+      having count(*) > 1
+    loop
+      raise notice 'duplicate % number % held by: %', dup.type, dup.num, dup.names;
+    end loop;
     alter table public.profiles
       drop column coat_size, drop column vest_size, drop column bibber_size, drop column pant_size;
   end if;
@@ -345,7 +360,12 @@ begin
   -- uniqueness check below and hand out the same number.
   lock table public.profiles in share row exclusive mode;
 
-  for kv in select key, value from jsonb_each_text(cleaned) loop
+  -- Only new or changed numbers are checked, so a pre-existing duplicate never
+  -- blocks editing the member's other numbers.
+  for kv in
+    select c.key, c.value from jsonb_each_text(cleaned) c
+    where (select numbers ->> c.key from public.profiles where id = target) is distinct from c.value
+  loop
     select btrim(p.first_name || ' ' || p.last_name) into holder
       from public.profiles p
       where p.id <> target and p.archived_at is null and p.numbers ->> kv.key = kv.value

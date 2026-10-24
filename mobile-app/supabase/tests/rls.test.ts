@@ -569,6 +569,25 @@ describe('member numbers', () => {
     }
   });
 
+  test('an existing duplicate never blocks saving other numbers', async () => {
+    const n3 = '7' + String(Date.now()).slice(-8);
+    try {
+      // Bypass the function to create a legacy duplicate.
+      await admin.from('profiles').update({ numbers: { Coats: n1 } }).in('id', [member.id, otherMember.id]);
+      const vests = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1, Vests: n2 } });
+      assert.equal(vests.error, null);
+      const same = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n1, Vests: n2 } });
+      assert.equal(same.error, null);
+      await admin.from('profiles').update({ numbers: { Coats: n3 } }).eq('id', otherMember.id);
+      const clash = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { Coats: n3 } });
+      assert.equal(clash.error?.code, '23505');
+      const { data } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(data?.numbers, { Coats: n1, Vests: n2 });
+    } finally {
+      await resetNumbers(member.id, otherMember.id);
+    }
+  });
+
   test('a number held by an archived member can be reused', async () => {
     const leaver = await createUser('numleaver');
     try {
