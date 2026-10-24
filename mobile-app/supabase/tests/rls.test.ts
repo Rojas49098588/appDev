@@ -844,3 +844,97 @@ describe('flag photos', () => {
     }
   });
 });
+
+describe('inventory', () => {
+  const coatsName = `RLS Coats ${RUN}`;
+  const tiesName = `RLS Ties ${RUN}`;
+  let coatsId: string;
+  let tiesId: string;
+  let bluePieceId: string;
+
+  before(async () => {
+    const coats = await admin
+      .from('piece_types')
+      .insert({ name: coatsName, kind: 'numbered', colors: ['Blue', 'Red'] })
+      .select('id')
+      .single();
+    assert.equal(coats.error, null);
+    coatsId = coats.data!.id;
+    const ties = await admin
+      .from('piece_types')
+      .insert({ name: tiesName, kind: 'counted', stock: { Blue: 3 } })
+      .select('id')
+      .single();
+    assert.equal(ties.error, null);
+    tiesId = ties.data!.id;
+    const pieces = await admin
+      .from('pieces')
+      .insert([
+        { piece_type_id: coatsId, color: 'Blue', number: '101' },
+        { piece_type_id: coatsId, color: 'Red', number: '101' },
+      ])
+      .select('id, color');
+    assert.equal(pieces.error, null);
+    bluePieceId = pieces.data!.find((p) => p.color === 'Blue')!.id;
+  });
+
+  after(async () => {
+    await admin.from('piece_types').delete().in('name', [coatsName, tiesName]);
+  });
+
+  test('members and staff can read piece types and pieces', async () => {
+    for (const client of [asMember, asStaff]) {
+      const types = await client.from('piece_types').select('kind, colors').eq('name', coatsName);
+      assert.equal(types.error, null);
+      assert.equal(types.data?.length, 1);
+      assert.equal(types.data![0].kind, 'numbered');
+      assert.deepEqual(types.data![0].colors, ['Blue', 'Red']);
+      const pieces = await client.from('pieces').select('id').eq('piece_type_id', coatsId);
+      assert.equal(pieces.error, null);
+      assert.equal(pieces.data?.length, 2);
+    }
+  });
+
+  test('members cannot insert, update or delete piece types or pieces', async () => {
+    const insType = await asMember.from('piece_types').insert({ name: `RLS Bad ${RUN}`, kind: 'counted' }).select();
+    assert.ok(insType.error || (insType.data?.length ?? 0) === 0);
+    const insPiece = await asMember
+      .from('pieces')
+      .insert({ piece_type_id: coatsId, color: 'Blue', number: '202' })
+      .select();
+    assert.ok(insPiece.error || (insPiece.data?.length ?? 0) === 0);
+    const updType = await asMember.from('piece_types').update({ retired: true }).eq('id', coatsId).select();
+    assert.ok(updType.error || (updType.data?.length ?? 0) === 0);
+    const updPiece = await asMember.from('pieces').update({ out_for_repair: true }).eq('id', bluePieceId).select();
+    assert.ok(updPiece.error || (updPiece.data?.length ?? 0) === 0);
+    const delPiece = await asMember.from('pieces').delete().eq('id', bluePieceId).select();
+    assert.ok(delPiece.error || (delPiece.data?.length ?? 0) === 0);
+    const delType = await asMember.from('piece_types').delete().eq('id', tiesId).select();
+    assert.ok(delType.error || (delType.data?.length ?? 0) === 0);
+
+    const types = await admin.from('piece_types').select('name, retired').in('name', [coatsName, tiesName, `RLS Bad ${RUN}`]);
+    assert.equal(types.data?.length, 2);
+    assert.ok(types.data!.every((t) => t.retired === false));
+    const pieces = await admin.from('pieces').select('color, number, out_for_repair').eq('piece_type_id', coatsId);
+    assert.equal(pieces.data?.length, 2);
+    assert.ok(pieces.data!.every((p) => p.out_for_repair === false && p.number === '101'));
+  });
+
+  test('staff can mark a piece out for repair and back', async () => {
+    const out = await asStaff.from('pieces').update({ out_for_repair: true }).eq('id', bluePieceId).select();
+    assert.equal(out.error, null);
+    assert.equal(out.data?.length, 1);
+    assert.equal(out.data![0].out_for_repair, true);
+    const back = await asStaff.from('pieces').update({ out_for_repair: false }).eq('id', bluePieceId).select();
+    assert.equal(back.error, null);
+    assert.equal(back.data?.length, 1);
+    assert.equal(back.data![0].out_for_repair, false);
+  });
+
+  test('anon reads nothing from piece_types or pieces', async () => {
+    const types = await anon.from('piece_types').select('id');
+    assert.ok(types.error || (types.data?.length ?? 0) === 0);
+    const pieces = await anon.from('pieces').select('id');
+    assert.ok(pieces.error || (pieces.data?.length ?? 0) === 0);
+  });
+});

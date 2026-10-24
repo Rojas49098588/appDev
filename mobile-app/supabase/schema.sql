@@ -107,6 +107,29 @@ alter table public.flags add constraint flags_member_id_fkey
 create unique index if not exists flags_one_open_per_piece
   on public.flags (member_id, piece, color) where cleared_at is null;
 
+-- Uniform inventory. Numbered types (Coats...) have one pieces row per physical piece;
+-- counted types (Ties...) just track stock per color in piece_types.stock.
+create table if not exists public.piece_types (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  kind text not null check (kind in ('numbered', 'counted')),
+  colors text[] not null default '{}',
+  stock jsonb not null default '{}'::jsonb,
+  sort_order int not null default 0,
+  retired boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.pieces (
+  id uuid primary key default gen_random_uuid(),
+  piece_type_id uuid not null references public.piece_types(id) on delete cascade,
+  color text not null,
+  number text not null check (number ~ '^[0-9]+$'),
+  out_for_repair boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (piece_type_id, color, number)
+);
+
 -- Frozen copies of a member's info, written by archive_member().
 create table if not exists public.member_archives (
   id uuid primary key default gen_random_uuid(),
@@ -460,6 +483,28 @@ create policy combos_insert on public.combos for insert to authenticated with ch
 drop policy if exists combos_delete on public.combos;
 create policy combos_delete on public.combos for delete to authenticated using (public.is_staff());
 
+alter table public.piece_types enable row level security;
+drop policy if exists piece_types_select on public.piece_types;
+create policy piece_types_select on public.piece_types for select to authenticated using (true);
+drop policy if exists piece_types_insert on public.piece_types;
+create policy piece_types_insert on public.piece_types for insert to authenticated with check (public.is_staff());
+drop policy if exists piece_types_update on public.piece_types;
+create policy piece_types_update on public.piece_types for update to authenticated
+  using (public.is_staff()) with check (public.is_staff());
+drop policy if exists piece_types_delete on public.piece_types;
+create policy piece_types_delete on public.piece_types for delete to authenticated using (public.is_staff());
+
+alter table public.pieces enable row level security;
+drop policy if exists pieces_select on public.pieces;
+create policy pieces_select on public.pieces for select to authenticated using (true);
+drop policy if exists pieces_insert on public.pieces;
+create policy pieces_insert on public.pieces for insert to authenticated with check (public.is_staff());
+drop policy if exists pieces_update on public.pieces;
+create policy pieces_update on public.pieces for update to authenticated
+  using (public.is_staff()) with check (public.is_staff());
+drop policy if exists pieces_delete on public.pieces;
+create policy pieces_delete on public.pieces for delete to authenticated using (public.is_staff());
+
 alter table public.games enable row level security;
 drop policy if exists games_select on public.games;
 create policy games_select on public.games for select to authenticated using (true);
@@ -659,7 +704,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['profiles', 'combos', 'games', 'flags'] loop
+  foreach t in array array['profiles', 'combos', 'games', 'flags', 'piece_types', 'pieces'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
