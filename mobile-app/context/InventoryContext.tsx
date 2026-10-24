@@ -1,8 +1,10 @@
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { InventoryPiece, PieceType } from '../lib/models';
+import type { ImportSummary, InventoryPiece, PieceKind, PieceType } from '../lib/models';
+import type { ImportPayload } from '../lib/import/preview';
 import type { PieceRow, PieceTypeRow } from '../lib/rows';
 import { rowToPiece, rowToPieceType } from '../lib/mappers';
-import { fetchAllPages, mapPiecesToTypes } from '../lib/inventory';
+import { batchByWindow, fetchAllPages, mapPiecesToTypes } from '../lib/inventory';
 import { isPieceList, isPieceTypeList } from '../lib/validators';
 import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS } from '../lib/cacheStorage';
@@ -20,7 +22,27 @@ type InventoryContextValue = {
   error: string | null;
   reload: () => Promise<void>;
   setOutForRepair: (pieceId: string, value: boolean) => Promise<void>;
+  // Staff only (enforced by the database); each reloads the inventory once when done.
+  importInventory: (payload: ImportPayload) => Promise<ImportSummary>;
+  createPieceType: (input: {
+    name: string; kind: PieceKind; colors: string[]; numbers: string[]; stock: Record<string, number>;
+  }) => Promise<string>;
+  addPieceColor: (typeId: string, color: string) => Promise<number>;
+  addPieceNumber: (typeId: string, number: string, colors: string[]) => Promise<number>;
 };
+
+const PIECE_BATCH_MS = 300;
+
+// Notes the import already left on flags, so a preview can skip them (staff can read all flags).
+export async function loadImportNotes(): Promise<{ memberName: string; pieceType: string }[]> {
+  const rows = await fetchAllPages<{ member_name: string; piece: string }>(async (from, to) => {
+    const result = await supabase.from('flags').select('member_name, piece')
+      .eq('source', 'import').order('id').range(from, to);
+    if (result.error) throw result.error;
+    return result.data as { member_name: string; piece: string }[];
+  });
+  return rows.map((r) => ({ memberName: r.member_name, pieceType: r.piece }));
+}
 
 const InventoryContext = createContext<InventoryContextValue | null>(null);
 
@@ -113,26 +135,39 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       })
       .subscribe(logChannelFailures('piece_types'));
 
+    // Bursts (an import writes hundreds of pieces) are applied in one commit per window.
+    const pieceBatch = batchByWindow<RealtimePostgresChangesPayload<PieceRow>>(PIECE_BATCH_MS, (events) => {
+      const names = typeNames(typesRef.current);
+      let next = piecesRef.current;
+      let needsReload = false;
+      for (const payload of events) {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old as Partial<PieceRow>).id;
+          if (id) next = removeById(next, id);
+          continue;
+        }
+        const row = payload.new as PieceRow;
+        const name = names.get(row.piece_type_id);
+        // Its type hasn't arrived yet: refetch (once for the batch) rather than drop the piece.
+        if (name === undefined) {
+          needsReload = true;
+          continue;
+        }
+        next = upsertById(next, rowToPiece(row, name));
+      }
+      if (next !== piecesRef.current) commitPieces(next);
+      if (needsReload) void reload();
+    });
+
     const pieceChannel = supabase
       .channel(uniqueTopic(`pieces:${userId}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pieces' }, (payload) => {
-        if (payload.eventType === 'DELETE') {
-          const id = (payload.old as Partial<PieceRow>).id;
-          if (id) commitPieces(removeById(piecesRef.current, id));
-          return;
-        }
-        const row = payload.new as PieceRow;
-        const name = typeNames(typesRef.current).get(row.piece_type_id);
-        // Its type hasn't arrived yet: refetch rather than drop the piece.
-        if (name === undefined) {
-          void reload();
-          return;
-        }
-        commitPieces(upsertById(piecesRef.current, rowToPiece(row, name)));
+        pieceBatch.push(payload as RealtimePostgresChangesPayload<PieceRow>);
       })
       .subscribe(logChannelFailures('pieces'));
 
     return () => {
+      pieceBatch.cancel();
       supabase.removeChannel(typeChannel);
       supabase.removeChannel(pieceChannel);
     };
@@ -170,9 +205,59 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     [commitPieces, piecesRef, typesRef, reload]
   );
 
+  const importInventory = useCallback(
+    async (payload: ImportPayload): Promise<ImportSummary> => {
+      const { data, error: rpcError } = await supabase.rpc('import_inventory', { payload });
+      if (rpcError) throw rpcError;
+      await reload();
+      return data as ImportSummary;
+    },
+    [reload]
+  );
+
+  const createPieceType = useCallback(
+    async (input: {
+      name: string; kind: PieceKind; colors: string[]; numbers: string[]; stock: Record<string, number>;
+    }): Promise<string> => {
+      const { data, error: rpcError } = await supabase.rpc('create_piece_type', {
+        p_name: input.name, p_kind: input.kind, p_colors: input.colors, p_numbers: input.numbers, p_stock: input.stock,
+      });
+      if (rpcError) throw rpcError;
+      await reload();
+      return data as string;
+    },
+    [reload]
+  );
+
+  const addPieceColor = useCallback(
+    async (typeId: string, color: string): Promise<number> => {
+      const { data, error: rpcError } = await supabase.rpc('add_piece_color', { p_type: typeId, p_color: color });
+      if (rpcError) throw rpcError;
+      await reload();
+      return data as number;
+    },
+    [reload]
+  );
+
+  const addPieceNumber = useCallback(
+    async (typeId: string, number: string, colors: string[]): Promise<number> => {
+      const { data, error: rpcError } = await supabase.rpc('add_piece_number', {
+        p_type: typeId, p_number: number, p_colors: colors,
+      });
+      if (rpcError) throw rpcError;
+      await reload();
+      return data as number;
+    },
+    [reload]
+  );
+
   const value = useMemo(
-    () => ({ pieceTypes, pieces: pieceList.items, syncedAt, error, reload, setOutForRepair }),
-    [pieceTypes, pieceList.items, syncedAt, error, reload, setOutForRepair]
+    () => ({
+      pieceTypes, pieces: pieceList.items, syncedAt, error, reload, setOutForRepair,
+      importInventory, createPieceType, addPieceColor, addPieceNumber,
+    }),
+    [pieceTypes, pieceList.items, syncedAt, error, reload, setOutForRepair,
+      importInventory, createPieceType, addPieceColor, addPieceNumber]
   );
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>;

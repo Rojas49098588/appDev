@@ -109,3 +109,11 @@ export type MemberArchive = {
   numbers: MemberNumbers;
   flags: ArchivedFlag[];
 };
+
+export type ImportSummary = {
+  typesCreated: number;
+  piecesAdded: number;
+  markedOutForRepair: number;
+  numbersSet: number;
+  notesAdded: number;
+};

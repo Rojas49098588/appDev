@@ -1,7 +1,7 @@
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assignmentFor, fetchAllPages, mapPiecesToTypes, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
+  assignmentFor, batchByWindow, fetchAllPages, mapPiecesToTypes, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
 } from '../lib/inventory.ts';
 import type { Account, InventoryPiece, PieceType } from '../lib/models.ts';
 
@@ -116,4 +116,41 @@ test('fetchAllPages: an exact multiple costs one extra empty page; empty table i
   assert.equal(exact.length, 2000);
   assert.deepEqual(calls, [0, 1000, 2000]);
   assert.deepEqual(await fetchAllPages<number>(async () => []), []);
+});
+
+test('batchByWindow coalesces bursts', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const flushed: number[][] = [];
+    const batch = batchByWindow<number>(300, (items) => flushed.push(items));
+    for (let i = 1; i <= 5; i++) {
+      batch.push(i);
+      mock.timers.tick(50);
+    }
+    assert.deepEqual(flushed, []);
+    mock.timers.tick(300);
+    assert.deepEqual(flushed, [[1, 2, 3, 4, 5]]);
+    batch.push(6);
+    mock.timers.tick(300);
+    assert.deepEqual(flushed, [[1, 2, 3, 4, 5], [6]]);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('batchByWindow cancel drops pending items', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const flushed: number[][] = [];
+    const batch = batchByWindow<number>(300, (items) => flushed.push(items));
+    batch.push(1);
+    batch.cancel();
+    mock.timers.tick(1000);
+    assert.deepEqual(flushed, []);
+    batch.push(2);
+    mock.timers.tick(300);
+    assert.deepEqual(flushed, [[2]]);
+  } finally {
+    mock.timers.reset();
+  }
 });

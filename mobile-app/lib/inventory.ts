@@ -116,3 +116,30 @@ export async function fetchAllPages<T>(
     if (page.length < pageSize) return all;
   }
 }
+
+// Collects pushed items and hands them to `flush` once per window (the window opens on the
+// first push). `cancel` drops anything still waiting, for cleanup.
+export function batchByWindow<T>(
+  windowMs: number,
+  flush: (items: T[]) => void
+): { push(item: T): void; cancel(): void } {
+  let pending: T[] = [];
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return {
+    push(item) {
+      pending.push(item);
+      if (timer !== null) return;
+      timer = setTimeout(() => {
+        const items = pending;
+        pending = [];
+        timer = null;
+        flush(items);
+      }, windowMs);
+    },
+    cancel() {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      pending = [];
+    },
+  };
+}
