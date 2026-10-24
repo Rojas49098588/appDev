@@ -49,6 +49,8 @@ export function normalizeNumber(raw: string): string | null {
 }
 
 export const MAX_NUMBER_LIST = 1000;
+// Longer numbers can't be real piece numbers and would overflow safe integer math.
+const MAX_DIGITS = 9;
 
 /**
  * Parses what staff type into the numbers box: a list ("104, 112 120"), a range
@@ -72,8 +74,10 @@ export function parseNumberList(text: string): { numbers: string[]; error: strin
     if (range) {
       const start = normalizeNumber(range[1]);
       if (start === null) return fail(`"${range[1]}" isn't a number`);
+      if (start.length > MAX_DIGITS) return fail(`"${range[1]}" is too long`);
       const end = normalizeNumber(range[2]);
       if (end === null) return fail(`"${range[2]}" isn't a number`);
+      if (end.length > MAX_DIGITS) return fail(`"${range[2]}" is too long`);
       const stepText = range[3] ?? '1';
       const step = /^\d+$/.test(stepText) ? parseInt(stepText, 10) : 0;
       if (step < 1) return fail('every must be at least 1');
@@ -92,6 +96,7 @@ export function parseNumberList(text: string): { numbers: string[]; error: strin
     for (const token of part.split(/\s+/)) {
       const n = normalizeNumber(token);
       if (n === null) return fail(`"${token}" isn't a number`);
+      if (n.length > MAX_DIGITS) return fail(`"${token}" is too long`);
       const err = add(n);
       if (err) return fail(err);
     }

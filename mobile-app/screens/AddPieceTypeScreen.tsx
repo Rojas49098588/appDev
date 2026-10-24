@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -23,6 +24,8 @@ import { successBuzz } from '../lib/haptics';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
+import KeyboardDoneBar from '../components/KeyboardDoneBar';
+import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddPieceType'>;
 
@@ -31,6 +34,8 @@ const byValue = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 export default function AddPieceTypeScreen({ navigation }: Props) {
   const { createPieceType } = useInventory();
   const { isOnline } = useConnection();
+  const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
+  const [numericFocused, setNumericFocused] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<PieceKind>('numbered');
   const [pieceColors, setPieceColors] = useState<string[]>([]);
@@ -41,14 +46,21 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
-  const addColor = () => {
-    const c = colorText.trim();
-    if (!c) return;
+  // Returns the new color list, or null (after telling the user) when the text can't be added.
+  const withColor = (text: string): string[] | null => {
+    const c = text.trim();
+    if (!c) return pieceColors;
     if (pieceColors.some((x) => x.toLowerCase() === c.toLowerCase())) {
       Alert.alert('Already added', `${c} is already in the list.`);
-      return;
+      return null;
     }
-    setPieceColors((cur) => [...cur, c]);
+    return [...pieceColors, c];
+  };
+
+  const addColor = () => {
+    const next = withColor(colorText);
+    if (!next) return;
+    setPieceColors(next);
     setColorText('');
   };
 
@@ -60,14 +72,21 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
     });
   };
 
-  const addNumbers = () => {
-    if (!numberText.trim()) return;
-    const parsed = parseNumberList(numberText);
+  // Returns the new number list, or null (after telling the user) when the text can't be read.
+  const withNumbers = (text: string): string[] | null => {
+    if (!text.trim()) return numbers;
+    const parsed = parseNumberList(text);
     if (parsed.error) {
       Alert.alert("Can't read those numbers", parsed.error);
-      return;
+      return null;
     }
-    setNumbers((cur) => [...new Set([...cur, ...parsed.numbers])].sort(byValue));
+    return [...new Set([...numbers, ...parsed.numbers])].sort(byValue);
+  };
+
+  const addNumbers = () => {
+    const next = withNumbers(numberText);
+    if (!next) return;
+    setNumbers(next);
     setNumberText('');
   };
 
@@ -85,16 +104,21 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
       Alert.alert('Name needed', 'Give this piece type a name.');
       return;
     }
-    if (pieceColors.length === 0) {
+    // Text typed but not committed with Add counts, and must be valid.
+    const finalColors = withColor(colorText);
+    if (!finalColors) return;
+    const finalNumbers = kind === 'numbered' ? withNumbers(numberText) : numbers;
+    if (!finalNumbers) return;
+    if (finalColors.length === 0) {
       Alert.alert('Colors needed', 'Add at least one color.');
       return;
     }
-    if (kind === 'numbered' && numbers.length === 0) {
+    if (kind === 'numbered' && finalNumbers.length === 0) {
       Alert.alert('Numbers needed', 'Add at least one number.');
       return;
     }
     if (kind === 'counted') {
-      const bad = pieceColors.find((c) => stock[c] && !/^\d+$/.test(stock[c]));
+      const bad = finalColors.find((c) => stock[c] && !/^\d+$/.test(stock[c]));
       if (bad) {
         Alert.alert('Check the quantities', `Quantity for ${bad} must be a whole number.`);
         return;
@@ -103,13 +127,17 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
     if (!requireOnline(isOnline)) return;
     savingRef.current = true;
     setSaving(true);
+    setPieceColors(finalColors);
+    setColorText('');
+    setNumbers(finalNumbers);
+    setNumberText('');
     try {
       await createPieceType({
         name: trimmed,
         kind,
-        colors: pieceColors,
-        numbers: kind === 'numbered' ? numbers : [],
-        stock: kind === 'counted' ? Object.fromEntries(pieceColors.map((c) => [c, stockFor(c)])) : {},
+        colors: finalColors,
+        numbers: kind === 'numbered' ? finalNumbers : [],
+        stock: kind === 'counted' ? Object.fromEntries(finalColors.map((c) => [c, stockFor(c)])) : {},
       });
       successBuzz();
       navigation.goBack();
@@ -130,6 +158,10 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
           <TapeGutter />
           <View style={styles.contentColumn}>
             <ScrollView
+              ref={scrollRef as unknown as Ref<ComponentRef<typeof ScrollView>>}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              style={styles.flexOne}
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
             >
@@ -150,6 +182,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                   placeholder="e.g. Hats"
                   placeholderTextColor={colors.inkFaint}
                   autoCapitalize="words"
+                  onFocus={scrollToFocusedInput}
                 />
               </View>
 
@@ -201,6 +234,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                     placeholderTextColor={colors.inkFaint}
                     autoCapitalize="words"
                     onSubmitEditing={addColor}
+                    onFocus={scrollToFocusedInput}
                   />
                   <Pressable style={styles.smallButton} onPress={addColor}>
                     <Text style={styles.smallButtonText}>Add</Text>
@@ -220,6 +254,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                       placeholderTextColor={colors.inkFaint}
                       autoCapitalize="none"
                       onSubmitEditing={addNumbers}
+                      onFocus={scrollToFocusedInput}
                     />
                     <Pressable style={styles.smallButton} onPress={addNumbers}>
                       <Text style={styles.smallButtonText}>Add</Text>
@@ -256,6 +291,11 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                         placeholder="0"
                         placeholderTextColor={colors.inkFaint}
                         keyboardType="number-pad"
+                        onFocus={(e) => {
+                          scrollToFocusedInput(e);
+                          setNumericFocused(true);
+                        }}
+                        onBlur={() => setNumericFocused(false)}
                       />
                     </View>
                   ))}
@@ -263,6 +303,8 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
               )}
             </ScrollView>
 
+            <View onLayout={registerBottomInset}>
+            <KeyboardDoneBar visible={numericFocused} />
             <View style={styles.footer}>
               <Pressable
                 style={[styles.submitButton, saving && styles.submitButtonDisabled, !isOnline && OFFLINE_DIM]}
@@ -271,6 +313,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
               >
                 <Text style={styles.submitButtonText}>{saving ? 'Saving…' : 'Save piece type'}</Text>
               </Pressable>
+            </View>
             </View>
           </View>
         </View>

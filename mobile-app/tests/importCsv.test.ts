@@ -73,3 +73,9 @@ test('parseNumberList reports clear errors', () => {
   assert.match(parseNumberList('1 to 5000').error ?? '', /1000/);
   assert.equal(parseNumberList('a to 5').error, '"a" isn\'t a number');
 });
+
+test('parseNumberList rejects numbers too long to be real', () => {
+  assert.equal(parseNumberList('1 to 99999999999999999999').error, '"99999999999999999999" is too long');
+  assert.equal(parseNumberList('1234567890123').error, '"1234567890123" is too long');
+  assert.deepEqual(parseNumberList('999999999'), { numbers: ['999999999'], error: null });
+});

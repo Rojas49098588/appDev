@@ -17,6 +17,7 @@ import { normalizeNumber } from '../lib/import/rows';
 import { useInventory } from '../context/InventoryContext';
 import { friendlyError } from '../lib/errors';
 import { successBuzz } from '../lib/haptics';
+import KeyboardDoneBar from './KeyboardDoneBar';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 
 type Props = { piece: PieceType | null; onClose: () => void };
@@ -52,6 +53,7 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
   const [text, setText] = useState('');
   const [checked, setChecked] = useState<string[]>(piece.colors);
   const [saving, setSaving] = useState(false);
+  const [numericFocused, setNumericFocused] = useState(false);
   const savingRef = useRef(false);
 
   const toggle = (c: string) =>
@@ -94,6 +96,8 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
         placeholder="Number"
         placeholderTextColor={colors.inkFaint}
         keyboardType="number-pad"
+        onFocus={() => setNumericFocused(true)}
+        onBlur={() => setNumericFocused(false)}
         autoFocus
       />
       <Text style={styles.label}>Colors</Text>
@@ -113,6 +117,7 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
           );
         })}
       </View>
+      <KeyboardDoneBar visible={numericFocused} />
       <Pressable
         style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
         disabled={saving}
