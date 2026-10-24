@@ -44,7 +44,9 @@ export default function ImportInventoryScreen({ navigation }: Props) {
   const [fileName, setFileName] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Held from the moment the confirm Alert opens until it is dismissed or the import ends.
   const savingRef = useRef(false);
+  const importedRef = useRef(false);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -92,6 +94,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
 
   const handleImport = () => {
     if (!plan || savingRef.current || !requireOnline(isOnline)) return;
+    savingRef.current = true;
     const payload = toPayload(plan);
     const { added, replaced } = countNumberChanges(plan);
     const lines = [
@@ -105,15 +108,15 @@ export default function ImportInventoryScreen({ navigation }: Props) {
       payload.notes.length ? plural(payload.notes.length, 'repair note') : null,
     ].filter(Boolean);
     Alert.alert('Import this sheet?', lines.join('\n'), [
-      { text: 'Cancel', style: 'cancel' },
+      { text: 'Cancel', style: 'cancel', onPress: () => { savingRef.current = false; } },
       {
         text: 'Import',
         onPress: async () => {
-          if (savingRef.current) return;
-          savingRef.current = true;
+          if (importedRef.current) return;
           setSaving(true);
           try {
             const summary = await importInventory(payload);
+            importedRef.current = true;
             successBuzz();
             setResult(summary);
           } catch (error) {
@@ -124,7 +127,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
           }
         },
       },
-    ]);
+    ], { cancelable: true, onDismiss: () => { savingRef.current = false; } });
   };
 
   const renderProblems = (list: ImportPlan['problems']) =>
