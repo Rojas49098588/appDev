@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { InventoryPiece, PieceType } from '../lib/models';
 import type { PieceRow, PieceTypeRow } from '../lib/rows';
 import { rowToPiece, rowToPieceType } from '../lib/mappers';
+import { mapPiecesToTypes } from '../lib/inventory';
 import { isPieceList, isPieceTypeList } from '../lib/validators';
 import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS } from '../lib/cacheStorage';
@@ -49,21 +50,27 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     try {
       // No live session: the queries would run as anon and return nothing, so keep the cache.
       if (!(await hasSession())) return;
-      const [typeResult, pieceResult] = await Promise.all([
-        supabase.from('piece_types').select('*').order('sort_order'),
-        supabase.from('pieces').select('*').order('created_at'),
-      ]);
-      if (typeResult.error) throw typeResult.error;
+      // Types first, then pieces, so a piece never outruns its type unless one was
+      // added in between; that case is refetched once below.
+      const fetchTypes = async () => {
+        const result = await supabase.from('piece_types').select('*').order('sort_order');
+        if (result.error) throw result.error;
+        return (result.data as PieceTypeRow[]).map(rowToPieceType);
+      };
+      let nextTypes = await fetchTypes();
+      const pieceResult = await supabase.from('pieces').select('*').order('created_at');
       if (pieceResult.error) throw pieceResult.error;
-      const nextTypes = (typeResult.data as PieceTypeRow[]).map(rowToPieceType);
-      const names = typeNames(nextTypes);
-      const nextPieces = (pieceResult.data as PieceRow[]).flatMap((row) => {
-        const name = names.get(row.piece_type_id);
-        return name === undefined ? [] : [rowToPiece(row, name)];
-      });
+      const rows = pieceResult.data as PieceRow[];
+      let mapped = mapPiecesToTypes(rows, nextTypes);
+      if (mapped.unknownTypeIds.length > 0) {
+        nextTypes = await fetchTypes();
+        mapped = mapPiecesToTypes(rows, nextTypes);
+      }
+      const nextPieces = mapped.pieces;
+      const unknownCount = mapped.unknownTypeIds.length;
       commitTypes(nextTypes);
       commitPieces(nextPieces);
-      setError(null);
+      setError(unknownCount > 0 ? "Some inventory pieces couldn't be shown. Pull to refresh." : null);
     } catch (loadError) {
       setError(friendlyError(loadError));
     }

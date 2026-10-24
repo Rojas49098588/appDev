@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assignmentFor, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
+  assignmentFor, mapPiecesToTypes, memberPieceTypes, numberRows, ownerIndex, pieceCount, unknownNumbers,
 } from '../lib/inventory.ts';
 import type { Account, InventoryPiece, PieceType } from '../lib/models.ts';
 
@@ -81,4 +81,12 @@ test('pieceCount: numbered counts pieces, counted sums stock', () => {
   const pieces = [piece('a', 'Coats', 'Blue', '1'), piece('b', 'Coats', 'Blue', '2'), piece('c', 'Vests', 'Blue', '1')];
   assert.equal(pieceCount(type('Coats', 'numbered'), pieces), 2);
   assert.equal(pieceCount(type('Ties', 'counted', { stock: { Blue: 3, White: 4 } }), pieces), 7);
+});
+
+test('mapPiecesToTypes names pieces and reports pieces whose type is missing', () => {
+  const types = [{ id: 't1', name: 'Coats', kind: 'numbered', colors: [], stock: {}, sortOrder: 0, retired: false }] as PieceType[];
+  const row = (id: string, t: string) => ({ id, piece_type_id: t, color: 'Black', number: '1', out_for_repair: false, created_at: '' });
+  const out = mapPiecesToTypes([row('a', 't1'), row('b', 't2'), row('c', 't2')], types);
+  assert.deepEqual(out.pieces.map((p) => [p.id, p.pieceType]), [['a', 'Coats']]);
+  assert.deepEqual(out.unknownTypeIds, ['t2']);
 });

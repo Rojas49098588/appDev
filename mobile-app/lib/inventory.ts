@@ -1,4 +1,6 @@
 import type { Account, InventoryPiece, PieceType } from './models.ts';
+import type { PieceRow } from './rows.ts';
+import { rowToPiece } from './mappers.ts';
 
 export type Assignment =
   | { state: 'assigned'; memberId: string; memberName: string }
@@ -80,4 +82,21 @@ export function memberPieceTypes(types: PieceType[], pieces: InventoryPiece[]): 
 export function pieceCount(type: PieceType, pieces: InventoryPiece[]): number {
   if (type.kind === 'counted') return Object.values(type.stock).reduce((sum, n) => sum + n, 0);
   return pieces.filter((p) => p.pieceTypeId === type.id).length;
+}
+
+// Attaches each piece row's type name. Rows whose type isn't in `types` are
+// reported in `unknownTypeIds` (never dropped silently) so the caller can refetch.
+export function mapPiecesToTypes(
+  rows: PieceRow[],
+  types: PieceType[]
+): { pieces: InventoryPiece[]; unknownTypeIds: string[] } {
+  const names = new Map(types.map((t) => [t.id, t.name]));
+  const pieces: InventoryPiece[] = [];
+  const unknown = new Set<string>();
+  for (const row of rows) {
+    const name = names.get(row.piece_type_id);
+    if (name === undefined) unknown.add(row.piece_type_id);
+    else pieces.push(rowToPiece(row, name));
+  }
+  return { pieces, unknownTypeIds: [...unknown] };
 }
