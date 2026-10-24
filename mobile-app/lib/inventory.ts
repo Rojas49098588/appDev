@@ -71,11 +71,12 @@ export function numberRows(
     }));
 }
 
-// Types a member can have a number for / see: non-retired, by sortOrder; numbered ones only once they have pieces.
+// Types members see on their own screens: non-retired numbered types that have at
+// least one piece, by sortOrder. Counted types (ties, belts) are managed centrally, not per member.
 export function memberPieceTypes(types: PieceType[], pieces: InventoryPiece[]): PieceType[] {
   const withPieces = new Set(pieces.map((p) => p.pieceTypeId));
   return types
-    .filter((t) => !t.retired && (t.kind === 'counted' || withPieces.has(t.id)))
+    .filter((t) => !t.retired && t.kind === 'numbered' && withPieces.has(t.id))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 

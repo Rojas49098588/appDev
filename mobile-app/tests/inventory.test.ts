@@ -65,16 +65,17 @@ test('numberRows: one row per number, numeric order, null cells for missing colo
   assert.equal(rows[1].cells.Blue?.id, 'a');
 });
 
-test('memberPieceTypes skips numbered types with no pieces and retired types', () => {
+test('memberPieceTypes: numbered types with pieces only (no counted, retired or empty types)', () => {
   const types = [
     type('Vests', 'numbered', { sortOrder: 3 }),
     type('Coats', 'numbered', { sortOrder: 2 }),
-    type('Ties', 'counted', { sortOrder: 1 }),
+    type('Ties', 'counted', { sortOrder: 1, stock: { Blue: 5 } }),
     type('Old', 'counted', { retired: true }),
     type('Hats', 'numbered', { retired: true }),
+    type('Gloves', 'numbered', { sortOrder: 0 }),
   ];
-  const pieces = [piece('a', 'Coats', 'Blue', '1'), piece('b', 'Hats', 'Blue', '1')];
-  assert.deepEqual(memberPieceTypes(types, pieces).map((t) => t.name), ['Ties', 'Coats']);
+  const pieces = [piece('a', 'Coats', 'Blue', '1'), piece('b', 'Hats', 'Blue', '1'), piece('c', 'Vests', 'Blue', '2')];
+  assert.deepEqual(memberPieceTypes(types, pieces).map((t) => t.name), ['Coats', 'Vests']);
 });
 
 test('pieceCount: numbered counts pieces, counted sums stock', () => {

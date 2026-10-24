@@ -13,14 +13,10 @@ export default function MySizesScreen() {
   const shoeSize = account?.shoeSize;
 
   const cells = [
-    ...uniformFor(pieceTypes, pieces, account?.numbers).map((slot) => {
-      const colorList = slot.variants.map((v) => v.color).join(', ');
-      // Counted pieces (ties, belts) have no number, so just list the colors.
-      return {
-        label: slot.piece,
-        value: slot.kind === 'counted' ? colorList || NO_SIZE : `${colorList} · ${slot.size || NO_SIZE}`,
-      };
-    }),
+    ...uniformFor(pieceTypes, pieces, account?.numbers).map((slot) => ({
+      label: slot.piece,
+      value: `${slot.variants.map((v) => v.color).join(', ')} · ${slot.size || NO_SIZE}`,
+    })),
     {
       label: 'Shoe size',
       value: shoeSize ? `${shoeSize.gender} · ${shoeSize.size || '—'}` : '—',

@@ -1,4 +1,4 @@
-import type { InventoryPiece, MemberNumbers, PieceKind, PieceType } from '../lib/models';
+import type { InventoryPiece, MemberNumbers, PieceType } from '../lib/models';
 import { memberPieceTypes } from '../lib/inventory';
 import { numberFor } from '../lib/uniform';
 
@@ -8,7 +8,6 @@ export type UniformVariant = {
 
 export type UniformGroup = {
   piece: string;
-  kind: PieceKind;
   size: string;
   variants: UniformVariant[];
 };
@@ -19,9 +18,9 @@ export const NO_SIZE = '—';
 export const UNASSIGNED_SIZE = 'Unassigned';
 
 // One group per piece type a member sees (see memberPieceTypes): numbered types
-// once they have pieces in inventory, counted types always. The member's number
-// (shown to members as their "size") is the same across colors; staff assign it
-// on the member's profile, and it's '' until they do. Counted types have no number.
+// once they have pieces in inventory. Ties and belts are managed centrally, not
+// per member. The member's number (shown to members as their "size") is the same
+// across colors; staff assign it on the member's profile, and it's '' until they do.
 export function uniformFor(
   types: PieceType[],
   pieces: InventoryPiece[],
@@ -29,8 +28,7 @@ export function uniformFor(
 ): UniformGroup[] {
   return memberPieceTypes(types, pieces).map((type) => ({
     piece: type.name,
-    kind: type.kind,
-    size: type.kind === 'numbered' ? numberFor(numbers, type.name) : '',
+    size: numberFor(numbers, type.name),
     variants: type.colors.map((color) => ({ color })),
   }));
 }
