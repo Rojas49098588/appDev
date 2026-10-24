@@ -11,6 +11,7 @@ import { MY_WHITE_SHIRT, UNASSIGNED_SIZE, uniformFor } from '../../constants/myU
 import { useFlags } from '../../context/FlagsContext';
 import type { Flag, FlagStatus } from '../../constants/flagsData';
 import { useAuth } from '../../context/AuthContext';
+import { useInventory } from '../../context/InventoryContext';
 import type { PhotoChange } from '../../lib/flagHistory';
 import { friendlyError } from '../../lib/errors';
 import { requireOnline, useConnection } from '../../hooks/useConnection';
@@ -43,6 +44,7 @@ const rowKey = (row: Pick<FlagTarget, 'piece' | 'color'>) => `${row.piece}-${row
 export default function MyInventoryScreen(_props: Props) {
   const { flags, submitFlag: saveFlag } = useFlags();
   const { account } = useAuth();
+  const { pieceTypes, pieces } = useInventory();
   const { isOnline } = useConnection();
   // The database only sends a member their own flags; filtering by id keeps
   // this correct if a staff account ever opens the member view.
@@ -51,7 +53,7 @@ export default function MyInventoryScreen(_props: Props) {
     myFlags.find((f) => f.piece === piece && f.color === color);
 
   const groups: Group[] = [
-    ...uniformFor(account?.uniformSizes).map((group) => ({
+    ...uniformFor(pieceTypes, pieces, account?.numbers).map((group) => ({
       label: group.piece,
       rows: group.variants.map((variant) => ({
         piece: group.piece,

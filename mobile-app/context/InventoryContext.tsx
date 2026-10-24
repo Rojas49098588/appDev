@@ -70,7 +70,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       const unknownCount = mapped.unknownTypeIds.length;
       commitTypes(nextTypes);
       commitPieces(nextPieces);
-      setError(unknownCount > 0 ? "Some inventory pieces couldn't be shown. Pull to refresh." : null);
+      setError(unknownCount > 0 ? "Some inventory pieces couldn't be shown. Try again in a moment." : null);
     } catch (loadError) {
       setError(friendlyError(loadError));
     }

@@ -17,8 +17,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { PIECES, type Piece } from '../constants/inventoryData';
 import { useCombos } from '../context/CombosContext';
+import { useInventory } from '../context/InventoryContext';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
@@ -28,14 +28,10 @@ import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddCombo'>;
 
-function colorsForPiece(piece: Piece): string[] {
-  return piece.breakdown.type === 'graded'
-    ? piece.breakdown.groups.map((group) => group.color)
-    : piece.breakdown.rows.map((row) => row.name);
-}
-
 export default function AddComboScreen({ navigation }: Props) {
   const { addCombo } = useCombos();
+  const { pieceTypes } = useInventory();
+  const garmentTypes = pieceTypes.filter((type) => !type.retired);
   const { isOnline } = useConnection();
   const [label, setLabel] = useState('');
   const [sub, setSub] = useState('');
@@ -97,7 +93,7 @@ export default function AddComboScreen({ navigation }: Props) {
     if (!requireOnline(isOnline)) return;
     setIsSaving(true);
     try {
-      const components = PIECES.map((piece) => {
+      const components = garmentTypes.map((piece) => {
         const color = selectedColors[piece.name];
         return color ? `${color} ${piece.name}` : null;
       }).filter((component): component is string => component !== null);
@@ -182,11 +178,14 @@ export default function AddComboScreen({ navigation }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Garments</Text>
-                {PIECES.map((piece) => (
-                  <View key={piece.name} style={styles.pieceRow}>
+                {garmentTypes.length === 0 && (
+                  <Text style={styles.emptyText}>No pieces in inventory yet.</Text>
+                )}
+                {garmentTypes.map((piece) => (
+                  <View key={piece.id} style={styles.pieceRow}>
                     <Text style={styles.pieceName}>{piece.name}</Text>
                     <View style={styles.chipRow}>
-                      {colorsForPiece(piece).map((color) => {
+                      {piece.colors.map((color) => {
                         const active = selectedColors[piece.name] === color;
                         return (
                           <Pressable
@@ -284,6 +283,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   pieceRow: { marginBottom: 14 },
+  emptyText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
   pieceName: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink, marginBottom: 7 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chip: {

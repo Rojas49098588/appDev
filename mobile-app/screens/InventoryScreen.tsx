@@ -7,11 +7,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { PIECES, type Piece } from '../constants/inventoryData';
+import type { PieceType } from '../lib/models';
 import TapeGutter from '../components/TapeGutter';
 import PieceCard from '../components/PieceCard';
 import { BackChevronIcon, PlusIcon, SearchIcon } from '../components/icons';
 import { useFlags } from '../context/FlagsContext';
+import { useInventory } from '../context/InventoryContext';
 import { chipState } from '../lib/flagHistory';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 
@@ -33,11 +34,12 @@ export default function InventoryScreen({ navigation }: Props) {
   const [searchText, setSearchText] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const { flags } = useFlags();
+  const { pieceTypes, pieces } = useInventory();
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
 
   const pieceCounts = useMemo(() => {
     const counts = new Map<string, { repairCount: number; dirtyCount: number }>();
-    for (const piece of PIECES) {
+    for (const piece of pieceTypes) {
       const pieceFlags = flags.filter((f) => f.piece === piece.name);
       counts.set(piece.name, {
         repairCount: pieceFlags.filter((f) => f.status === 'repair').length,
@@ -45,7 +47,7 @@ export default function InventoryScreen({ navigation }: Props) {
       });
     }
     return counts;
-  }, [flags]);
+  }, [flags, pieceTypes]);
 
   const toggleFilter = (key: FilterKey) => {
     setActiveFilters((prev) => {
@@ -63,7 +65,7 @@ export default function InventoryScreen({ navigation }: Props) {
     let flaggedCount = 0;
     let repairTotal = 0;
     let dirtyTotal = 0;
-    for (const piece of PIECES) {
+    for (const piece of pieceTypes) {
       const counts = pieceCounts.get(piece.name)!;
       if (counts.repairCount > 0 || counts.dirtyCount > 0) flaggedCount += 1;
       repairTotal += counts.repairCount;
@@ -74,11 +76,11 @@ export default function InventoryScreen({ navigation }: Props) {
 
   const visiblePieces = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    return PIECES.filter((piece) => {
+    return pieceTypes.filter((piece) => {
       const matchesSearch =
         !query ||
         piece.name.toLowerCase().includes(query) ||
-        piece.colorsLabel.toLowerCase().includes(query);
+        piece.colors.some((color) => color.toLowerCase().includes(query));
       if (!matchesSearch) return false;
 
       if (activeFilters.size === 0) return true;
@@ -87,12 +89,12 @@ export default function InventoryScreen({ navigation }: Props) {
         (activeFilters.has('good') && counts.repairCount === 0 && counts.dirtyCount === 0 && !piece.retired) ||
         (activeFilters.has('repair') && counts.repairCount > 0) ||
         (activeFilters.has('dirty') && counts.dirtyCount > 0) ||
-        (activeFilters.has('retired') && !!piece.retired)
+        (activeFilters.has('retired') && piece.retired)
       );
     });
-  }, [searchText, activeFilters, pieceCounts]);
+  }, [searchText, activeFilters, pieceCounts, pieceTypes]);
 
-  const handleFlagPress = (piece: Piece, kind: 'repair' | 'dirty') => {
+  const handleFlagPress = (piece: PieceType, kind: 'repair' | 'dirty') => {
     navigation.navigate('Sections', { piece: piece.name, status: kind, section: undefined });
   };
 
@@ -192,12 +194,17 @@ export default function InventoryScreen({ navigation }: Props) {
             <Text style={styles.summaryBold}>{summary.dirtyTotal}</Text> need cleaning
           </Text>
 
+          {pieceTypes.length === 0 && (
+            <Text style={styles.empty}>No inventory yet. Import your spreadsheet to get started.</Text>
+          )}
+
           {visiblePieces.map((piece) => {
             const counts = pieceCounts.get(piece.name)!;
             return (
               <PieceCard
-                key={piece.name}
+                key={piece.id}
                 piece={piece}
+                pieces={pieces.filter((p) => p.pieceTypeId === piece.id)}
                 repairCount={counts.repairCount}
                 dirtyCount={counts.dirtyCount}
                 onFlagPress={handleFlagPress}
@@ -328,6 +335,11 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: colors.inkSoft,
     marginBottom: 12,
+  },
+  empty: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    color: colors.inkFaint,
   },
   summaryBold: {
     fontFamily: fonts.bodyMedium,

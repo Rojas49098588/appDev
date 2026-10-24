@@ -4,17 +4,23 @@ import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import { MY_WHITE_SHIRT, NO_SIZE, uniformFor } from '../../constants/myUniformData';
 import { useAuth } from '../../context/AuthContext';
+import { useInventory } from '../../context/InventoryContext';
 import TapeGutter from '../../components/TapeGutter';
 
 export default function MySizesScreen() {
   const { account } = useAuth();
+  const { pieceTypes, pieces } = useInventory();
   const shoeSize = account?.shoeSize;
 
   const cells = [
-    ...uniformFor(account?.uniformSizes).map((slot) => ({
-      label: slot.piece,
-      value: `${slot.variants.map((v) => v.color).join(', ')} · ${slot.size || NO_SIZE}`,
-    })),
+    ...uniformFor(pieceTypes, pieces, account?.numbers).map((slot) => {
+      const colorList = slot.variants.map((v) => v.color).join(', ');
+      // Counted pieces (ties, belts) have no number, so just list the colors.
+      return {
+        label: slot.piece,
+        value: slot.kind === 'counted' ? colorList || NO_SIZE : `${colorList} · ${slot.size || NO_SIZE}`,
+      };
+    }),
     {
       label: 'Shoe size',
       value: shoeSize ? `${shoeSize.gender} · ${shoeSize.size || '—'}` : '—',

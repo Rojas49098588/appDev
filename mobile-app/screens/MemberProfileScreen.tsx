@@ -18,9 +18,11 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
 import { useFlags } from '../context/FlagsContext';
-import type { Flag, UniformSizes } from '../lib/models';
+import { useInventory } from '../context/InventoryContext';
+import type { Flag, MemberNumbers } from '../lib/models';
 import { friendlyError } from '../lib/errors';
-import { digitsOnly, EMPTY_UNIFORM_SIZES, UNIFORM_PIECES } from '../lib/uniform';
+import { digitsOnly, numberFor } from '../lib/uniform';
+import { unknownNumbers } from '../lib/inventory';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
@@ -30,9 +32,16 @@ import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberProfile'>;
 
+const EMPTY_NUMBERS: MemberNumbers = {};
+
+// Compares numbers ignoring key order and cleared fields (saving drops those).
+const numbersKey = (numbers: MemberNumbers) =>
+  JSON.stringify(Object.entries(numbers).filter(([, v]) => v.trim() !== '').sort(([a], [b]) => a.localeCompare(b)));
+
 export default function MemberProfileScreen({ navigation, route }: Props) {
   const { id, name, section, email, phone, height, weight } = route.params;
-  const { account, accounts, setAccountRole, setUniformSizes, archiveMember } = useAuth();
+  const { account, accounts, setAccountRole, setMemberNumbers, archiveMember } = useAuth();
+  const { pieceTypes, pieces } = useInventory();
   const { isOnline } = useConnection();
   const [role, setRole] = useState(route.params.role ?? 'Member');
   const { flags, clearFlag } = useFlags();
@@ -41,17 +50,27 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
 
   // Read sizes from the live account, not route params, so a save or a
   // Realtime update from another phone shows up here.
-  const savedSizes = accounts.find((a) => a.id === id)?.uniformSizes ?? EMPTY_UNIFORM_SIZES;
+  // The draft starts from every saved key (including retired types), so saving
+  // only changes the fields shown here.
+  const savedSizes = accounts.find((a) => a.id === id)?.numbers ?? EMPTY_NUMBERS;
   const savedSizesKey = JSON.stringify(savedSizes);
-  const [sizes, setSizes] = useState<UniformSizes>(savedSizes);
+  const [sizes, setSizes] = useState<MemberNumbers>(savedSizes);
   const [isSavingSizes, setIsSavingSizes] = useState(false);
   // Shown after a save until the sizes are edited again.
   const [justSavedSizes, setJustSavedSizes] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
-  const sizesChanged = JSON.stringify(sizes) !== savedSizesKey;
+  const sizesChanged = numbersKey(sizes) !== numbersKey(savedSizes);
   useEffect(() => {
-    setSizes(JSON.parse(savedSizesKey) as UniformSizes);
+    setSizes(JSON.parse(savedSizesKey) as MemberNumbers);
   }, [savedSizesKey]);
+
+  const numberedTypes = pieceTypes.filter((t) => t.kind === 'numbered' && !t.retired);
+  // Saved numbers that have no matching piece in inventory, by type name.
+  const missingNumbers = new Map(
+    unknownNumbers(accounts, pieces)
+      .filter((u) => u.memberId === id)
+      .map((u) => [u.pieceType, u.number])
+  );
 
   const [numericFocused, setNumericFocused] = useState(false);
   const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
@@ -89,7 +108,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
     if (!id || !requireOnline(isOnline)) return;
     setIsSavingSizes(true);
     try {
-      await setUniformSizes(id, sizes);
+      await setMemberNumbers(id, sizes);
       successBuzz();
       setJustSavedSizes(true);
     } catch (error) {
@@ -238,40 +257,54 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           {isRealAccount && (
             <View style={[styles.card, styles.sizesCard]}>
               <Text style={styles.cardTitle}>Uniform sizes</Text>
+              {numberedTypes.length === 0 && (
+                <Text style={styles.noFlags}>No numbered pieces in inventory yet.</Text>
+              )}
               <View style={styles.sizesGrid}>
-                {UNIFORM_PIECES.map(({ piece, key }) => (
-                  <View key={key} style={styles.sizeField}>
-                    <Text style={styles.sizeLabel}>{piece}</Text>
-                    <TextInput
-                      style={styles.sizeInput}
-                      value={sizes[key]}
-                      onChangeText={(text) => {
-                        setSizes((prev) => ({ ...prev, [key]: digitsOnly(text) }));
-                        setJustSavedSizes(false);
-                      }}
-                      onFocus={focusNumericField}
-                      onBlur={() => setNumericFocused(false)}
-                      placeholder="—"
-                      placeholderTextColor={colors.inkFaint}
-                      keyboardType="number-pad"
-                      maxLength={4}
-                    />
-                  </View>
-                ))}
+                {numberedTypes.map((type) => {
+                  const value = numberFor(sizes, type.name);
+                  const missing = missingNumbers.get(type.name);
+                  return (
+                    <View key={type.id} style={styles.sizeField}>
+                      <Text style={styles.sizeLabel}>{type.name}</Text>
+                      <TextInput
+                        style={styles.sizeInput}
+                        value={value}
+                        onChangeText={(text) => {
+                          setSizes((prev) => ({ ...prev, [type.name]: digitsOnly(text) }));
+                          setJustSavedSizes(false);
+                        }}
+                        onFocus={focusNumericField}
+                        onBlur={() => setNumericFocused(false)}
+                        placeholder="—"
+                        placeholderTextColor={colors.inkFaint}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                      />
+                      {missing !== undefined && missing === value && (
+                        <Text style={styles.missingNumberText}>
+                          No {type.name} {missing} in inventory.
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
-              <Pressable
-                style={[
-                  styles.saveSizesButton,
-                  (!sizesChanged || isSavingSizes) && styles.saveSizesButtonDisabled,
-                  sizesChanged && !isOnline && OFFLINE_DIM,
-                ]}
-                onPress={handleSaveSizesPress}
-                disabled={!sizesChanged || isSavingSizes}
-              >
-                <Text style={[styles.saveSizesButtonText, !sizesChanged && styles.roleButtonTextDisabled]}>
-                  {isSavingSizes ? 'Saving…' : 'Save sizes'}
-                </Text>
-              </Pressable>
+              {numberedTypes.length > 0 && (
+                <Pressable
+                  style={[
+                    styles.saveSizesButton,
+                    (!sizesChanged || isSavingSizes) && styles.saveSizesButtonDisabled,
+                    sizesChanged && !isOnline && OFFLINE_DIM,
+                  ]}
+                  onPress={handleSaveSizesPress}
+                  disabled={!sizesChanged || isSavingSizes}
+                >
+                  <Text style={[styles.saveSizesButtonText, !sizesChanged && styles.roleButtonTextDisabled]}>
+                    {isSavingSizes ? 'Saving…' : 'Save sizes'}
+                  </Text>
+                </Pressable>
+              )}
               {justSavedSizes && !sizesChanged && <Text style={styles.savedSizesText}>Sizes saved.</Text>}
             </View>
           )}
@@ -469,6 +502,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.ink,
   },
+  missingNumberText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.amber, marginTop: 4 },
   saveSizesButton: {
     borderWidth: 1,
     borderColor: colors.ink,

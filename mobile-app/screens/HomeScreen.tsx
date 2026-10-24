@@ -8,8 +8,9 @@ import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { STATS, SECTIONS } from '../constants/homeData';
-import { PIECES } from '../constants/inventoryData';
 import { useFlags } from '../context/FlagsContext';
+import { useInventory } from '../context/InventoryContext';
+import { pieceCount } from '../lib/inventory';
 import TapeGutter from '../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
@@ -21,11 +22,12 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
+  const { pieceTypes, pieces } = useInventory();
   // Archived members is a root stack route, outside the tab navigator.
   const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const inventoryPreview = useMemo(() => {
-    return PIECES.map((piece) => {
+    return pieceTypes.filter((type) => !type.retired).map((piece) => {
       const pieceFlags = flags.filter((f) => f.piece === piece.name);
       const repairCount = pieceFlags.filter((f) => f.status === 'repair').length;
       const dirtyCount = pieceFlags.filter((f) => f.status === 'dirty').length;
@@ -33,14 +35,14 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         repairCount > 0 ? 'repair' : dirtyCount > 0 ? 'dirty' : 'good';
       return {
         piece: piece.name,
-        sizes: piece.colorsLabel,
-        qty: piece.qty,
+        sizes: piece.colors.join(', '),
+        qty: pieceCount(piece, pieces),
         condition:
           repairCount > 0 ? `Repair (${repairCount})` : dirtyCount > 0 ? `Dirty (${dirtyCount})` : 'Good',
         kind,
       };
     });
-  }, [flags]);
+  }, [flags, pieceTypes, pieces]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -115,6 +117,9 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               <Text style={styles.blockLink}>View full</Text>
             </Pressable>
           </View>
+          {inventoryPreview.length === 0 && (
+            <Text style={styles.blockNote}>No inventory yet. Import your spreadsheet to get started.</Text>
+          )}
           <View style={styles.invList}>
             {inventoryPreview.map((item) => {
               const warnColor = item.kind === 'repair' ? colors.rust : colors.wash;

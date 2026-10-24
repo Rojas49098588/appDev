@@ -5,9 +5,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { PIECES } from '../constants/inventoryData';
 import type { Flag } from '../lib/models';
 import { useFlags } from '../context/FlagsContext';
+import { useInventory } from '../context/InventoryContext';
 import { historyFor } from '../lib/flagHistory';
 import { formatShortDate } from '../lib/format';
 import { friendlyError } from '../lib/errors';
@@ -25,15 +25,16 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
   const { piece, color, size } = route.params;
   const { history, clearFlag, editFlag } = useFlags();
   const { isOnline } = useConnection();
+  const { pieceTypes } = useInventory();
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [editing, setEditing] = useState<Flag | null>(null);
 
   const entries = historyFor(history, piece, color, size);
   const openEntry = entries.find((e) => e.clearedAt === null);
 
-  const catalogue = PIECES.find((p) => p.name === piece);
-  const colorOptions =
-    catalogue?.breakdown.type === 'graded' ? catalogue.breakdown.groups.map((g) => g.color) : [color];
+  // The type's colors; just this piece's color if the type is gone or has none.
+  const typeColors = pieceTypes.find((t) => t.name === piece)?.colors ?? [];
+  const colorOptions = typeColors.length > 0 ? typeColors : [color];
 
   const handleMarkGood = () => {
     if (!openEntry || !requireOnline(isOnline)) return;

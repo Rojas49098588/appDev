@@ -2,39 +2,51 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import type { Piece } from '../constants/inventoryData';
+import type { InventoryPiece, PieceType } from '../lib/models';
+import { pieceCount } from '../lib/inventory';
 import { ChevronDownIcon, SmallChevronRightIcon } from './icons';
+
+const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 
 export default function PieceCard({
   piece,
+  pieces,
   repairCount,
   dirtyCount,
   onFlagPress,
   onSizePress,
   chipStateFor,
 }: {
-  piece: Piece;
+  piece: PieceType;
+  // This type's pieces.
+  pieces: InventoryPiece[];
   repairCount: number;
   dirtyCount: number;
-  onFlagPress: (piece: Piece, kind: 'repair' | 'dirty') => void;
+  onFlagPress: (piece: PieceType, kind: 'repair' | 'dirty') => void;
   onSizePress: (color: string, size: string) => void;
   chipStateFor: (color: string, size: string) => 'repair' | 'dirty' | null;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  // Numbered types: a chip per piece number, grouped by color. Counted types: a stock row per color.
+  const groups = piece.colors.map((color) => ({
+    color,
+    sizes: pieces.filter((p) => p.color === color).map((p) => p.number).sort(byNumber),
+  }));
+  const rows = piece.colors.map((color) => ({ name: color, qty: piece.stock[color] ?? 0 }));
   const hasTintedChip =
-    piece.breakdown.type === 'graded' &&
-    piece.breakdown.groups.some((g) => g.sizes.some((size) => chipStateFor(g.color, size) !== null));
+    piece.kind === 'numbered' &&
+    groups.some((g) => g.sizes.some((size) => chipStateFor(g.color, size) !== null));
 
   return (
     <View style={styles.piece}>
       <Pressable style={styles.pieceRow} onPress={() => setIsOpen((prev) => !prev)}>
         <View>
           <Text style={styles.pieceName}>{piece.name}</Text>
-          <Text style={styles.pieceSub}>{piece.colorsLabel}</Text>
+          <Text style={styles.pieceSub}>{piece.colors.join(', ')}</Text>
         </View>
         <View style={styles.pieceRight}>
           <View>
-            <Text style={styles.pieceQty}>{piece.qty}</Text>
+            <Text style={styles.pieceQty}>{pieceCount(piece, pieces)}</Text>
             {(repairCount > 0 || dirtyCount > 0) && (
               <View style={styles.statusTags}>
                 {repairCount > 0 && (
@@ -62,15 +74,14 @@ export default function PieceCard({
       {isOpen && (
         <View style={styles.breakdown}>
           {(() => {
-            const breakdown = piece.breakdown;
-            return breakdown.type === 'graded'
-              ? breakdown.groups.map((group) => (
+            return piece.kind === 'numbered'
+              ? groups.map((group) => (
                 <View key={group.color} style={styles.colorGroup}>
                   <View style={styles.colorHead}>
                     <Text style={styles.colorName}>{group.color}</Text>
                     <Text style={styles.colorMeta}>
-                      {group.sizes.length} in stock · {group.sizes[0]}–
-                      {group.sizes[group.sizes.length - 1]}
+                      {group.sizes.length} in stock
+                      {group.sizes.length > 0 && ` · ${group.sizes[0]}–${group.sizes[group.sizes.length - 1]}`}
                     </Text>
                   </View>
                   <ScrollView
@@ -106,12 +117,12 @@ export default function PieceCard({
                   </ScrollView>
                 </View>
               ))
-              : breakdown.rows.map((row, index) => (
+              : rows.map((row, index) => (
                   <View
                     key={row.name}
                     style={[
                       styles.styleRow,
-                      index === breakdown.rows.length - 1 && styles.styleRowLast,
+                      index === rows.length - 1 && styles.styleRowLast,
                     ]}
                   >
                     <Text style={styles.styleName}>{row.name}</Text>
