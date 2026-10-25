@@ -31,6 +31,26 @@ create table if not exists public.profiles (
 alter table public.profiles add column if not exists numbers jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists archived_at timestamptz;
 
+-- Piece and member numbers: trimmed digits, leading zeros stripped ('085' -> '85',
+-- '000' -> '0'). Null for anything that isn't digits, so writers can refuse it.
+create or replace function public.normalize_number(t text) returns text
+language sql immutable set search_path = public as $$
+  select case when btrim(t) ~ '^[0-9]+$' then coalesce(nullif(ltrim(btrim(t), '0'), ''), '0') end;
+$$;
+
+-- normalize_number, but raises for a missing or non-digit number.
+create or replace function public.require_number(t text) returns text
+language plpgsql immutable set search_path = public as $$
+declare
+  n text := public.normalize_number(t);
+begin
+  if n is null then
+    raise exception 'invalid number' using errcode = '22023';
+  end if;
+  return n;
+end;
+$$;
+
 -- One-time migration from the old fixed size columns. Runs only while they exist,
 -- so re-running is a no-op; data is copied before the columns are dropped.
 do $$
@@ -40,17 +60,19 @@ begin
   if exists (select 1 from information_schema.columns
              where table_schema = 'public' and table_name = 'profiles' and column_name = 'coat_size') then
     update public.profiles set numbers = numbers
-      || case when btrim(coat_size) <> '' then jsonb_build_object('Coats', btrim(coat_size)) else '{}'::jsonb end
-      || case when btrim(vest_size) <> '' then jsonb_build_object('Vests', btrim(vest_size)) else '{}'::jsonb end
-      || case when btrim(bibber_size) <> '' then jsonb_build_object('Bibbers', btrim(bibber_size)) else '{}'::jsonb end
-      || case when btrim(pant_size) <> '' then jsonb_build_object('Pants', btrim(pant_size)) else '{}'::jsonb end;
+      || case when btrim(coat_size) <> '' then jsonb_build_object('Coats', coalesce(public.normalize_number(coat_size), btrim(coat_size))) else '{}'::jsonb end
+      || case when btrim(vest_size) <> '' then jsonb_build_object('Vests', coalesce(public.normalize_number(vest_size), btrim(vest_size))) else '{}'::jsonb end
+      || case when btrim(bibber_size) <> '' then jsonb_build_object('Bibbers', coalesce(public.normalize_number(bibber_size), btrim(bibber_size))) else '{}'::jsonb end
+      || case when btrim(pant_size) <> '' then jsonb_build_object('Pants', coalesce(public.normalize_number(pant_size), btrim(pant_size))) else '{}'::jsonb end;
     -- Report (don't fail on) numbers shared by active members: set_member_numbers
     -- only checks new or changed numbers, so staff can still edit these members.
     for dup in
       select t.type, t.num, string_agg(btrim(p.first_name || ' ' || p.last_name), ', ' order by p.first_name) as names
       from public.profiles p
-      cross join lateral (values ('Coats', btrim(p.coat_size)), ('Vests', btrim(p.vest_size)),
-                                 ('Bibbers', btrim(p.bibber_size)), ('Pants', btrim(p.pant_size))) as t(type, num)
+      cross join lateral (values ('Coats', coalesce(public.normalize_number(p.coat_size), btrim(p.coat_size))),
+                                 ('Vests', coalesce(public.normalize_number(p.vest_size), btrim(p.vest_size))),
+                                 ('Bibbers', coalesce(public.normalize_number(p.bibber_size), btrim(p.bibber_size))),
+                                 ('Pants', coalesce(public.normalize_number(p.pant_size), btrim(p.pant_size)))) as t(type, num)
       where p.archived_at is null and t.num <> ''
       group by t.type, t.num
       having count(*) > 1
@@ -62,6 +84,27 @@ begin
   end if;
 end $$;
 drop function if exists public.set_uniform_sizes(uuid, text, text, text, text);
+
+-- Strips leading zeros from digit-only member numbers ('085' -> '85'); other values are
+-- left alone. Re-runnable: rows already normalized are not touched. Runs on every
+-- db:apply, where auth.uid() is null so guard_profile_update allows it. Returns rows changed.
+create or replace function public.normalize_member_numbers() returns int
+language plpgsql set search_path = public as $$
+declare
+  cnt int;
+begin
+  update public.profiles p
+    set numbers = (select jsonb_object_agg(e.key, coalesce(public.normalize_number(e.value), e.value))
+                   from jsonb_each_text(p.numbers) e)
+    where exists (select 1 from jsonb_each_text(p.numbers) e
+                  where public.normalize_number(e.value) is distinct from e.value
+                    and public.normalize_number(e.value) is not null);
+  get diagnostics cnt = row_count;
+  return cnt;
+end;
+$$;
+revoke all on function public.normalize_member_numbers() from public, anon, authenticated;
+select public.normalize_member_numbers();
 
 create table if not exists public.combos (
   id uuid primary key default gen_random_uuid(),
@@ -189,26 +232,6 @@ $$;
 create or replace function public.normalize_code(code text) returns text
 language sql immutable as $$
   select upper(btrim(coalesce(code, '')));
-$$;
-
--- Piece and member numbers: trimmed digits, leading zeros stripped ('085' -> '85',
--- '000' -> '0'). Null for anything that isn't digits, so writers can refuse it.
-create or replace function public.normalize_number(t text) returns text
-language sql immutable set search_path = public as $$
-  select case when btrim(t) ~ '^[0-9]+$' then coalesce(nullif(ltrim(btrim(t), '0'), ''), '0') end;
-$$;
-
--- normalize_number, but raises for a missing or non-digit number.
-create or replace function public.require_number(t text) returns text
-language plpgsql immutable set search_path = public as $$
-declare
-  n text := public.normalize_number(t);
-begin
-  if n is null then
-    raise exception 'invalid number' using errcode = '22023';
-  end if;
-  return n;
-end;
 $$;
 
 create or replace function public.check_invite_code(code text) returns boolean
@@ -378,7 +401,7 @@ begin
 
   for kv in
     select c.key, c.value from jsonb_each_text(cleaned) c
-    where current_numbers ->> c.key is distinct from c.value
+    where public.normalize_number(current_numbers ->> c.key) is distinct from c.value
   loop
     changed := changed + 1;
     select btrim(p.first_name || ' ' || p.last_name) into holder

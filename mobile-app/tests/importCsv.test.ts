@@ -79,3 +79,19 @@ test('parseNumberList rejects numbers too long to be real', () => {
   assert.equal(parseNumberList('1234567890123').error, '"1234567890123" is too long');
   assert.deepEqual(parseNumberList('999999999'), { numbers: ['999999999'], error: null });
 });
+
+test('classifyRows: Addison Sew with extra or non-breaking spaces still counts', () => {
+  const cols = { name: 0, section: 1, coats: 2, bibbers: 3, vests: 4, repairs: 5 };
+  const rows = classifyRows(
+    [
+      ['NAME', 'Section', 'Coat #', 'BIBBER #', 'VESTS', 'Repairs'],
+      ['', 'Addison Sew', '12', '', '', 'Red'],
+      ['ADDISON   SEW', '', '', '', '4', 'Candy'],
+    ],
+    cols,
+  );
+  assert.deepEqual(rows, [
+    { line: 2, kind: 'repair_shop', pieceType: 'Coats', number: '12', color: 'Red' },
+    { line: 3, kind: 'repair_shop', pieceType: 'Vests', number: '4', color: 'Candy' },
+  ]);
+});

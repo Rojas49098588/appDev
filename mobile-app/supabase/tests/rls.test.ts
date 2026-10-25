@@ -1225,6 +1225,57 @@ describe('import and add inventory', () => {
     }
   });
 
+  test('a legacy 085 holder: importing 85 for someone else is refused cleanly; 85 for the holder is not a change', async () => {
+    const pants = typeName('LegacyPants');
+    await resetNumbers();
+    try {
+      // Legacy value written directly (service role), as the old size columns left them.
+      const seed = await admin.from('profiles').update({ numbers: { [pants]: '085' } }).eq('id', member.id);
+      assert.equal(seed.error, null);
+      const clash = await asStaff.rpc('import_inventory', {
+        payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+          numbers: [{ memberId: otherMember.id, pieceType: pants, number: '85' }] },
+      });
+      assert.equal(clash.error?.code, '23505');
+      assert.match(clash.error!.message, /already belongs to member Test/);
+      const { data: other } = await admin.from('profiles').select('numbers').eq('id', otherMember.id).single();
+      assert.deepEqual(other!.numbers, {});
+
+      const same = await asStaff.rpc('import_inventory', {
+        payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+          numbers: [{ memberId: member.id, pieceType: pants, number: '85' }] },
+      });
+      assert.equal(same.error, null);
+      assert.equal(same.data.numbersSet, 0);
+      const { data: mine } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(mine!.numbers, { [pants]: '85' });
+    } finally {
+      await resetNumbers();
+    }
+  });
+
+  test('normalize_member_numbers rewrites 085 to 85, leaves other values, and is re-runnable', async () => {
+    const pants = typeName('NormRunPants');
+    const vests = typeName('NormRunVests');
+    await resetNumbers();
+    try {
+      const seed = await admin.from('profiles').update({ numbers: { [pants]: '085', [vests]: '0' } }).eq('id', member.id);
+      assert.equal(seed.error, null);
+      const notStaff = await asMember.rpc('normalize_member_numbers');
+      assert.ok(notStaff.error, 'members cannot call it');
+      const run = await admin.rpc('normalize_member_numbers');
+      assert.equal(run.error, null);
+      assert.ok(run.data >= 1);
+      const { data: profile } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(profile!.numbers, { [pants]: '85', [vests]: '0' });
+      const again = await admin.rpc('normalize_member_numbers');
+      assert.equal(again.error, null);
+      assert.equal(again.data, 0);
+    } finally {
+      await resetNumbers();
+    }
+  });
+
   test('pieces must use a color of a numbered type', async () => {
     const coatsName = typeName('CheckCoats');
     const tiesName = typeName('CheckTies');

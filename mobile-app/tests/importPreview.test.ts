@@ -301,3 +301,32 @@ test('countNumberChanges splits new numbers from replacements and honors choice'
   };
   assert.deepEqual(countNumberChanges(plan), { added: 1, replaced: 1 });
 });
+
+test('a legacy leading-zero holder still clashes: 085 is the same number as 85', () => {
+  const accounts = [acct('1', 'Ann', 'Lee'), acct('2', 'Bob', 'Ray', { Coats: '085' })];
+  const plan = buildPreview([member(2, 'Lee Ann', { Coats: '85' })], accounts, allTypes, [], none);
+  assert.deepEqual(plan.numbers, []);
+  assert.deepEqual(plan.problems.map((p) => p.message), ["Line 2: Coats 85 is also Bob Ray's"]);
+});
+
+test('a legacy leading-zero app number equal to the sheet number is omitted', () => {
+  const accounts = [acct('1', 'Ann', 'Lee', { Coats: '090', Vests: '07' })];
+  const plan = buildPreview([member(2, 'Lee Ann', { Coats: '90', Vests: '8' })], accounts, allTypes, [], none);
+  assert.deepEqual(plan.numbers, [
+    { line: 2, memberId: '1', memberName: 'Ann Lee', pieceType: 'Vests', sheet: '8', current: '7', choice: 'sheet' },
+  ]);
+});
+
+test('a second repairs note for the same member is reported, not dropped silently', () => {
+  const rows = [
+    member(2, 'Lee Ann', { Coats: '10' }, 'torn sleeve'),
+    member(3, 'Ann Lee', {}, 'missing button'),
+  ];
+  const plan = buildPreview(rows, [acct('1', 'Ann', 'Lee')], allTypes, [], none);
+  assert.deepEqual(plan.notes.map((n) => n.text), ['torn sleeve']);
+  assert.deepEqual(plan.problems.map((p) => p.message), ['Line 3: second repairs note for "Ann Lee" skipped']);
+  // A note already imported on an earlier run is still skipped without a problem.
+  const again = buildPreview(rows, [acct('1', 'Ann', 'Lee')], allTypes, [], [{ memberName: 'Ann Lee', pieceType: 'Coats' }]);
+  assert.deepEqual(again.notes, []);
+  assert.deepEqual(again.problems, []);
+});

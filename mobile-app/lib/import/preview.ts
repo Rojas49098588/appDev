@@ -1,6 +1,5 @@
 import type { Account, InventoryPiece, PieceType } from '../models.ts';
-import { ownerIndex } from '../inventory.ts';
-import type { SheetRow } from './rows.ts';
+import { normalizeNumber, type SheetRow } from './rows.ts';
 
 export const DEFAULT_COLORS: Record<'Coats' | 'Bibbers' | 'Vests', string[]> = {
   Coats: ['Blue', 'Red', 'Purple', 'Candy'],
@@ -46,6 +45,21 @@ export type ImportPayload = {
 const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase();
 const fullName = (a: Account) => `${a.firstName} ${a.lastName}`.trim();
 const keyOf = (type: string, number: string) => `${type}|${number}`;
+
+// Sheet numbers are already normalized; app numbers may be legacy values like '085'.
+const normalizeAppNumber = (n: string) => normalizeNumber(n) ?? n;
+
+// Who holds each type + number, keyed on the normalized number (lib/inventory's ownerIndex is raw).
+function normalizedOwners(accounts: Account[]): Map<string, Account> {
+  const owners = new Map<string, Account>();
+  for (const a of accounts) {
+    if (a.archivedAt !== null) continue;
+    for (const [type, number] of Object.entries(a.numbers)) {
+      if (number !== '') owners.set(keyOf(type, normalizeAppNumber(number)), a);
+    }
+  }
+  return owners;
+}
 
 function nameKeys(a: Account): string[] {
   return [norm(`${a.lastName} ${a.firstName}`), norm(`${a.firstName} ${a.lastName}`)];
@@ -162,7 +176,7 @@ export function buildPreview(
     if (!claimants.has(k)) claimants.set(k, new Map());
     claimants.get(k)!.set(c.account.id, c.account);
   }
-  const owners = ownerIndex(accounts);
+  const owners = normalizedOwners(accounts);
   const handled = new Map<string, string>(); // memberId|type -> first number in the sheet (it wins)
   for (const c of claims) {
     const k = keyOf(c.pieceType, c.number);
@@ -182,7 +196,8 @@ export function buildPreview(
       continue;
     }
     handled.set(hk, c.number);
-    const current = c.account.numbers[c.pieceType] || null;
+    const raw = c.account.numbers[c.pieceType];
+    const current = raw ? normalizeAppNumber(raw) : null;
     if (current === c.number) continue;
     plan.numbers.push({
       line: c.line,
@@ -197,12 +212,17 @@ export function buildPreview(
 
   // Notes from Repairs text on member rows. The note goes on the coat number the member will
   // have after import: the sheet's if that change is applied, otherwise the current one.
-  const noted = new Set(existingImportNotes.filter((n) => n.pieceType === 'Coats').map((n) => n.memberName));
+  const imported = new Set(existingImportNotes.filter((n) => n.pieceType === 'Coats').map((n) => n.memberName));
+  const noted = new Set<string>();
   for (const { row, account } of matchedRows) {
     if (!row.repairs) continue;
     const memberName = fullName(account);
-    if (noted.has(memberName)) continue;
-    const current = account.numbers.Coats || null;
+    if (imported.has(memberName)) continue;
+    if (noted.has(memberName)) {
+      problem(row.line, `Line ${row.line}: second repairs note for "${memberName}" skipped`);
+      continue;
+    }
+    const current = account.numbers.Coats ? normalizeAppNumber(account.numbers.Coats) : null;
     const change = plan.numbers.find((n) => n.memberId === account.id && n.pieceType === 'Coats');
     const number = change ? change.sheet : current;
     if (!number) {

@@ -145,7 +145,7 @@ export function classifyRows(cells: string[][], cols: ColumnMap): SheetRow[] {
       }
     }
 
-    const isAddison = /addison sew/i.test(section) || /addison sew/i.test(name);
+    const isAddison = /addison\s+sew/i.test(section) || /addison\s+sew/i.test(name);
     if (isAddison) {
       if (filledCells !== 1) {
         out.push(invalid('Addison Sew row needs exactly one piece number'));
