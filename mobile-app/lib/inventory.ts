@@ -57,8 +57,9 @@ export function duplicateNumbers(
   const holders = new Map<string, { pieceType: string; number: string; members: string[] }>();
   for (const account of accounts) {
     if (!isActiveMember(account)) continue;
-    for (const [pieceType, number] of Object.entries(account.numbers)) {
-      if (number === '') continue;
+    for (const [pieceType, raw] of Object.entries(account.numbers)) {
+      if (raw === '') continue;
+      const number = raw.replace(/^0+(?=\d)/, ''); // '085' and '85' are the same number
       const key = keyOf(pieceType, number);
       const entry = holders.get(key);
       if (entry) entry.members.push(fullName(account));

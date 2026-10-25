@@ -167,3 +167,8 @@ test('duplicateNumbers finds shared numbers among active accounts only', () => {
     { pieceType: 'Coats', number: '153', members: ['Ann X', 'Bob X'] },
   ]);
 });
+
+test('duplicateNumbers treats leading zeros as the same number and reports it normalized', () => {
+  const accounts = [acct('a', 'Ann', { Coats: '085' }), acct('b', 'Bob', { Coats: '85' }), acct('c', 'Cy', { Coats: '0' })];
+  assert.deepEqual(duplicateNumbers(accounts), [{ pieceType: 'Coats', number: '85', members: ['Ann X', 'Bob X'] }]);
+});
