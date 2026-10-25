@@ -103,14 +103,23 @@ For a new Supabase project (or to rebuild this one), from `mobile-app/`:
 8. Users created from the dashboard (Authentication → Add user) need `invite_code` in their user metadata, or the database rejects them. Add `first_name`, `last_name` and `instrument` too, or those start blank.
 9. `npm run test:rls` creates and deletes test users and briefly changes the current game's combo slots, so it always runs against a separate **test project**. Create one, fill `supabase/.env.test.local` from `supabase/.env.test.example`, then `npm run db:apply:test` (schema, seed and sample combos from `test-seed.sql`) and `npm run db:check:test`. `npm run db:apply` is the live project only.
 
-**Release note for Plans 1–2.** Before running `npm run db:apply` on the live project:
+**Release note for Plans 1–3.** Plans 2 and 3 ship together with the new build. Before running `npm run db:apply` on the live project (you run it; Claude never does):
 - (a) The new app build must ship at the same time. Old builds call `set_uniform_sizes` and read `coat_size`, which the migration drops, so they break.
-- (b) Watch the output while it runs for "duplicate ... number" notices from the migration (two active members with the same old size) and resolve those members.
-- (c) Clean up test/sample data on live first (a separate, approved step).
-- (d) Live inventory starts empty: member screens show only the white shirt until the Plan 3 import.
-- (e) Plans 2 and 3 ship together: run the import immediately after the live `db:apply`.
-- (f) Plan 3 must create the piece types named exactly `Coats`, `Vests`, `Bibbers`, `Pants` (migrated numbers and old flags match on those names).
-- (g) Until the import, members' existing open flags on those pieces don't appear on My Inventory (staff still see them on the member profile).
+- (b) After `npm run db:apply`, watch its output for "duplicate ... number" notices from the migration (two active members with the same old size) and resolve those members.
+- (c) Clean up test/sample data on live. This is a separate step that needs your approval of an exact list of rows first; it is still pending and nothing has been deleted.
+- (d) Live inventory starts empty: member screens show only the white shirt until the import is run. Run the import right after the live `db:apply`.
+- (e) The import is how live inventory is created. It creates the piece types `Coats`, `Vests` and `Bibbers` (names must be exactly these; migrated numbers and old flags match on them) with default colors (Coats Blue/Red/Purple/Candy, Vests Candy/Red, Bibbers Blue/White). It does not create Pants; add that with Inventory "+" -> New piece type.
+- (f) Until the import, members' existing open flags on those pieces don't appear on My Inventory (staff still see them on the member profile).
+
+**Exporting the Box sheet to CSV.** Open the roster in Excel or Google Sheets, then File -> Download / Save As -> Comma-separated values (.csv), and save it where the phone can reach it (e.g. Box, Files, Drive). In the app: Inventory "+" -> Import spreadsheet -> pick the file. The header row needs `NAME`, `Section`, `M/F`, `Coat #`, `BIBBER #`, `VESTS`, `Repairs` (any order; `Section` and `M/F` aren't imported).
+- Member rows: `NAME` is `Last First`. Numbers are digits (leading zeros dropped). Each listed number creates a piece in every color of its type. If the sheet's number differs from the member's current one, you choose Sheet or App per row. Text in `Repairs` becomes a staff-only note on the member's coat (shown on the piece history as "from spreadsheet"; members never see it).
+- Addison Sew rows: `Section` is `Addison Sew`, the number is under exactly one of `Coat #` / `BIBBER #` / `VESTS`, and the color is in `Repairs`. That one piece is marked out for repair.
+- Unassigned rows: `NAME` is `Unassigned`; those numbers become pieces the band owns that nobody has.
+- Blank rows are ignored. Unmatched or ambiguous names, archived members, unreadable rows and numbers that would give two members the same number are listed in the preview and skipped. Importing the same file again changes nothing ("Everything in this sheet is already in the app.").
+
+To try the import on a phone first: `npm run test:members -- <csv>` (creates TEST-project accounts), fill `mobile-app/.env.test.local` from `.env.test.example`, and run `npm run start:test`.
+
+**Plan 3 on-device check: pending.** Checklist is in `.superpowers/sdd/2026-10-23-inventory-import/task-8-brief.md` (Step 3).
 
 ### Follow-ups
 
@@ -168,7 +177,7 @@ From the final whole-branch review. All 8 were addressed in a follow-up pass; `t
 - **Google Play Console submission is paused**, blocked on Android device verification (Play Console now requires signing in via the Play Store app on a physical Android device to create a developer account) — the user doesn't currently have one. An EAS preview `.apk` build already exists and works for direct-install testing; the AAB path for actual Play Store release is what's blocked. See earlier conversation history if resuming this.
 - **Catalogue tab (Staff view)** is still a placeholder ("Coming soon") — no mockup exists for its own dedicated browsing screen yet, only the Home carousel preview and the combo data feeding Game Day.
 - **Un-flagging/resolving a flag** back to "Good" was explicitly out of scope for this feature (see spec's Non-goals) — a real next feature if the user wants it.
-- **Inventory's "Add piece" (+) button** is still a placeholder alert ("Coming soon") — no add-flow exists yet. (Sections' "Add member" (+) button was removed entirely on 2026-09-23, not just deferred — see that section above.)
+- **Inventory's "+" button** now opens the import / add-inventory sheet (Plan 3). (Sections' "Add member" (+) button was removed entirely on 2026-09-23, not just deferred — see that section above.)
 - **Member row taps** in Sections (Staff view) now open a real (if scoped-down) profile screen — see the 2026-09-23 section above. Still missing from the original mockup: Assigned uniform, Total pieces, and the Account section's Promote/Demote/Archive controls.
 
 ## Project conventions to follow
