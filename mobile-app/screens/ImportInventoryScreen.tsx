@@ -38,7 +38,7 @@ function plural(n: number, one: string, many = `${one}s`) {
 
 export default function ImportInventoryScreen({ navigation }: Props) {
   const { pieceTypes, pieces, importInventory } = useInventory();
-  const { accounts } = useAuth();
+  const { accounts, refreshAccount } = useAuth();
   const { isOnline } = useConnection();
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [fileName, setFileName] = useState('');
@@ -117,6 +117,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
           try {
             const summary = await importInventory(payload);
             importedRef.current = true;
+            void refreshAccount(); // the import changed members' numbers
             successBuzz();
             setResult(summary);
           } catch (error) {

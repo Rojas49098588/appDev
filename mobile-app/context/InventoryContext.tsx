@@ -6,7 +6,7 @@ import type { PieceRow, PieceTypeRow } from '../lib/rows';
 import { rowToPiece, rowToPieceType } from '../lib/mappers';
 import { batchByWindow, fetchAllPages, mapPiecesToTypes } from '../lib/inventory';
 import { isPieceList, isPieceTypeList } from '../lib/validators';
-import { logChannelFailures, removeById, uniqueTopic, upsertById } from '../lib/realtime';
+import { logChannelFailures, removeById, shouldReloadForBatch, uniqueTopic, upsertById } from '../lib/realtime';
 import { CACHE_KEYS } from '../lib/cacheStorage';
 import { friendlyError } from '../lib/errors';
 import { hasSession, supabase } from '../lib/supabase';
@@ -133,10 +133,15 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const names = typeNames(next);
         commitPieces(piecesRef.current.map((p) => ({ ...p, pieceType: names.get(p.pieceTypeId) ?? p.pieceType })));
       })
-      .subscribe(logChannelFailures('piece_types'));
+      .subscribe(logChannelFailures('piece_types', () => void reload()));
 
     // Bursts (an import writes hundreds of pieces) are applied in one commit per window.
     const pieceBatch = batchByWindow<RealtimePostgresChangesPayload<PieceRow>>(PIECE_BATCH_MS, (events) => {
+      // A burst may have lost events; refetch instead of trusting the partial stream.
+      if (shouldReloadForBatch(events.length)) {
+        void reload();
+        return;
+      }
       const names = typeNames(typesRef.current);
       let next = piecesRef.current;
       let needsReload = false;
@@ -164,7 +169,10 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pieces' }, (payload) => {
         pieceBatch.push(payload as RealtimePostgresChangesPayload<PieceRow>);
       })
-      .subscribe(logChannelFailures('pieces'));
+      .subscribe(logChannelFailures('pieces', () => {
+        pieceBatch.cancel();
+        void reload();
+      }));
 
     return () => {
       pieceBatch.cancel();

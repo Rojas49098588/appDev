@@ -54,6 +54,8 @@ type AuthContextValue = {
   archiveMember: (id: string) => Promise<void>;
   restoreMember: (id: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  // Refetches your profile (and, for staff, every account).
+  refreshAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -220,11 +222,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (changed.id === accountRef.current?.id) commitAccount(changed);
         if (accountRef.current?.role === 'Staff') commitAccounts(upsertById(accountsRef.current, changed));
       })
-      .subscribe(logChannelFailures('profiles'));
+      .subscribe(logChannelFailures('profiles', () => {
+        // Events may have been missed (reconnect or error): refetch.
+        const current = accountRef.current;
+        if (!current) return;
+        loadProfile(current.id).catch(warn('profile reload failed'));
+        if (current.role === 'Staff') loadAccounts().catch(warn('accounts reload failed'));
+      }));
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, commitAccount, commitAccounts]);
+  }, [userId, commitAccount, commitAccounts, loadProfile, loadAccounts]);
 
   const refreshAccount = useCallback(async () => {
     const current = accountRef.current;
@@ -410,10 +418,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       archiveMember,
       restoreMember,
       changePassword,
+      refreshAccount,
     }),
     [
       session, account, accounts, isLoading, sessionVersion, checkInviteCode, signUp, logIn, logOut,
-      updateAccount, setAccountRole, setMemberNumbers, archiveMember, restoreMember, changePassword,
+      updateAccount, setAccountRole, setMemberNumbers, archiveMember, restoreMember, changePassword, refreshAccount,
     ]
   );
 
