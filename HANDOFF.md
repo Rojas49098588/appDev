@@ -117,9 +117,9 @@ For a new Supabase project (or to rebuild this one), from `mobile-app/`:
 - Unassigned rows: `NAME` is `Unassigned`; those numbers become pieces the band owns that nobody has.
 - Blank rows are ignored. Unmatched or ambiguous names, archived members, unreadable rows and numbers that would give two members the same number are listed in the preview and skipped. Importing the same file again changes nothing ("Everything in this sheet is already in the app.").
 
-To try the import on a phone first: `npm run test:members -- <csv>` (creates TEST-project accounts), fill `mobile-app/.env.test.local` from `.env.test.example`, and run `npm run start:test`.
+To try the import on a phone first: `npm run test:members -- <csv>` (creates TEST-project accounts), fill `mobile-app/.env.test.local` from `.env.test.example`, and run `npm run start:test`. The three test members' logins are saved (one `TEST_MEMBER_n=email password` line each) in the git-ignored `mobile-app/supabase/.env.test-members.local`; `test:members` prints passwords only once, when it creates an account.
 
-**Plan 3 on-device check: pending.** Checklist is in `.superpowers/sdd/2026-10-23-inventory-import/task-8-brief.md` (Step 3).
+**Plan 3 on-device check: pending.** Checklist is in `docs/superpowers/plans/2026-10-23-inventory-import.md` (Task 8, Step 3).
 
 ### Follow-ups
 
@@ -173,7 +173,7 @@ From the final whole-branch review. All 8 were addressed in a follow-up pass; `t
 
 ## Other known outstanding items (pre-existing, unrelated to this feature)
 
-- **`expo-doctor` reports one persistent failure**: `expo`, `expo-font`, `expo-splash-screen`, `expo-updates` are all one patch version behind what SDK 57 currently wants. Harmless, but if you're in the area: `npx expo install --check` from `mobile-app/` (has come up multiple times across this project's history — SDK patch releases roll out faster than we've been updating).
+- **`expo-doctor` reports one persistent failure** (SDK 58 patch mismatches): `expo` (found 58.0.17, wants ~58.0.19), `expo-file-system` (58.0.10 vs ~58.0.11) and `expo-font` (58.0.9 vs ~58.0.10). Harmless, but if you're in the area: `npx expo install --check` from `mobile-app/`. SDK patch releases roll out faster than we've been updating.
 - **Google Play Console submission is paused**, blocked on Android device verification (Play Console now requires signing in via the Play Store app on a physical Android device to create a developer account) — the user doesn't currently have one. An EAS preview `.apk` build already exists and works for direct-install testing; the AAB path for actual Play Store release is what's blocked. See earlier conversation history if resuming this.
 - **Catalogue tab (Staff view)** is still a placeholder ("Coming soon") — no mockup exists for its own dedicated browsing screen yet, only the Home carousel preview and the combo data feeding Game Day.
 - **Un-flagging/resolving a flag** back to "Good" was explicitly out of scope for this feature (see spec's Non-goals) — a real next feature if the user wants it.
@@ -182,7 +182,7 @@ From the final whole-branch review. All 8 were addressed in a follow-up pass; `t
 
 ## Project conventions to follow
 
-- Verification, from `mobile-app/`: `npx tsc --noEmit`, `npm test` (unit tests for the pure `lib/` modules), `npm run test:rls` (security rules, against the Supabase project in `supabase/.env.local`), `npx expo-doctor` (run with `$env:CI = "1"` first in PowerShell), plus manual on-device checks in Expo Go. There are no UI/component tests.
+- Verification, from `mobile-app/`: `npx tsc --noEmit`, `npm test` (unit tests for the pure `lib/` modules), `npm run test:rls` (security rules, against the TEST project in `supabase/.env.test.local`), `npx expo-doctor` (run with `$env:CI = "1"` first in PowerShell), plus manual on-device checks in Expo Go. There are no UI/component tests.
 - Design tokens live in `mobile-app/constants/colors.ts` and `mobile-app/constants/fonts.ts` — never introduce new colors/fonts, reuse what's there.
 - Square corners everywhere; the only circles are avatars.
 - All commits go straight to `master` (no branches/worktrees) — this has been the project's practice throughout, by explicit user preference.
