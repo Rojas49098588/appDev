@@ -50,6 +50,25 @@ export function unknownNumbers(
   return out;
 }
 
+// Active accounts sharing a type + number (possible after the live migration copied old sizes).
+export function duplicateNumbers(
+  accounts: Account[]
+): { pieceType: string; number: string; members: string[] }[] {
+  const holders = new Map<string, { pieceType: string; number: string; members: string[] }>();
+  for (const account of accounts) {
+    if (!isActiveMember(account)) continue;
+    for (const [pieceType, raw] of Object.entries(account.numbers)) {
+      if (raw === '') continue;
+      const number = raw.replace(/^0+(?=\d)/, ''); // '085' and '85' are the same number
+      const key = keyOf(pieceType, number);
+      const entry = holders.get(key);
+      if (entry) entry.members.push(fullName(account));
+      else holders.set(key, { pieceType, number, members: [fullName(account)] });
+    }
+  }
+  return [...holders.values()].filter((h) => h.members.length > 1);
+}
+
 // One row per distinct number of this type, numerically sorted, a cell per color.
 export function numberRows(
   type: PieceType,
@@ -115,4 +134,31 @@ export async function fetchAllPages<T>(
     all.push(...page);
     if (page.length < pageSize) return all;
   }
+}
+
+// Collects pushed items and hands them to `flush` once per window (the window opens on the
+// first push). `cancel` drops anything still waiting, for cleanup.
+export function batchByWindow<T>(
+  windowMs: number,
+  flush: (items: T[]) => void
+): { push(item: T): void; cancel(): void } {
+  let pending: T[] = [];
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return {
+    push(item) {
+      pending.push(item);
+      if (timer !== null) return;
+      timer = setTimeout(() => {
+        const items = pending;
+        pending = [];
+        timer = null;
+        flush(items);
+      }, windowMs);
+    },
+    cancel() {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      pending = [];
+    },
+  };
 }

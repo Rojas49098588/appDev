@@ -25,6 +25,8 @@ import AddComboScreen from './screens/AddComboScreen';
 import ComboDetailScreen from './screens/ComboDetailScreen';
 import PieceHistoryScreen from './screens/PieceHistoryScreen';
 import PieceTableScreen from './screens/PieceTableScreen';
+import ImportInventoryScreen from './screens/ImportInventoryScreen';
+import AddPieceTypeScreen from './screens/AddPieceTypeScreen';
 import ArchivedMembersScreen from './screens/ArchivedMembersScreen';
 import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
 import type { RootStackParamList, Role } from './navigation/types';
@@ -127,6 +129,16 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
           <Stack.Screen
             name="PieceTable"
             component={PieceTableScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ImportInventory"
+            component={ImportInventoryScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AddPieceType"
+            component={AddPieceTypeScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

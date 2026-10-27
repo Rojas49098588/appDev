@@ -1002,3 +1002,378 @@ describe('inventory', () => {
     assert.ok(pieces.error || (pieces.data?.length ?? 0) === 0);
   });
 });
+
+describe('import and add inventory', () => {
+  // Every type this block creates is named with RUN, so it never touches real inventory.
+  const createdTypeNames: string[] = [];
+  const typeName = (label: string) => {
+    const name = `RLS ${label} ${RUN}`;
+    if (!createdTypeNames.includes(name)) createdTypeNames.push(name);
+    return name;
+  };
+
+  async function typeRow(name: string) {
+    const { data } = await admin.from('piece_types').select('*').eq('name', name).maybeSingle();
+    return data;
+  }
+  async function piecesOf(name: string) {
+    const type = await typeRow(name);
+    if (!type) return [];
+    const { data } = await admin
+      .from('pieces')
+      .select('color, number, out_for_repair')
+      .eq('piece_type_id', type.id)
+      .order('number')
+      .order('color');
+    return data ?? [];
+  }
+  async function resetNumbers() {
+    await admin.from('profiles').update({ numbers: {} }).in('id', [member.id, otherMember.id]);
+  }
+
+  after(async () => {
+    await resetNumbers();
+    if (createdTypeNames.length > 0) {
+      await admin.from('flags').delete().in('piece', createdTypeNames);
+      await admin.from('piece_types').delete().in('name', createdTypeNames);
+    }
+  });
+
+  test('members cannot call import_inventory, create_piece_type, add_piece_color, add_piece_number', async () => {
+    const name = typeName('Denied');
+    const payload = { typesToCreate: [{ name, colors: ['Blue'] }], piecesToAdd: [], outForRepair: [], numbers: [], notes: [] };
+    const imp = await asMember.rpc('import_inventory', { payload });
+    assert.equal(imp.error?.code, '42501');
+    const create = await asMember.rpc('create_piece_type', {
+      p_name: name, p_kind: 'numbered', p_colors: ['Blue'], p_numbers: ['1'], p_stock: {},
+    });
+    assert.equal(create.error?.code, '42501');
+    assert.equal(await typeRow(name), null);
+
+    const ownName = typeName('DeniedOwn');
+    const own = await admin.from('piece_types').insert({ name: ownName, kind: 'numbered', colors: ['Blue'] }).select('id').single();
+    assert.equal(own.error, null);
+    const color = await asMember.rpc('add_piece_color', { p_type: own.data!.id, p_color: 'Red' });
+    assert.equal(color.error?.code, '42501');
+    const num = await asMember.rpc('add_piece_number', { p_type: own.data!.id, p_number: '5', p_colors: ['Blue'] });
+    assert.equal(num.error?.code, '42501');
+    assert.deepEqual((await typeRow(ownName))!.colors, ['Blue']);
+    assert.deepEqual(await piecesOf(ownName), []);
+  });
+
+  // Shared by the import tests below (they run in order).
+  const coats = typeName('ImpCoats');
+  const vests = typeName('ImpVests');
+  const fullPayload = () => ({
+    typesToCreate: [
+      { name: coats, colors: ['Blue', 'Red'] },
+      { name: vests, colors: ['Candy'] },
+    ],
+    piecesToAdd: [
+      { pieceType: coats, number: '101' },
+      { pieceType: coats, number: '105' },
+      { pieceType: vests, number: '7' },
+    ],
+    outForRepair: [
+      { pieceType: coats, color: 'Red', number: '105' },
+      { pieceType: coats, color: 'Blue', number: '109' }, // not in piecesToAdd: created
+    ],
+    numbers: [
+      { memberId: member.id, pieceType: coats, number: '101' },
+      { memberId: member.id, pieceType: vests, number: '7' },
+    ],
+    notes: [{ memberName: 'member Test', pieceType: coats, number: '101', text: 'loose button' }],
+  });
+
+  test('import_inventory creates types, pieces in every color, numbers, out-for-repair and notes', async () => {
+    const { data, error } = await asStaff.rpc('import_inventory', { payload: fullPayload() });
+    assert.equal(error, null);
+    assert.deepEqual(data, { typesCreated: 2, piecesAdded: 5, markedOutForRepair: 2, numbersSet: 2, notesAdded: 1 });
+
+    const coatsType = await typeRow(coats);
+    assert.equal(coatsType!.kind, 'numbered');
+    assert.deepEqual(coatsType!.colors, ['Blue', 'Red']);
+    const vestsType = await typeRow(vests);
+    assert.ok(vestsType!.sort_order > coatsType!.sort_order);
+
+    assert.deepEqual(await piecesOf(coats), [
+      { color: 'Blue', number: '101', out_for_repair: false },
+      { color: 'Red', number: '101', out_for_repair: false },
+      { color: 'Blue', number: '105', out_for_repair: false },
+      { color: 'Red', number: '105', out_for_repair: true },
+      { color: 'Blue', number: '109', out_for_repair: true },
+    ]);
+    assert.deepEqual(await piecesOf(vests), [{ color: 'Candy', number: '7', out_for_repair: false }]);
+
+    const { data: profile } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+    assert.equal(profile!.numbers[coats], '101');
+    assert.equal(profile!.numbers[vests], '7');
+
+    const { data: notes } = await admin
+      .from('flags')
+      .select('member_id, member_name, piece, color, size, status, comment, source, cleared_at')
+      .eq('piece', coats)
+      .order('color');
+    assert.deepEqual(notes, [
+      { member_id: null, member_name: 'member Test', piece: coats, color: 'Blue', size: '101', status: 'repair', comment: 'loose button', source: 'import', cleared_at: null },
+      { member_id: null, member_name: 'member Test', piece: coats, color: 'Red', size: '101', status: 'repair', comment: 'loose button', source: 'import', cleared_at: null },
+    ]);
+  });
+
+  test('imported notes are hidden from the member and visible to staff', async () => {
+    const mine = await asMember.from('flags').select('id').eq('piece', coats);
+    assert.equal(mine.error, null);
+    assert.equal(mine.data?.length ?? 0, 0);
+    const staffView = await asStaff.from('flags').select('member_name, source').eq('piece', coats);
+    assert.equal(staffView.error, null);
+    assert.equal(staffView.data?.length, 2);
+    assert.ok(staffView.data!.every((f) => f.member_name === 'member Test' && f.source === 'import'));
+  });
+
+  test('re-running the same payload changes nothing', async () => {
+    const payload = fullPayload();
+    payload.notes[0].text = 'changed text'; // a note already imported for this name + piece is left alone
+    const { data, error } = await asStaff.rpc('import_inventory', { payload });
+    assert.equal(error, null);
+    assert.deepEqual(data, { typesCreated: 0, piecesAdded: 0, markedOutForRepair: 0, numbersSet: 0, notesAdded: 0 });
+    assert.equal((await piecesOf(coats)).length, 5);
+    const { data: notes } = await admin.from('flags').select('comment').eq('piece', coats);
+    assert.deepEqual(notes!.map((n) => n.comment), ['loose button', 'loose button']);
+  });
+
+  test('import_inventory is all-or-nothing', async () => {
+    const shirts = typeName('ImpShirts');
+    await resetNumbers();
+    try {
+      // otherMember holds Shirts 3; the payload hands Shirts 003 to member as well.
+      const hold = await asStaff.rpc('set_member_numbers', { target: otherMember.id, new_numbers: { [shirts]: '3' } });
+      assert.equal(hold.error, null);
+      const payload = {
+        typesToCreate: [{ name: shirts, colors: ['White'] }],
+        piecesToAdd: [{ pieceType: shirts, number: '3' }],
+        outForRepair: [{ pieceType: shirts, color: 'White', number: '4' }],
+        numbers: [
+          { memberId: member.id, pieceType: coats, number: '105' },
+          { memberId: member.id, pieceType: shirts, number: '003' },
+        ],
+        notes: [{ memberName: 'member Test', pieceType: shirts, number: '3', text: 'stain' }],
+      };
+      const { error } = await asStaff.rpc('import_inventory', { payload });
+      assert.equal(error?.code, '23505');
+      assert.match(error!.message, /already belongs to other Test/);
+      assert.equal(await typeRow(shirts), null);
+      const { data: notes } = await admin.from('flags').select('id').eq('piece', shirts);
+      assert.equal(notes?.length ?? 0, 0);
+      const { data: profile } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(profile!.numbers, {});
+    } finally {
+      await resetNumbers();
+    }
+  });
+
+  test('import_inventory refuses an archived member', async () => {
+    const leaver = await createUser('imparch');
+    const archive = await asStaff.rpc('archive_member', { target: leaver.id });
+    assert.equal(archive.error, null);
+    const { error } = await asStaff.rpc('import_inventory', {
+      payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+        numbers: [{ memberId: leaver.id, pieceType: coats, number: '113' }] },
+    });
+    assert.equal(error?.code, '22023');
+    assert.match(error!.message, /archived/);
+  });
+
+  test('numbers are normalized: 085 stored as 85, and 085 clashes with 85', async () => {
+    const pants = typeName('NormPants');
+    await resetNumbers();
+    try {
+      const set = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { [pants]: ' 085 ' } });
+      assert.equal(set.error, null);
+      const { data: profile } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(profile!.numbers, { [pants]: '85' });
+
+      const clash = await asStaff.rpc('set_member_numbers', { target: otherMember.id, new_numbers: { [pants]: '85' } });
+      assert.equal(clash.error?.code, '23505');
+      const importClash = await asStaff.rpc('import_inventory', {
+        payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+          numbers: [{ memberId: otherMember.id, pieceType: pants, number: '0085' }] },
+      });
+      assert.equal(importClash.error?.code, '23505');
+      const badImport = await asStaff.rpc('import_inventory', {
+        payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+          numbers: [{ memberId: otherMember.id, pieceType: pants, number: '8x' }] },
+      });
+      assert.equal(badImport.error?.code, '22023');
+      const same = await asStaff.rpc('set_member_numbers', { target: member.id, new_numbers: { [pants]: '085' } });
+      assert.equal(same.error, null);
+      const zero = await asStaff.rpc('set_member_numbers', { target: otherMember.id, new_numbers: { [pants]: '000' } });
+      assert.equal(zero.error, null);
+      const { data: other } = await admin.from('profiles').select('numbers').eq('id', otherMember.id).single();
+      assert.deepEqual(other!.numbers, { [pants]: '0' });
+
+      const typeId = await asStaff.rpc('create_piece_type', {
+        p_name: pants, p_kind: 'numbered', p_colors: ['Blue'], p_numbers: ['007', '7', '010'], p_stock: {},
+      });
+      assert.equal(typeId.error, null);
+      const added = await asStaff.rpc('add_piece_number', { p_type: typeId.data, p_number: '0012', p_colors: ['Blue'] });
+      assert.equal(added.error, null);
+      assert.deepEqual((await piecesOf(pants)).map((p) => p.number).sort(), ['10', '12', '7']);
+      const bad = await asStaff.rpc('add_piece_number', { p_type: typeId.data, p_number: '12a', p_colors: ['Blue'] });
+      assert.equal(bad.error?.code, '22023');
+    } finally {
+      await resetNumbers();
+    }
+  });
+
+  test('a legacy 085 holder: importing 85 for someone else is refused cleanly; 85 for the holder is not a change', async () => {
+    const pants = typeName('LegacyPants');
+    await resetNumbers();
+    try {
+      // Legacy value written directly (service role), as the old size columns left them.
+      const seed = await admin.from('profiles').update({ numbers: { [pants]: '085' } }).eq('id', member.id);
+      assert.equal(seed.error, null);
+      const clash = await asStaff.rpc('import_inventory', {
+        payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+          numbers: [{ memberId: otherMember.id, pieceType: pants, number: '85' }] },
+      });
+      assert.equal(clash.error?.code, '23505');
+      assert.match(clash.error!.message, /already belongs to member Test/);
+      const { data: other } = await admin.from('profiles').select('numbers').eq('id', otherMember.id).single();
+      assert.deepEqual(other!.numbers, {});
+
+      const same = await asStaff.rpc('import_inventory', {
+        payload: { typesToCreate: [], piecesToAdd: [], outForRepair: [], notes: [],
+          numbers: [{ memberId: member.id, pieceType: pants, number: '85' }] },
+      });
+      assert.equal(same.error, null);
+      assert.equal(same.data.numbersSet, 0);
+      const { data: mine } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(mine!.numbers, { [pants]: '85' });
+    } finally {
+      await resetNumbers();
+    }
+  });
+
+  test('normalize_member_numbers rewrites 085 to 85, leaves other values, and is re-runnable', async () => {
+    const pants = typeName('NormRunPants');
+    const vests = typeName('NormRunVests');
+    await resetNumbers();
+    try {
+      const seed = await admin.from('profiles').update({ numbers: { [pants]: '085', [vests]: '0' } }).eq('id', member.id);
+      assert.equal(seed.error, null);
+      const notStaff = await asMember.rpc('normalize_member_numbers');
+      assert.ok(notStaff.error, 'members cannot call it');
+      const run = await admin.rpc('normalize_member_numbers');
+      assert.equal(run.error, null);
+      assert.ok(run.data >= 1);
+      const { data: profile } = await admin.from('profiles').select('numbers').eq('id', member.id).single();
+      assert.deepEqual(profile!.numbers, { [pants]: '85', [vests]: '0' });
+      const again = await admin.rpc('normalize_member_numbers');
+      assert.equal(again.error, null);
+      assert.equal(again.data, 0);
+    } finally {
+      await resetNumbers();
+    }
+  });
+
+  test('pieces must use a color of a numbered type', async () => {
+    const coatsName = typeName('CheckCoats');
+    const tiesName = typeName('CheckTies');
+    const numbered = await admin.from('piece_types').insert({ name: coatsName, kind: 'numbered', colors: ['Blue'] }).select('id').single();
+    assert.equal(numbered.error, null);
+    const counted = await admin.from('piece_types').insert({ name: tiesName, kind: 'counted', colors: ['Blue'] }).select('id').single();
+    assert.equal(counted.error, null);
+
+    const badColor = await admin.from('pieces').insert({ piece_type_id: numbered.data!.id, color: 'Green', number: '1' });
+    assert.equal(badColor.error?.code, '22023');
+    assert.equal(badColor.error!.message, `Green is not a ${coatsName} color`);
+    const badKind = await admin.from('pieces').insert({ piece_type_id: counted.data!.id, color: 'Blue', number: '1' });
+    assert.equal(badKind.error?.code, '22023');
+    assert.equal(badKind.error!.message, `${tiesName} is not a numbered type`);
+    const ok = await admin.from('pieces').insert({ piece_type_id: numbered.data!.id, color: 'Blue', number: '1' }).select('id').single();
+    assert.equal(ok.error, null);
+    const recolor = await admin.from('pieces').update({ color: 'Green' }).eq('id', ok.data!.id);
+    assert.equal(recolor.error?.code, '22023');
+  });
+
+  test('create_piece_type numbered and counted; duplicate name refused', async () => {
+    const hats = typeName('Hats');
+    const numbered = await asStaff.rpc('create_piece_type', {
+      p_name: `  ${hats} `, p_kind: 'numbered', p_colors: ['Black', 'White'], p_numbers: ['1', '2', '3'], p_stock: null,
+    });
+    assert.equal(numbered.error, null);
+    const hatsRow = await typeRow(hats);
+    assert.equal(hatsRow!.id, numbered.data);
+    assert.equal(hatsRow!.kind, 'numbered');
+    assert.deepEqual(hatsRow!.colors, ['Black', 'White']);
+    assert.equal((await piecesOf(hats)).length, 6);
+
+    const belts = typeName('Belts');
+    const counted = await asStaff.rpc('create_piece_type', {
+      p_name: belts, p_kind: 'counted', p_colors: ['Black', 'Brown'], p_numbers: [], p_stock: { Black: 12, Brown: 0 },
+    });
+    assert.equal(counted.error, null);
+    const beltsRow = await typeRow(belts);
+    assert.equal(beltsRow!.kind, 'counted');
+    assert.deepEqual(beltsRow!.stock, { Black: 12, Brown: 0 });
+    assert.deepEqual(await piecesOf(belts), []);
+
+    const dup = await asStaff.rpc('create_piece_type', {
+      p_name: hats.toLowerCase(), p_kind: 'counted', p_colors: ['Black'], p_numbers: [], p_stock: {},
+    });
+    assert.equal(dup.error?.code, '23505');
+    assert.equal(dup.error!.message, `a piece type named ${hats.toLowerCase()} already exists`);
+
+    const sashes = typeName('Sashes');
+    for (const stock of [{ Red: -1 }, { Red: 1.5 }, { Green: 1 }, { Red: 'x' }]) {
+      const bad = await asStaff.rpc('create_piece_type', {
+        p_name: sashes, p_kind: 'counted', p_colors: ['Red'], p_numbers: [], p_stock: stock,
+      });
+      assert.equal(bad.error?.code, '22023', JSON.stringify(stock));
+    }
+    const badNumber = await asStaff.rpc('create_piece_type', {
+      p_name: sashes, p_kind: 'numbered', p_colors: ['Red'], p_numbers: ['1', 'x2'], p_stock: {},
+    });
+    assert.equal(badNumber.error?.code, '22023');
+    assert.equal(await typeRow(sashes), null);
+  });
+
+  test('add_piece_color fills every existing number', async () => {
+    const name = typeName('Gloves');
+    const created = await asStaff.rpc('create_piece_type', {
+      p_name: name, p_kind: 'numbered', p_colors: ['White'], p_numbers: ['4', '8', '12'], p_stock: {},
+    });
+    assert.equal(created.error, null);
+    const added = await asStaff.rpc('add_piece_color', { p_type: created.data, p_color: ' Black ' });
+    assert.equal(added.error, null);
+    assert.equal(added.data, 3);
+    assert.deepEqual((await typeRow(name))!.colors, ['White', 'Black']);
+    const black = (await piecesOf(name)).filter((p) => p.color === 'Black').map((p) => p.number).sort();
+    assert.deepEqual(black, ['12', '4', '8']);
+
+    const dup = await asStaff.rpc('add_piece_color', { p_type: created.data, p_color: 'black' });
+    assert.equal(dup.error?.code, '22023');
+    assert.equal(dup.error!.message, `black is already a ${name} color`);
+    assert.deepEqual((await typeRow(name))!.colors, ['White', 'Black']);
+  });
+
+  test('add_piece_number refuses colors not in the type', async () => {
+    const name = typeName('Capes');
+    const created = await asStaff.rpc('create_piece_type', {
+      p_name: name, p_kind: 'numbered', p_colors: ['Blue', 'Gold', 'Red'], p_numbers: [], p_stock: {},
+    });
+    assert.equal(created.error, null);
+    const bad = await asStaff.rpc('add_piece_number', { p_type: created.data, p_number: '20', p_colors: ['Blue', 'Green'] });
+    assert.equal(bad.error?.code, '22023');
+    assert.equal(bad.error!.message, `Green is not a ${name} color`);
+    assert.deepEqual(await piecesOf(name), []);
+
+    const ok = await asStaff.rpc('add_piece_number', { p_type: created.data, p_number: '20', p_colors: ['Blue', 'Red'] });
+    assert.equal(ok.error, null);
+    assert.equal(ok.data, 2);
+    const again = await asStaff.rpc('add_piece_number', { p_type: created.data, p_number: '020', p_colors: ['Blue', 'Gold'] });
+    assert.equal(again.error, null);
+    assert.equal(again.data, 1);
+    assert.deepEqual((await piecesOf(name)).map((p) => p.color), ['Blue', 'Gold', 'Red']);
+  });
+});

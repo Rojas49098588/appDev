@@ -58,3 +58,18 @@ test('an unrelated 23505 is not called an open-flag conflict', () => {
     'This member already has an open flag on that color.'
   );
 });
+
+test('passes through piece-type and import messages', () => {
+  for (const message of [
+    'Red is not a Coats color',
+    'Red is already a Coats color',
+    'Red is listed twice as a color',
+    'a numbered type needs at least one color',
+    'Coats is not a numbered type',
+    'this member is archived',
+  ]) {
+    assert.equal(friendlyError({ code: '22023', message }), message);
+  }
+  const dup = 'a piece type named Coats already exists';
+  assert.equal(friendlyError({ code: '23505', message: dup }), dup);
+});
