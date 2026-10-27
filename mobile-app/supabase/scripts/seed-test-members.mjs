@@ -1,13 +1,18 @@
 // Creates (or keeps) TEST-project accounts for the member rows of a roster CSV, so the
-// import can be tried on a phone. Usage (from mobile-app/):
+// import can be tried on a phone. Every account gets the same easy-to-type password
+// (TEST_PASSWORD below) and is listed in supabase/.env.test-members.local (git-ignored).
+// Usage (from mobile-app/):
 //   npm run test:members -- path/to/roster.csv
 // Safety: only ever talks to the project in supabase/.env.test.local, and refuses to run
 // if that URL equals the live URL in supabase/.env.local (read only to compare).
-import { readFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { parseCsv } from '../../lib/import/csv.ts';
 import { classifyRows, findColumns } from '../../lib/import/rows.ts';
+
+// TEST project only, so a shared simple password is fine and easy to type on a phone.
+const TEST_PASSWORD = 'mustangtest2026';
+const LOGINS_FILE = 'supabase/.env.test-members.local';
 
 const fail = (message) => {
   console.error(message);
@@ -89,7 +94,7 @@ for (const p of people.values()) {
     console.log(`kept     ${p.email}  (${p.first} ${p.last}; password unchanged)`);
     continue;
   }
-  const password = randomBytes(9).toString('base64url');
+  const password = TEST_PASSWORD;
   const { error } = await admin.auth.admin.createUser({
     email: p.email,
     password,
@@ -98,6 +103,14 @@ for (const p of people.values()) {
   });
   if (error) fail(`Could not create ${p.email}: ${error.message}`);
   created++;
-  console.log(`created  ${p.email}  (${p.first} ${p.last})  password: ${password}`);
+  console.log(`created  ${p.email}  (${p.first} ${p.last})`);
 }
-console.log(`Done: ${created} created, ${kept} kept.`);
+
+// Keep the logins file listing every TEST account this script knows about.
+const header = `# TEST project only. Every account below uses the password: ${TEST_PASSWORD}`;
+const listed = existsSync(LOGINS_FILE)
+  ? readFileSync(LOGINS_FILE, 'utf8').split(/\r?\n/).filter((l) => l.includes('@'))
+  : [];
+const emails = [...new Set([...listed, ...people.keys()])].sort();
+writeFileSync(LOGINS_FILE, [header, '', ...emails].join('\n') + '\n');
+console.log(`Done: ${created} created, ${kept} kept. Password for new accounts: ${TEST_PASSWORD} (listed in ${LOGINS_FILE}).`);

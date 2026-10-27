@@ -117,7 +117,7 @@ For a new Supabase project (or to rebuild this one), from `mobile-app/`:
 - Unassigned rows: `NAME` is `Unassigned`; those numbers become pieces the band owns that nobody has.
 - Blank rows are ignored. Unmatched or ambiguous names, archived members, unreadable rows and numbers that would give two members the same number are listed in the preview and skipped. Importing the same file again changes nothing ("Everything in this sheet is already in the app.").
 
-To try the import on a phone first: `npm run test:members -- <csv>` (creates TEST-project accounts), fill `mobile-app/.env.test.local` from `.env.test.example`, and run `npm run start:test`. The three test members' logins are saved (one `TEST_MEMBER_n=email password` line each) in the git-ignored `mobile-app/supabase/.env.test-members.local`; `test:members` prints passwords only once, when it creates an account.
+To try the import on a phone first: `npm run test:members -- <csv>` (creates TEST-project accounts), fill `mobile-app/.env.test.local` from `.env.test.example`, and run `npm run start:test`. Every TEST account (members and `test-staff@mustangcloset.test`) uses the password `mustangtest2026`; the emails are listed in the git-ignored `mobile-app/supabase/.env.test-members.local`, which `test:members` keeps up to date. Accounts that already exist are kept with their password unchanged.
 
 **Plan 3 on-device check: pending.** Checklist is in `docs/superpowers/plans/2026-10-23-inventory-import.md` (Task 8, Step 3).
 
