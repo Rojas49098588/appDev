@@ -123,6 +123,21 @@ export default function GameEditScreen({ navigation, route }: Props) {
     }
   };
 
+  // iOS spinner: Done on an empty field keeps the value the spinner is showing.
+  const closePicker = () => {
+    if (picker !== null) {
+      const empty =
+        picker === 'date' ? !draft.gameDate : picker === 'kickoff' ? !draft.kickoffTime : !draft.callTime;
+      if (empty) {
+        const v = pickerValue(picker, draft);
+        if (picker === 'date') set({ gameDate: toDateString(v) });
+        else if (picker === 'kickoff') set({ kickoffTime: toTimeString(v) });
+        else set({ callTime: toTimeString(v) });
+      }
+    }
+    setPicker(null);
+  };
+
   const onPicked = (kind: PickerKind) => (event: DateTimePickerEvent, value?: Date) => {
     if (Platform.OS === 'android') setPicker(null);
     if (event.type !== 'set' || !value) return;
@@ -177,7 +192,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
   const moveToDraft = () => {
     if (!game) return;
-    void runWrite("Couldn't move game back to draft", () => setStatus(game.id, 'draft'));
+    void runWrite("Couldn't move game back to draft", () => updateGame(game.id, draft, 'draft'));
   };
 
   const confirmDelete = () => {
@@ -188,7 +203,16 @@ export default function GameEditScreen({ navigation, route }: Props) {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => void runWrite("Couldn't delete game", () => deleteGame(game.id)),
+        onPress: () =>
+          void runWrite("Couldn't delete game", async () => {
+            leavingRef.current = true;
+            try {
+              await deleteGame(game.id);
+            } catch (error) {
+              leavingRef.current = false;
+              throw error;
+            }
+          }),
       },
     ]);
   };
@@ -362,10 +386,11 @@ export default function GameEditScreen({ navigation, route }: Props) {
                     value={pickerValue(picker, draft)}
                     mode={picker === 'date' ? 'date' : 'time'}
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    themeVariant="light"
                     onChange={onPicked(picker)}
                   />
                   {Platform.OS === 'ios' && (
-                    <Pressable style={styles.pickerDone} onPress={() => setPicker(null)}>
+                    <Pressable style={styles.pickerDone} onPress={closePicker}>
                       <Text style={styles.link}>Done</Text>
                     </Pressable>
                   )}

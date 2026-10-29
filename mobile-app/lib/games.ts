@@ -7,8 +7,14 @@ const chicagoDay = new Intl.DateTimeFormat('en-CA', {
 });
 
 // 'YYYY-MM-DD' in America/Chicago, whatever the phone's timezone.
+// Built from formatToParts so it never depends on the locale's separator or digit shapes.
+// If a runtime still returns non-ASCII digits we throw rather than send a bad date to the app.
 export function bandToday(now: Date): string {
-  return chicagoDay.format(now);
+  const parts: Record<string, string> = {};
+  for (const p of chicagoDay.formatToParts(now)) parts[p.type] = p.value;
+  const out = `${parts.year}-${parts.month}-${parts.day}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(out)) throw new Error(`bandToday: unexpected date format "${out}"`);
+  return out;
 }
 
 export const isCourt = (sport: Sport): boolean => sport === 'basketball' || sport === 'volleyball';

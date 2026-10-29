@@ -153,7 +153,7 @@ function CourtTab({ list }: { list: Game[] }) {
             <Fact label="Call time" value={g.noCallTime ? 'None' : formatClock(g.callTime)} />
             <Fact label="Start" value={formatClock(g.kickoffTime)} />
           </View>
-          <View style={styles.fact}>
+          <View style={[styles.fact, styles.courtPolo]}>
             <Text style={styles.factLabel}>Polo</Text>
             <PoloDots polo={g.polo} />
             {g.poloNote.trim() ? <Text style={styles.poloNote}>{g.poloNote}</Text> : null}
@@ -251,6 +251,7 @@ const styles = StyleSheet.create({
   factValue: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
   factMono: { fontFamily: fonts.monoMedium },
   poloCard: { flex: 0, marginBottom: 24 },
+  courtPolo: { flex: 0 },
   poloRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   poloItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: colors.line },

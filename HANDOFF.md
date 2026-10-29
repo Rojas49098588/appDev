@@ -150,13 +150,14 @@ Spec: `docs/superpowers/specs/2026-10-28-games-page-design.md`. Built on branch 
 - **Staff:** Home has a "Games" block that opens the Games page (Football | BB / VB tabs), with Edit / New game. The game form has the polo colors list (**Edit colors**), **Move back to draft**, and **Delete game** (with a confirmation).
 - **Catalogue:** "Set" for pregame/halftime names the game it changes (the posted football game, else the next football game). A combo used by a ready upcoming game can't be deleted: "Used by vs. {opponent}. Change that game first." This is enforced in the database too.
 - **Database:** `games` gains `sport`, `division`, `status`, `kickoff_time`, `call_time`, `no_call_time`, `polo_colors`, `polo_note` and `group_number`. `is_current` (and its unique index) is removed. New tables: `polo_colors` (seeded Blue `#2C5AA0`, Red `#C0392B`) and `game_signal` (members' screens refetch when it changes, so a game moved to draft or deleted disappears). `seed.sql` no longer inserts a current game.
-- **New dependency:** `@react-native-community/datetimepicker` (works in Expo Go).
+- **New dependency:** `@react-native-community/datetimepicker` (works in Expo Go). It is a native module, so any standalone APK built before this branch must be rebuilt (or the app version bumped) before it receives this update; Expo Go is unaffected.
 
 **Live release steps (in order)**
 
 1. The owner runs `npm run db:apply`. The old "Lincoln High" game becomes a hidden football draft (its `status` defaults to `draft`), so members never see it. Staff can delete it.
 2. Publish `npx eas update --branch live --environment preview`.
 3. Staff create real games and combos.
+4. Import the CSV, then invite members. (Spec step 5.)
 
 **Testers (TEST project)**
 

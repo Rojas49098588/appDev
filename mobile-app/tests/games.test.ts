@@ -15,6 +15,11 @@ const base: Game = {
 const g = (over: Partial<Game>): Game => ({ ...base, ...over });
 const ids = (list: Game[]) => list.map((x) => x.id);
 
+test('bandToday handles CDT (summer)', () => {
+  assert.equal(bandToday(new Date('2026-07-04T04:30:00Z')), '2026-07-03');
+  assert.equal(bandToday(new Date('2026-07-04T05:30:00Z')), '2026-07-04');
+});
+
 test('bandToday uses Chicago, not the device zone', () => {
   assert.equal(bandToday(new Date('2026-11-08T05:30:00Z')), '2026-11-07');
   assert.equal(bandToday(new Date('2026-11-08T06:30:00Z')), '2026-11-08');

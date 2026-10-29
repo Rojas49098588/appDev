@@ -128,13 +128,15 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
           )}
 
           {game ? (
+            <>
+            <Text style={styles.slotCaption}>For {targetName}</Text>
             <View style={styles.slotButtonRow}>
               <Pressable
                 style={[styles.slotButton, isPreGame && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
                 onPress={() => handleSetCombo('preGame')}
               >
                 <Text style={[styles.slotButtonText, isPreGame && styles.slotButtonTextActive]}>
-                  {`Set for pregame · ${targetName}${isPreGame ? ' ✓' : ''}`}
+                  {`Set for pregame${isPreGame ? ' ✓' : ''}`}
                 </Text>
               </Pressable>
               <Pressable
@@ -142,10 +144,11 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
                 onPress={() => handleSetCombo('halftime')}
               >
                 <Text style={[styles.slotButtonText, isHalftime && styles.slotButtonTextActive]}>
-                  {`Set for halftime · ${targetName}${isHalftime ? ' ✓' : ''}`}
+                  {`Set for halftime${isHalftime ? ' ✓' : ''}`}
                 </Text>
               </Pressable>
             </View>
+            </>
           ) : (
             <Text style={styles.noGameNote}>No upcoming football game. Plan one in Games.</Text>
           )}
@@ -203,7 +206,8 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
   emptyText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
-  slotButtonRow: { flexDirection: 'row', gap: 8, marginTop: 24, marginBottom: 28 },
+  slotCaption: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, marginTop: 24 },
+  slotButtonRow: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 28 },
   noGameNote: {
     fontFamily: fonts.body,
     fontSize: 12.5,
@@ -219,7 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   slotButtonActive: { backgroundColor: colors.ink },
-  slotButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  slotButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink, textAlign: 'center' },
   slotButtonTextActive: { color: colors.paper },
   deleteButton: {
     marginTop: 'auto',
