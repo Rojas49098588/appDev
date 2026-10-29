@@ -1,4 +1,4 @@
-import type { Account, Combo, Flag, Game, InventoryPiece, PieceType } from './models.ts';
+import type { Account, Combo, Flag, Game, InventoryPiece, PieceType, PoloColorOption } from './models.ts';
 
 // Runtime shape checks for data read back from the on-device cache.
 
@@ -45,15 +45,30 @@ function isCombo(v: unknown): v is Combo {
 
 export const isComboList = (v: unknown): v is Combo[] => Array.isArray(v) && v.every(isCombo);
 
+const isPoloColor = (v: unknown): boolean => isObject(v) && isString(v.name) && isString(v.swatch);
+
 function isGame(v: unknown): v is Game {
   return (
-    isObject(v) && isString(v.id) && isString(v.opponent) && isString(v.date) &&
+    isObject(v) && isString(v.id) &&
+    (v.sport === 'football' || v.sport === 'basketball' || v.sport === 'volleyball') &&
+    (v.division === null || v.division === 'mens' || v.division === 'womens') &&
+    (v.status === 'draft' || v.status === 'ready') &&
+    isString(v.opponent) && isStringOrNull(v.gameDate) && isStringOrNull(v.kickoffTime) &&
+    isStringOrNull(v.callTime) && typeof v.noCallTime === 'boolean' &&
+    Array.isArray(v.polo) && v.polo.every(isPoloColor) && isString(v.poloNote) &&
+    (v.groupNumber === null || typeof v.groupNumber === 'number') &&
     isStringOrNull(v.preGameComboId) && isStringOrNull(v.halftimeComboId) &&
     isString(v.afterGameInstructions) && isString(v.instructionsPostedBy) && isString(v.instructionsUpdatedAt)
   );
 }
 
-export const isGameOrNull = (v: unknown): v is Game | null => v === null || isGame(v);
+export const isGameList = (v: unknown): v is Game[] => Array.isArray(v) && v.every(isGame);
+
+function isPoloColorOption(v: unknown): v is PoloColorOption {
+  return isObject(v) && isString(v.id) && isString(v.name) && isString(v.swatch) && typeof v.sortOrder === 'number';
+}
+
+export const isPoloColorList = (v: unknown): v is PoloColorOption[] => Array.isArray(v) && v.every(isPoloColorOption);
 
 function isPieceType(v: unknown): v is PieceType {
   return (

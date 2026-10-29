@@ -1,4 +1,5 @@
 // Shapes of rows as Supabase returns them (snake_case, matching supabase/schema.sql).
+import type { Division, GameStatus, PoloColor, Sport } from './models.ts';
 
 export type ProfileRow = {
   id: string;
@@ -55,14 +56,31 @@ export type ComboRow = {
 
 export type GameRow = {
   id: string;
+  sport: Sport;
+  division: Division | null;
+  status: GameStatus;
   opponent: string;
-  game_date: string;
+  game_date: string | null;
+  // Postgres `time` comes back as 'HH:MM:SS'.
+  kickoff_time: string | null;
+  call_time: string | null;
+  no_call_time: boolean;
+  polo_colors: PoloColor[];
+  polo_note: string;
+  group_number: number | null;
   pre_game_combo_id: string | null;
   halftime_combo_id: string | null;
   after_game_instructions: string;
   instructions_posted_by: string | null;
   instructions_updated_at: string | null;
-  is_current: boolean;
+};
+
+export type PoloColorRow = {
+  id: string;
+  name: string;
+  swatch: string;
+  sort_order: number;
+  created_at: string;
 };
 
 export type FlagRow = {

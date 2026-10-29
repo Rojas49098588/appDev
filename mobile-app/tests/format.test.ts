@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatGameDate, formatShortDate, formatTime } from '../lib/format.ts';
+import { formatClock, formatGameDate, formatShortDate, formatTime } from '../lib/format.ts';
 
 test('formatGameDate shows weekday, month and day without timezone drift', () => {
   assert.equal(formatGameDate('2026-09-18'), 'Fri, Sep 18');
@@ -21,4 +21,12 @@ test('formatTime uses a 12-hour clock', () => {
   assert.equal(formatTime(new Date(2026, 8, 29, 18, 42).getTime()), '6:42 PM');
   assert.equal(formatTime(new Date(2026, 8, 29, 0, 5).getTime()), '12:05 AM');
   assert.equal(formatTime(new Date(2026, 8, 29, 12, 0).getTime()), '12:00 PM');
+});
+
+test('formatClock converts 24h HH:MM to 12h am/pm', () => {
+  assert.equal(formatClock('14:30'), '2:30pm');
+  assert.equal(formatClock('06:30'), '6:30am');
+  assert.equal(formatClock('12:00'), '12:00pm');
+  assert.equal(formatClock('00:15'), '12:15am');
+  assert.equal(formatClock(null), '');
 });

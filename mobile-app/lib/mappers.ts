@@ -1,6 +1,6 @@
-import type { Account, Combo, Flag, Game, InventoryPiece, MemberArchive, MemberNumbers, PieceType } from './models.ts';
-import type { ArchiveSnapshot, ComboRow, FlagRow, GameRow, MemberArchiveRow, PieceRow, PieceTypeRow, ProfileRow } from './rows.ts';
-import { formatGameDate, formatShortDate } from './format.ts';
+import type { Account, Combo, Flag, Game, GameDraft, InventoryPiece, MemberArchive, MemberNumbers, PieceType, PoloColorOption } from './models.ts';
+import type { ArchiveSnapshot, ComboRow, FlagRow, GameRow, MemberArchiveRow, PieceRow, PieceTypeRow, PoloColorRow, ProfileRow } from './rows.ts';
+import { formatShortDate } from './format.ts';
 
 // Numbers and archive state only change through staff-only database functions.
 export type AccountUpdates = Partial<Omit<Account, 'id' | 'role' | 'numbers' | 'archivedAt'>>;
@@ -117,17 +117,50 @@ export function rowToCombo(row: ComboRow, imageUrl?: string): Combo {
   };
 }
 
+const trimTime = (t: string | null): string | null => (t ? t.slice(0, 5) : null);
+
 export function rowToGame(row: GameRow, postedByName: string): Game {
   return {
     id: row.id,
+    sport: row.sport,
+    division: row.division,
+    status: row.status,
     opponent: row.opponent,
-    date: formatGameDate(row.game_date),
+    gameDate: row.game_date,
+    kickoffTime: trimTime(row.kickoff_time),
+    callTime: trimTime(row.call_time),
+    noCallTime: row.no_call_time,
+    polo: row.polo_colors ?? [],
+    poloNote: row.polo_note,
+    groupNumber: row.group_number,
     preGameComboId: row.pre_game_combo_id,
     halftimeComboId: row.halftime_combo_id,
     afterGameInstructions: row.after_game_instructions,
     instructionsPostedBy: postedByName,
     instructionsUpdatedAt: formatShortDate(row.instructions_updated_at),
   };
+}
+
+export function gameDraftToRow(d: GameDraft): Partial<GameRow> {
+  return {
+    sport: d.sport,
+    division: d.division,
+    opponent: d.opponent.trim(),
+    game_date: d.gameDate,
+    kickoff_time: d.kickoffTime,
+    call_time: d.callTime,
+    no_call_time: d.noCallTime,
+    polo_colors: d.polo,
+    polo_note: d.poloNote,
+    group_number: d.groupNumber,
+    pre_game_combo_id: d.preGameComboId,
+    halftime_combo_id: d.halftimeComboId,
+    after_game_instructions: d.afterGameInstructions,
+  };
+}
+
+export function rowToPoloColor(row: PoloColorRow): PoloColorOption {
+  return { id: row.id, name: row.name, swatch: row.swatch, sortOrder: row.sort_order };
 }
 
 export function rowToPieceType(row: PieceTypeRow): PieceType {

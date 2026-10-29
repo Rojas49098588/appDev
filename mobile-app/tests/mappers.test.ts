@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { accountUpdatesToProfile, profileToAccount, rowToArchive, rowToCombo, rowToFlag, rowToGame, rowToPiece, rowToPieceType } from '../lib/mappers.ts';
+import { accountUpdatesToProfile, profileToAccount, rowToArchive, rowToCombo, gameDraftToRow, rowToFlag, rowToGame, rowToPoloColor, rowToPiece, rowToPieceType } from '../lib/mappers.ts';
+import type { GameDraft } from '../lib/models.ts';
 import type { ComboRow, FlagRow, GameRow, MemberArchiveRow, PieceRow, PieceTypeRow, ProfileRow } from '../lib/rows.ts';
 
 const profile: ProfileRow = {
@@ -86,15 +87,40 @@ test('rowToCombo keeps the image path and attaches the signed URL when given', (
   assert.equal(rowToCombo({ ...row, image_path: null }).imagePath, undefined);
 });
 
-test('rowToGame formats dates and passes through empty combo slots', () => {
+test('rowToGame trims times and maps the new columns', () => {
   const row: GameRow = {
-    id: 'g1', opponent: 'Lincoln High', game_date: '2026-09-18', pre_game_combo_id: null,
-    halftime_combo_id: 'c14', after_game_instructions: 'Hang coats', instructions_posted_by: 's1',
-    instructions_updated_at: '2026-09-15T12:00:00Z', is_current: true,
+    id: 'g1', sport: 'football', division: null, status: 'ready', opponent: 'Lincoln High', game_date: '2026-09-18',
+    kickoff_time: '11:00:00', call_time: null, no_call_time: true,
+    polo_colors: [{ name: 'Red', swatch: '#C8102E' }], polo_note: 'Black pants', group_number: null,
+    pre_game_combo_id: null, halftime_combo_id: 'c14', after_game_instructions: 'Hang coats',
+    instructions_posted_by: 's1', instructions_updated_at: '2026-09-15T12:00:00Z',
   };
   assert.deepEqual(rowToGame(row, 'Coach Reyes'), {
-    id: 'g1', opponent: 'Lincoln High', date: 'Fri, Sep 18', preGameComboId: null, halftimeComboId: 'c14',
-    afterGameInstructions: 'Hang coats', instructionsPostedBy: 'Coach Reyes', instructionsUpdatedAt: 'Sep 15',
+    id: 'g1', sport: 'football', division: null, status: 'ready', opponent: 'Lincoln High', gameDate: '2026-09-18',
+    kickoffTime: '11:00', callTime: null, noCallTime: true,
+    polo: [{ name: 'Red', swatch: '#C8102E' }], poloNote: 'Black pants', groupNumber: null,
+    preGameComboId: null, halftimeComboId: 'c14', afterGameInstructions: 'Hang coats',
+    instructionsPostedBy: 'Coach Reyes', instructionsUpdatedAt: 'Sep 15',
+  });
+});
+
+test('gameDraftToRow round-trips through rowToGame', () => {
+  const draft: GameDraft = {
+    sport: 'volleyball', division: 'womens', opponent: ' Tulane ', gameDate: '2026-10-30',
+    kickoffTime: '18:30', callTime: '17:00', noCallTime: false, polo: [{ name: 'Blue', swatch: '#0033A0' }],
+    poloNote: '', groupNumber: 3, preGameComboId: null, halftimeComboId: null, afterGameInstructions: '',
+  };
+  const row = gameDraftToRow(draft);
+  assert.equal(row.opponent, 'Tulane');
+  assert.deepEqual(row.polo_colors, [{ name: 'Blue', swatch: '#0033A0' }]);
+  assert.equal(row.group_number, 3);
+  const back = rowToGame({ id: 'g2', status: 'draft', instructions_posted_by: null, instructions_updated_at: null, ...row } as GameRow, '');
+  assert.deepEqual({ ...back, opponent: 'Tulane' }, { ...draft, opponent: 'Tulane', id: 'g2', status: 'draft', instructionsPostedBy: '', instructionsUpdatedAt: '' });
+});
+
+test('rowToPoloColor maps columns', () => {
+  assert.deepEqual(rowToPoloColor({ id: 'p1', name: 'Red', swatch: '#C8102E', sort_order: 2, created_at: 'x' }), {
+    id: 'p1', name: 'Red', swatch: '#C8102E', sortOrder: 2,
   });
 });
 

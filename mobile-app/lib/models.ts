@@ -76,17 +76,35 @@ export type Combo = {
   image?: string;
 };
 
+export type Sport = 'football' | 'basketball' | 'volleyball';
+export type Division = 'mens' | 'womens';
+export type GameStatus = 'draft' | 'ready';
+export type PoloColor = { name: string; swatch: string };
+export type PoloColorOption = PoloColor & { id: string; sortOrder: number };
+
 export type Game = {
   id: string;
+  sport: Sport;
+  division: Division | null;
+  status: GameStatus;
   opponent: string;
-  // Display strings, e.g. "Fri, Sep 18" and "Sep 15"; '' when unknown.
-  date: string;
+  gameDate: string | null; // 'YYYY-MM-DD'
+  kickoffTime: string | null; // 'HH:MM' 24h
+  callTime: string | null; // 'HH:MM' 24h
+  noCallTime: boolean;
+  polo: PoloColor[];
+  poloNote: string;
+  groupNumber: number | null;
   preGameComboId: string | null;
   halftimeComboId: string | null;
   afterGameInstructions: string;
+  // Display name, '' if none.
   instructionsPostedBy: string;
+  // Display string, e.g. 'Sep 15'; '' if none.
   instructionsUpdatedAt: string;
 };
+
+export type GameDraft = Omit<Game, 'id' | 'status' | 'instructionsPostedBy' | 'instructionsUpdatedAt'>;
 
 export type ArchivedFlag = Pick<Flag, 'piece' | 'color' | 'size' | 'status' | 'comment'>;
 
