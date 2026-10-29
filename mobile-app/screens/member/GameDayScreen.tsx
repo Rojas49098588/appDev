@@ -277,8 +277,10 @@ const styles = StyleSheet.create({
   lastSection: { marginBottom: 4 },
   sectionTitle: { fontFamily: fonts.blockTitle, fontSize: 17, color: colors.ink, marginBottom: 3 },
   sectionSub: { fontFamily: fonts.mono, fontSize: 11.5, color: colors.inkSoft, marginBottom: 12 },
+  // Portrait, like the Catalogue and combo detail photos (3:4).
   photoBox: {
-    height: 220,
+    width: '100%',
+    aspectRatio: 3 / 4,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
