@@ -7,7 +7,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { STATS, SECTIONS } from '../constants/homeData';
+import { SECTIONS } from '../constants/homeData';
+import { sectionForInstrument } from '../constants/instrumentSections';
+import { useAuth } from '../context/AuthContext';
+import { useCombos } from '../context/CombosContext';
+import { homeStats, sectionCounts } from '../lib/homeStats';
 import { useFlags } from '../context/FlagsContext';
 import { useInventory } from '../context/InventoryContext';
 import { useGames } from '../context/GamesContext';
@@ -27,6 +31,17 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
   const { flags } = useFlags();
   const { pieceTypes, pieces } = useInventory();
   const { games, today } = useGames();
+  const { accounts } = useAuth();
+  const { combos } = useCombos();
+  const sectionNames = useMemo(() => SECTIONS.map((s) => s.name), []);
+  const stats = useMemo(
+    () => homeStats(accounts, sectionNames, sectionForInstrument, combos.length, flags),
+    [accounts, sectionNames, combos.length, flags]
+  );
+  const sections = useMemo(
+    () => sectionCounts(accounts, sectionNames, sectionForInstrument),
+    [accounts, sectionNames]
+  );
   const nextFootball = shownFootball(games, today);
   const gamesNote = nextFootball
     ? `Next: vs. ${nextFootball.opponent}, ${nextFootball.gameDate ? formatGameDate(nextFootball.gameDate) : 'date TBD'}`
@@ -69,7 +84,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.statsGrid}>
-          {STATS.map((stat, index) => (
+          {stats.map((stat, index) => (
             <View
               key={stat.label}
               style={[
@@ -96,7 +111,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
             </Pressable>
           </View>
           <View style={styles.sectionGrid}>
-            {SECTIONS.map((section) => (
+            {sections.map((section) => (
               <Pressable
                 key={section.name}
                 style={styles.sectionCard}
@@ -110,9 +125,6 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               >
                 <Text style={styles.sectionName}>{section.name}</Text>
                 <Text style={styles.sectionCount}>{section.count}</Text>
-                <View style={styles.fitBar}>
-                  <View style={[styles.fitBarFill, { width: `${section.fitPercent}%` }]} />
-                </View>
               </Pressable>
             ))}
           </View>
@@ -333,15 +345,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.inkSoft,
     marginTop: 5,
-  },
-  fitBar: {
-    marginTop: 7,
-    height: 2.5,
-    backgroundColor: colors.lineSoft,
-  },
-  fitBarFill: {
-    height: '100%',
-    backgroundColor: colors.ink,
   },
   invList: {
     borderTopWidth: 1,
