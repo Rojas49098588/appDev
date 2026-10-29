@@ -29,6 +29,9 @@ import ImportInventoryScreen from './screens/ImportInventoryScreen';
 import AddPieceTypeScreen from './screens/AddPieceTypeScreen';
 import ArchivedMembersScreen from './screens/ArchivedMembersScreen';
 import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
+import GamesScreen from './screens/GamesScreen';
+import GameEditScreen from './screens/GameEditScreen';
+import PoloColorsScreen from './screens/PoloColorsScreen';
 import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -154,6 +157,21 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
           <Stack.Screen
             name="ArchivedMember"
             component={ArchivedMemberScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Games"
+            component={GamesScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="GameEdit"
+            component={GameEditScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="PoloColors"
+            component={PoloColorsScreen}
             options={{ headerShown: false }}
           />
         </Stack.Navigator>

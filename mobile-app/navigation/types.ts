@@ -1,3 +1,5 @@
+import type { Sport } from '../lib/models';
+
 export type Role = 'Member' | 'Staff';
 
 export type UserParams = {
@@ -38,6 +40,9 @@ export type RootStackParamList = {
   ComboDetail: { comboId: string };
   ArchivedMembers: undefined;
   ArchivedMember: { archiveId: string };
+  Games: undefined;
+  GameEdit: { gameId?: string; sport?: Sport };
+  PoloColors: undefined;
 };
 
 export type MainTabParamList = {
