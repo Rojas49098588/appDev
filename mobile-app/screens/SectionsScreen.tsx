@@ -12,7 +12,6 @@ import type {
 } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
-import { MEMBERS } from '../constants/membersData';
 import { SECTIONS } from '../constants/homeData';
 import { sectionForInstrument } from '../constants/instrumentSections';
 import TapeGutter from '../components/TapeGutter';
@@ -78,31 +77,10 @@ export default function SectionsScreen({ navigation, route }: Props) {
     setSectionFilter(route.params?.section ?? null);
   }, [route.params?.section]);
 
+  // Everyone with an account, except archived members.
   const roster = useMemo<RosterMember[]>(() => {
-    // Archived accounts still claim their roster name, so it doesn't
-    // reappear as a not-signed-up row; both are then left out.
-    const matchedEmails = new Set<string>();
-    const fromRoster = MEMBERS.flatMap((member) => {
-      const match = accounts.find(
-        (a) => `${a.firstName} ${a.lastName}`.trim().toLowerCase() === member.name.toLowerCase()
-      );
-      if (match) matchedEmails.add(match.email.toLowerCase());
-      if (match?.archivedAt) return [];
-      return {
-        id: match?.id,
-        name: member.name,
-        section: member.section,
-        email: match?.email,
-        phone: match?.phone,
-        height: match?.height,
-        weight: match?.weight,
-        role: match?.role,
-        numbers: match?.numbers,
-      };
-    });
-
-    const newSignUps = accounts
-      .filter((a) => !matchedEmails.has(a.email.toLowerCase()) && !a.archivedAt)
+    return accounts
+      .filter((a) => !a.archivedAt)
       .map((a) => ({
         id: a.id,
         name: `${a.firstName} ${a.lastName}`,
@@ -114,8 +92,6 @@ export default function SectionsScreen({ navigation, route }: Props) {
         role: a.role,
         numbers: a.numbers,
       }));
-
-    return [...fromRoster, ...newSignUps];
   }, [accounts]);
 
   const flagsFor = (member: RosterMember) =>
