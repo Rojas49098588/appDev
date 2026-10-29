@@ -58,4 +58,4 @@ Entry point is `index.ts` → `App.tsx`. Config (app name, icons, platform-speci
 ### Combos and the Catalogue
 
 - Tapping a tile on the staff Catalogue tab (`screens/CatalogueScreen.tsx`) opens `screens/ComboDetailScreen.tsx` (stack route `ComboDetail`, param `{ comboId }`): name + sub-label, enlarged photo, component chips, side-by-side "Set for pregame" / "Set for halftime" (via `useGame().setCombo`), and a Delete button.
-- A combo currently assigned to pregame or halftime can't be deleted — member `GameDayScreen.tsx` looks combos up by id from `GameContext`, so deleting one in use would leave Game Day pointing at nothing.
+- A combo used by a ready, upcoming game can't be deleted. `ComboDetailScreen.tsx` blocks it via `comboInUse` ("Used by vs. {opponent}. Change that game first."), and the database enforces it with the `combos_guard_in_use` trigger in `schema.sql`. Draft and past games don't block the delete.
