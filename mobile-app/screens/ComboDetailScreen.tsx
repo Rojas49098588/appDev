@@ -6,7 +6,8 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useCombos } from '../context/CombosContext';
 import { useGames, type ComboSlot } from '../context/GamesContext';
-import { comboShortcutTarget } from '../lib/games';
+import { comboInUse, comboShortcutTarget } from '../lib/games';
+import { formatGameDate } from '../lib/format';
 import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
@@ -14,8 +15,6 @@ import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
 import { successBuzz } from '../lib/haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ComboDetail'>;
-
-const SLOT_LABELS: Record<ComboSlot, string> = { preGame: 'pregame', halftime: 'halftime' };
 
 export default function ComboDetailScreen({ navigation, route }: Props) {
   const { combos, deleteCombo } = useCombos();
@@ -47,15 +46,18 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
   const isPreGame = game?.preGameComboId === combo.id;
   const isHalftime = game?.halftimeComboId === combo.id;
   const components = combo.components ?? [];
+  const targetName = game
+    ? `vs. ${game.opponent.trim() || 'Untitled game'}${game.gameDate ? ` (${formatGameDate(game.gameDate)})` : ''}`
+    : '';
 
   const handleDelete = () => {
     if (!requireOnline(isOnline)) return;
-    // Game Day looks combos up by id, so a combo in use can't be removed.
-    const inUseSlot: ComboSlot | null = isPreGame ? 'preGame' : isHalftime ? 'halftime' : null;
-    if (inUseSlot) {
+    // The database also blocks this; checking here gives a friendlier early answer.
+    const usedBy = comboInUse(games, combo.id, today);
+    if (usedBy) {
       Alert.alert(
-        'Error',
-        `This combo is set for ${SLOT_LABELS[inUseSlot]}. Choose a different combo first.`
+        "Can't delete combo",
+        `Used by vs. ${usedBy.opponent.trim() || 'Untitled game'}. Change that game first.`
       );
       return;
     }
@@ -125,24 +127,28 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
             <Text style={styles.emptyText}>No components listed</Text>
           )}
 
-          <View style={styles.slotButtonRow}>
-            <Pressable
-              style={[styles.slotButton, isPreGame && styles.slotButtonActive, (!isOnline || !game) && OFFLINE_DIM]}
-              onPress={() => handleSetCombo('preGame')}
-            >
-              <Text style={[styles.slotButtonText, isPreGame && styles.slotButtonTextActive]}>
-                {isPreGame ? 'Set for pregame ✓' : 'Set for pregame'}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.slotButton, isHalftime && styles.slotButtonActive, (!isOnline || !game) && OFFLINE_DIM]}
-              onPress={() => handleSetCombo('halftime')}
-            >
-              <Text style={[styles.slotButtonText, isHalftime && styles.slotButtonTextActive]}>
-                {isHalftime ? 'Set for halftime ✓' : 'Set for halftime'}
-              </Text>
-            </Pressable>
-          </View>
+          {game ? (
+            <View style={styles.slotButtonRow}>
+              <Pressable
+                style={[styles.slotButton, isPreGame && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
+                onPress={() => handleSetCombo('preGame')}
+              >
+                <Text style={[styles.slotButtonText, isPreGame && styles.slotButtonTextActive]}>
+                  {`Set for pregame · ${targetName}${isPreGame ? ' ✓' : ''}`}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.slotButton, isHalftime && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
+                onPress={() => handleSetCombo('halftime')}
+              >
+                <Text style={[styles.slotButtonText, isHalftime && styles.slotButtonTextActive]}>
+                  {`Set for halftime · ${targetName}${isHalftime ? ' ✓' : ''}`}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.noGameNote}>No upcoming football game. Plan one in Games.</Text>
+          )}
 
           <Pressable style={[styles.deleteButton, !isOnline && OFFLINE_DIM]} onPress={handleDelete}>
             <Text style={styles.deleteButtonText}>Delete</Text>
@@ -198,6 +204,13 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
   emptyText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
   slotButtonRow: { flexDirection: 'row', gap: 8, marginTop: 24, marginBottom: 28 },
+  noGameNote: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    color: colors.inkFaint,
+    marginTop: 24,
+    marginBottom: 28,
+  },
   slotButton: {
     flex: 1,
     borderWidth: 1,
