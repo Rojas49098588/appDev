@@ -12,6 +12,7 @@ import { formatClock, formatGameDate } from '../lib/format';
 import TapeGutter from '../components/TapeGutter';
 import SegmentTabs from '../components/SegmentTabs';
 import { BackChevronIcon } from '../components/icons';
+import { WeatherChip } from '../components/GameWeather';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Games'>;
 type Pill = 'Posted' | 'Ready' | 'Draft' | 'Done';
@@ -79,6 +80,9 @@ export default function GamesScreen({ navigation }: Props) {
           </View>
         </View>
         <Text style={styles.cardMeta}>{detailLine(g)}</Text>
+        {!isCourt(g.sport) && !dim ? (
+          <WeatherChip gameDate={g.gameDate} kickoff={g.kickoffTime} today={today} />
+        ) : null}
         {missing.length > 0 && <Text style={styles.missing}>Missing: {missing.join(', ')}</Text>}
       </Pressable>
     );

@@ -13,6 +13,7 @@ import { formatClock, formatGameDate } from '../../lib/format';
 import type { Game, PoloColor } from '../../lib/models';
 import TapeGutter from '../../components/TapeGutter';
 import SegmentTabs from '../../components/SegmentTabs';
+import { WeatherCard } from '../../components/GameWeather';
 
 type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
   firstName: string;
@@ -42,7 +43,7 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
             <SegmentTabs options={['Football', 'BB / VB']} value={tab} onChange={setTab} />
           </View>
           {tab === 0 ? (
-            <FootballTab game={shownFootball(games, today)} combos={combos} />
+            <FootballTab game={shownFootball(games, today)} combos={combos} today={today} />
           ) : (
             <CourtTab list={shownCourt(games, today)} />
           )}
@@ -83,7 +84,7 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FootballTab({ game, combos }: { game: Game | null; combos: Combo[] }) {
+function FootballTab({ game, combos, today }: { game: Game | null; combos: Combo[]; today: string }) {
   if (!game) {
     return <EmptyState title="No upcoming game yet" sub="Staff will post the next game's details here" />;
   }
@@ -100,6 +101,7 @@ function FootballTab({ game, combos }: { game: Game | null; combos: Combo[] }) {
         <Fact label="Call time" value={game.noCallTime ? 'None' : formatClock(game.callTime)} />
         <Fact label="Kickoff" value={formatClock(game.kickoffTime)} />
       </View>
+      <WeatherCard gameDate={game.gameDate} kickoff={game.kickoffTime} today={today} />
       <View style={[styles.fact, styles.poloCard]}>
         <Text style={styles.factLabel}>Polo · rehearsal & parade</Text>
         <PoloDots polo={game.polo} />
