@@ -8,6 +8,7 @@ Tracked issues for this repository.
 
 - **Supabase backend not yet verified on a device.** _Opened 2026-09-30._ Everything since the backend move has been checked with `tsc`, unit tests and RLS tests only. The on-device checklist (plan `docs/superpowers/plans/2026-09-29-supabase-backend.md`, Task 9 Step 3) is still pending.
 - **Plan 3 import / add-inventory not yet verified on a device.** _Opened 2026-10-24._ Checked with unit tests, `tsc` and RLS tests only. The on-device checklist is in this plan's Task 8 Step 3 (`docs/superpowers/plans/2026-10-23-inventory-import.md`), to run with `npm run start:test` against the TEST project.
+- **Games page: long side-by-side combo buttons wrap, and their text isn't centered.** _Opened 2026-10-28._ Found in review of the Set buttons on the Catalogue combo screen (`ComboDetailScreen`, branch `games-page`, Task 9). Not fixed yet; check on device.
 
 ## Fixed
 

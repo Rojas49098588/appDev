@@ -139,6 +139,32 @@ Also:
 
 **On-device checklist results: pending (Task 9 Step 3).** The plan's on-device checklist for this backend (`docs/superpowers/plans/2026-09-29-supabase-backend.md`, Task 9 Step 3) supersedes the older checklist below, which predates Supabase (it mentions a staff access code and local accounts that no longer exist).
 
+## 2026-10-28: Games page
+
+Spec: `docs/superpowers/specs/2026-10-28-games-page-design.md`. Built on branch `games-page` (commits `baf6733` through `991b401`, tasks 1-9, each reviewed). The old single "current game" is gone.
+
+**What changed**
+
+- **Statuses:** every game is a **Draft** or **Ready**. Drafts can be saved with any fields missing and are visible to staff only. "Mark ready" checks the required fields; a ready game can't be saved with a required field blank (the database refuses it too). "Move back to draft" takes a ready game off members' screens.
+- **Members:** Game day shows **Football** and **BB / VB** tabs. Football shows the next ready football game. BB / VB shows every ready basketball and volleyball game on the next game day. A game drops off at midnight America/Chicago after game day. "Today" is the Chicago date in both SQL and the app, whatever the phone's timezone.
+- **Staff:** Home has a "Games" block that opens the Games page (Football | BB / VB tabs), with Edit / New game. The game form has the polo colors list (**Edit colors**), **Move back to draft**, and **Delete game** (with a confirmation).
+- **Catalogue:** "Set" for pregame/halftime names the game it changes (the posted football game, else the next football game). A combo used by a ready upcoming game can't be deleted: "Used by vs. {opponent}. Change that game first." This is enforced in the database too.
+- **Database:** `games` gains `sport`, `division`, `status`, `kickoff_time`, `call_time`, `no_call_time`, `polo_colors`, `polo_note` and `group_number`. `is_current` (and its unique index) is removed. New tables: `polo_colors` (seeded Blue `#2C5AA0`, Red `#C0392B`) and `game_signal` (members' screens refetch when it changes, so a game moved to draft or deleted disappears). `seed.sql` no longer inserts a current game.
+- **New dependency:** `@react-native-community/datetimepicker` (works in Expo Go).
+
+**Live release steps (in order)**
+
+1. The owner runs `npm run db:apply`. The old "Lincoln High" game becomes a hidden football draft (its `status` defaults to `draft`), so members never see it. Staff can delete it.
+2. Publish `npx eas update --branch live --environment preview`.
+3. Staff create real games and combos.
+
+**Testers (TEST project)**
+
+- Publish to the `testing` branch with `npx eas update --branch testing --environment development`. Never `preview` (that is LIVE).
+- The TEST sample games (Notre Dame, Rice, Tulsa, Houston) are inserted only the first time, so their dates age. To refresh them, delete them in TEST and re-run `npm run db:apply:test`.
+
+**On-device checks: pending.** Nobody has run the Games page on a phone yet. Tests and `tsc` only, per the build plan.
+
 ## Required: on-device verification (nobody has done this yet)
 
 Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering the new auth flow actually finished — it supersedes the old Member-View checklist that used to live here, which assumed the app opened straight to Sign Up:
