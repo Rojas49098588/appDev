@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCache, serializeCache } from '../lib/cache.ts';
-import { isAccount, isComboList, isFlagList, isGameOrNull } from '../lib/validators.ts';
+import { isAccount, isComboList, isFlagList, isGameList } from '../lib/validators.ts';
 
 test('serializeCache and parseCache round-trip valid data', () => {
   const flags = [{ id: 'f1', memberId: 'u1', piece: 'Coats', color: 'Blue', size: '208', status: 'dirty', comment: '', createdAt: '2026-10-01T00:00:00Z', memberName: 'Maya C', photoPath: null, staffNote: '', source: 'member', clearedAt: null, clearedByName: null }];
@@ -15,8 +15,15 @@ test('parseCache rejects missing, corrupt, or wrongly shaped data', () => {
   assert.equal(parseCache(serializeCache([{ id: 'f1' }], 1), isFlagList), null);
 });
 
-test('isGameOrNull accepts a cached "no current game"', () => {
-  assert.deepEqual(parseCache(serializeCache(null, 5), isGameOrNull), { syncedAt: 5, data: null });
+test('isGameList accepts cached games and rejects the old shape', () => {
+  const game = {
+    id: 'g1', sport: 'football', division: null, status: 'ready', opponent: 'Rice', gameDate: null,
+    kickoffTime: '11:00', callTime: null, noCallTime: true, polo: [{ name: 'Red', swatch: '#C8102E' }],
+    poloNote: '', groupNumber: null, preGameComboId: null, halftimeComboId: null,
+    afterGameInstructions: '', instructionsPostedBy: '', instructionsUpdatedAt: '',
+  };
+  assert.deepEqual(parseCache(serializeCache([game], 5), isGameList), { syncedAt: 5, data: [game] });
+  assert.equal(parseCache(serializeCache([{ id: 'g1', opponent: 'Rice', date: 'Fri, Sep 18' }], 5), isGameList), null);
 });
 
 test('isComboList accepts combos with and without photos', () => {

@@ -4,8 +4,7 @@
 //
 // Once real members are onboarded, point supabase/.env.local at a SEPARATE test
 // project before running this: it creates and deletes users, uploads and
-// removes storage files, and briefly changes the current game's combo slots
-// (restoring them afterwards). Members on the live app would see those changes.
+// removes storage files, and creates and deletes test games.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -28,27 +27,28 @@ const anon = createClient(url, anonKey, clientOptions);
 const RUN = Date.now().toString(36);
 const PASSWORD = 'TestPass123';
 const SEED_COMBO_01 = '00000000-0000-4000-8000-000000000001';
-const CURRENT_GAME = '00000000-0000-4000-8000-0000000000a1';
+const SEED_COMBO_14 = '00000000-0000-4000-8000-000000000014';
 
-type Slots = { pre_game_combo_id: string | null; halftime_combo_id: string | null };
-
-// The current game's combo slots, read via admin, so tests that change them
-// can put back exactly what was there.
-async function currentSlots(): Promise<Slots> {
-  const { data, error } = await admin
-    .from('games')
-    .select('pre_game_combo_id, halftime_combo_id')
-    .eq('id', CURRENT_GAME)
-    .single();
-  if (error) throw error;
-  return data as Slots;
+// Today in America/Chicago, offset by a number of days (matches public.band_today()).
+function bandDate(offsetDays: number): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
 }
 
-async function restoreSlots(prior: Slots): Promise<void> {
-  const now = await currentSlots();
-  if (now.pre_game_combo_id === prior.pre_game_combo_id && now.halftime_combo_id === prior.halftime_combo_id) return;
-  const { error } = await admin.from('games').update(prior).eq('id', CURRENT_GAME);
+const BLUE = [{ name: 'Blue', swatch: '#2C5AA0' }];
+const createdGameIds: string[] = [];
+let READY_GAME: string;
+let DRAFT_GAME: string;
+let PAST_GAME: string;
+
+// Creates a game through the service role and records its id so after() removes it.
+async function makeGame(fields: Record<string, unknown>): Promise<string> {
+  const { data, error } = await admin.from('games').insert(fields).select('id').single();
   if (error) throw error;
+  createdGameIds.push(data.id);
+  return data.id;
 }
 
 type TestUser = { id: string; email: string };
@@ -93,9 +93,17 @@ before(async () => {
   if (flagError) throw flagError;
   asMember = await signIn(member.email);
   asStaff = await signIn(staff.email);
+  const full = {
+    sport: 'football', opponent: 'RLS Fixture', kickoff_time: '11:00', call_time: '06:30',
+    polo_colors: BLUE, pre_game_combo_id: SEED_COMBO_01, halftime_combo_id: SEED_COMBO_14,
+  };
+  READY_GAME = await makeGame({ ...full, status: 'ready', game_date: bandDate(3) });
+  DRAFT_GAME = await makeGame({ sport: 'football', status: 'draft', opponent: 'RLS Draft', game_date: bandDate(5) });
+  PAST_GAME = await makeGame({ ...full, status: 'ready', game_date: bandDate(-3) });
 });
 
 after(async () => {
+  if (createdGameIds.length > 0) await admin.from('games').delete().in('id', createdGameIds);
   // Flags outlive their member (member_id is set null), so remove test flags explicitly.
   if (createdUserIds.length > 0) await admin.from('flags').delete().in('member_id', createdUserIds);
   for (const id of createdUserIds) {
@@ -251,9 +259,9 @@ describe('member permissions', () => {
     const { data: flagStillThere } = await admin.from('flags').select('id').eq('member_id', otherMember.id);
     assert.ok((flagStillThere?.length ?? 0) > 0);
 
-    const gameDel = await asMember.from('games').delete().eq('id', CURRENT_GAME).select('id');
+    const gameDel = await asMember.from('games').delete().eq('id', READY_GAME).select('id');
     assert.equal(gameDel.data?.length ?? 0, 0);
-    const { data: gameStillThere } = await admin.from('games').select('id').eq('id', CURRENT_GAME);
+    const { data: gameStillThere } = await admin.from('games').select('id').eq('id', READY_GAME);
     assert.equal(gameStillThere?.length, 1);
 
     const comboDel = await asMember.from('combos').delete().eq('id', SEED_COMBO_01).select('id');
@@ -271,10 +279,10 @@ describe('member permissions', () => {
     const gameInsert = await asMember.from('games').insert({ opponent: 'Forged High', game_date: '2026-01-01' });
     assert.notEqual(gameInsert.error, null);
 
-    const gameDel = await asMember.from('games').delete().eq('id', CURRENT_GAME).select('id');
+    const gameDel = await asMember.from('games').delete().eq('id', READY_GAME).select('id');
     assert.equal(gameDel.data?.length ?? 0, 0);
-    const { data: gameRow } = await admin.from('games').select('id, is_current').eq('id', CURRENT_GAME).single();
-    assert.equal(gameRow?.is_current, true);
+    const { data: gameRow } = await admin.from('games').select('id, opponent').eq('id', READY_GAME).single();
+    assert.equal(gameRow?.opponent, 'RLS Fixture');
   });
 
   test('cannot read settings', async () => {
@@ -334,16 +342,11 @@ describe('member permissions', () => {
     assert.equal(data?.length, 1);
   });
 
-  test('cannot change the current game', async () => {
-    const prior = await currentSlots();
-    try {
-      const { data } = await asMember.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select('id');
-      assert.equal(data?.length ?? 0, 0);
-      const after = await currentSlots();
-      assert.equal(after.halftime_combo_id, prior.halftime_combo_id);
-    } finally {
-      await restoreSlots(prior);
-    }
+  test('cannot change a game', async () => {
+    const { data } = await asMember.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', READY_GAME).select('id');
+    assert.equal(data?.length ?? 0, 0);
+    const { data: row } = await admin.from('games').select('halftime_combo_id').eq('id', READY_GAME).single();
+    assert.equal(row?.halftime_combo_id, SEED_COMBO_14);
   });
 
   test('cannot call set_role', async () => {
@@ -426,31 +429,40 @@ describe('staff permissions', () => {
   });
 
   test('deleting a combo clears the game slot that used it', async () => {
-    const prior = await currentSlots();
     let comboId: string | undefined;
     try {
       const { data: combo, error } = await asStaff.from('combos').insert({ label: `Slot ${RUN}` }).select().single();
       assert.equal(error, null);
       comboId = combo!.id;
-      await asStaff.from('games').update({ pre_game_combo_id: comboId }).eq('id', CURRENT_GAME);
+      const upd = await asStaff.from('games').update({ pre_game_combo_id: comboId }).eq('id', DRAFT_GAME);
+      assert.equal(upd.error, null);
       await asStaff.from('combos').delete().eq('id', comboId);
-      const { data: game } = await admin.from('games').select('pre_game_combo_id').eq('id', CURRENT_GAME).single();
+      const { data: game } = await admin.from('games').select('pre_game_combo_id').eq('id', DRAFT_GAME).single();
       assert.equal(game?.pre_game_combo_id, null);
     } finally {
-      await restoreSlots(prior);
+      if (comboId) await admin.from('combos').delete().eq('id', comboId);
+    }
+  });
+
+  test('deleting a combo used by a past ready game still works', async () => {
+    let comboId: string | undefined;
+    try {
+      const { data: combo } = await asStaff.from('combos').insert({ label: `Past ${RUN}` }).select().single();
+      comboId = combo!.id;
+      await admin.from('games').update({ pre_game_combo_id: comboId }).eq('id', PAST_GAME);
+      const del = await asStaff.from('combos').delete().eq('id', comboId);
+      assert.equal(del.error, null);
+      const { data: game } = await admin.from('games').select('pre_game_combo_id').eq('id', PAST_GAME).single();
+      assert.equal(game?.pre_game_combo_id, null);
+    } finally {
       if (comboId) await admin.from('combos').delete().eq('id', comboId);
     }
   });
 
   test('can set the halftime combo', async () => {
-    const prior = await currentSlots();
-    try {
-      const { data, error } = await asStaff.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', CURRENT_GAME).select().single();
-      assert.equal(error, null);
-      assert.equal(data?.halftime_combo_id, SEED_COMBO_01);
-    } finally {
-      await restoreSlots(prior);
-    }
+    const { data, error } = await asStaff.from('games').update({ halftime_combo_id: SEED_COMBO_01 }).eq('id', DRAFT_GAME).select().single();
+    assert.equal(error, null);
+    assert.equal(data?.halftime_combo_id, SEED_COMBO_01);
   });
 
   test('can promote and demote another user', async () => {
@@ -1375,5 +1387,180 @@ describe('import and add inventory', () => {
     assert.equal(again.error, null);
     assert.equal(again.data, 1);
     assert.deepEqual((await piecesOf(name)).map((p) => p.color), ['Blue', 'Gold', 'Red']);
+  });
+});
+
+describe('games', () => {
+  test('member reads ready upcoming games but not drafts or past games', async () => {
+    const { data, error } = await asMember.from('games').select('id');
+    assert.equal(error, null);
+    const ids = (data ?? []).map((g) => g.id);
+    assert.ok(ids.includes(READY_GAME));
+    assert.ok(!ids.includes(DRAFT_GAME));
+    assert.ok(!ids.includes(PAST_GAME));
+  });
+
+  test('member cannot insert, update or delete games', async () => {
+    const ins = await asMember.from('games').insert({ opponent: 'Forged', status: 'draft' }).select('id');
+    assert.ok(ins.error !== null || (ins.data?.length ?? 0) === 0);
+    const upd = await asMember.from('games').update({ opponent: 'Hacked' }).eq('id', READY_GAME).select('id');
+    assert.ok(upd.error !== null || (upd.data?.length ?? 0) === 0);
+    const del = await asMember.from('games').delete().eq('id', READY_GAME).select('id');
+    assert.ok(del.error !== null || (del.data?.length ?? 0) === 0);
+    const { data } = await admin.from('games').select('opponent').eq('id', READY_GAME);
+    assert.equal(data?.length, 1);
+    assert.equal(data?.[0].opponent, 'RLS Fixture');
+    const { data: forged } = await admin.from('games').select('id').eq('opponent', 'Forged');
+    assert.equal(forged?.length ?? 0, 0);
+  });
+
+  test('staff can insert, update and delete games', async () => {
+    const ins = await asStaff.from('games').insert({ opponent: 'Staff Made', sport: 'football' }).select('id').single();
+    assert.equal(ins.error, null);
+    createdGameIds.push(ins.data!.id);
+    const upd = await asStaff.from('games').update({ opponent: 'Staff Edited' }).eq('id', ins.data!.id).select('opponent').single();
+    assert.equal(upd.error, null);
+    assert.equal(upd.data?.opponent, 'Staff Edited');
+    const del = await asStaff.from('games').delete().eq('id', ins.data!.id).select('id');
+    assert.equal(del.data?.length, 1);
+  });
+
+  test('ready requires every football field', async () => {
+    const bad = await asStaff.from('games').insert({ sport: 'football', status: 'ready', opponent: 'Rice' });
+    assert.notEqual(bad.error, null);
+    assert.match(bad.error!.message, /required field/);
+    const draft = await asStaff.from('games').insert({ sport: 'football', status: 'draft', opponent: 'Rice' }).select('id').single();
+    assert.equal(draft.error, null);
+    createdGameIds.push(draft.data!.id);
+  });
+
+  test('ready requires group and division for basketball/volleyball', async () => {
+    const row = {
+      sport: 'volleyball', division: 'womens', status: 'ready', opponent: 'Tulsa', game_date: bandDate(4),
+      kickoff_time: '18:30', call_time: '17:30', polo_colors: BLUE,
+    };
+    const bad = await asStaff.from('games').insert(row);
+    assert.notEqual(bad.error, null);
+    assert.match(bad.error!.message, /required field/);
+    const ok = await asStaff.from('games').insert({ ...row, group_number: 3 }).select('id').single();
+    assert.equal(ok.error, null);
+    createdGameIds.push(ok.data!.id);
+  });
+
+  test('no_call_time satisfies call time and clears it', async () => {
+    const { data, error } = await asStaff.from('games').insert({
+      sport: 'football', status: 'ready', opponent: 'Rice', game_date: bandDate(6), kickoff_time: '11:00',
+      no_call_time: true, call_time: '06:30', polo_colors: BLUE,
+      pre_game_combo_id: SEED_COMBO_01, halftime_combo_id: SEED_COMBO_14,
+    }).select('id, call_time, no_call_time').single();
+    assert.equal(error, null);
+    createdGameIds.push(data!.id);
+    assert.equal(data?.call_time, null);
+    assert.equal(data?.no_call_time, true);
+  });
+
+  test('blanking a field on a ready game is refused', async () => {
+    const upd = await asStaff.from('games').update({ opponent: '' }).eq('id', READY_GAME).select('id');
+    assert.notEqual(upd.error, null);
+    assert.match(upd.error!.message, /required field/);
+    const { data } = await admin.from('games').select('opponent').eq('id', READY_GAME).single();
+    assert.equal(data?.opponent, 'RLS Fixture');
+  });
+
+  test('instructions edits stamp the poster', async () => {
+    const set = await asStaff.from('games').update({ after_game_instructions: 'Hang coats' }).eq('id', READY_GAME);
+    assert.equal(set.error, null);
+    const { data } = await admin.from('games').select('instructions_posted_by, instructions_updated_at').eq('id', READY_GAME).single();
+    assert.equal(data?.instructions_posted_by, staff.id);
+    assert.notEqual(data?.instructions_updated_at, null);
+    const clear = await asStaff.from('games').update({ after_game_instructions: '' }).eq('id', READY_GAME);
+    assert.equal(clear.error, null);
+    const { data: cleared } = await admin.from('games').select('instructions_posted_by, instructions_updated_at').eq('id', READY_GAME).single();
+    assert.equal(cleared?.instructions_posted_by, null);
+    assert.equal(cleared?.instructions_updated_at, null);
+  });
+});
+
+describe('polo colors, combo guard, game signal', () => {
+  test('every signed-in user reads polo colors; only staff change them', async () => {
+    const { data, error } = await asMember.from('polo_colors').select('name');
+    assert.equal(error, null);
+    const names = (data ?? []).map((r) => r.name);
+    assert.ok(names.includes('Blue'));
+    assert.ok(names.includes('Red'));
+    const bad = await asMember.from('polo_colors').insert({ name: `Nope ${RUN}`, swatch: '#112233' }).select('id');
+    assert.ok(bad.error !== null || (bad.data?.length ?? 0) === 0);
+    let id: string | undefined;
+    try {
+      const ins = await asStaff.from('polo_colors').insert({ name: `Teal ${RUN}`, swatch: '#008080', sort_order: 9 }).select('id').single();
+      assert.equal(ins.error, null);
+      id = ins.data!.id;
+      const upd = await asStaff.from('polo_colors').update({ swatch: '#009090' }).eq('id', id).select('swatch').single();
+      assert.equal(upd.error, null);
+      assert.equal(upd.data?.swatch, '#009090');
+      const del = await asStaff.from('polo_colors').delete().eq('id', id).select('id');
+      assert.equal(del.data?.length, 1);
+      id = undefined;
+    } finally {
+      if (id) await admin.from('polo_colors').delete().eq('id', id);
+    }
+  });
+
+  test('combo used by a ready upcoming game cannot be deleted', async () => {
+    let comboId: string | undefined;
+    try {
+      const { data: combo, error } = await asStaff.from('combos').insert({ label: `Guard ${RUN}` }).select().single();
+      assert.equal(error, null);
+      comboId = combo!.id;
+      const set = await admin.from('games').update({ halftime_combo_id: comboId }).eq('id', READY_GAME);
+      assert.equal(set.error, null);
+      const del = await asStaff.from('combos').delete().eq('id', comboId).select('id');
+      assert.notEqual(del.error, null);
+      assert.equal(del.error!.message, 'Used by vs. RLS Fixture. Change that game first.');
+      const { data: still } = await admin.from('combos').select('id').eq('id', comboId);
+      assert.equal(still?.length, 1);
+    } finally {
+      await admin.from('games').update({ halftime_combo_id: SEED_COMBO_14 }).eq('id', READY_GAME);
+      if (comboId) await admin.from('combos').delete().eq('id', comboId);
+    }
+  });
+
+  test('combo used only by a draft or past game can be deleted', async () => {
+    let comboId: string | undefined;
+    try {
+      const { data: combo } = await asStaff.from('combos').insert({ label: `Free ${RUN}` }).select().single();
+      comboId = combo!.id;
+      await admin.from('games').update({ halftime_combo_id: comboId }).eq('id', DRAFT_GAME);
+      await admin.from('games').update({ halftime_combo_id: comboId }).eq('id', PAST_GAME);
+      const del = await asStaff.from('combos').delete().eq('id', comboId);
+      assert.equal(del.error, null);
+      comboId = undefined;
+      const { data: rows } = await admin.from('games').select('halftime_combo_id').in('id', [DRAFT_GAME, PAST_GAME]);
+      assert.equal(rows?.length, 2);
+      for (const r of rows ?? []) assert.equal(r.halftime_combo_id, null);
+    } finally {
+      if (comboId) await admin.from('combos').delete().eq('id', comboId);
+    }
+  });
+
+  test('game changes bump game_signal', async () => {
+    const before = await asMember.from('game_signal').select('changed_at').eq('id', 1).single();
+    assert.equal(before.error, null);
+    const upd = await asStaff.from('games').update({ opponent: `Bump ${RUN}` }).eq('id', DRAFT_GAME);
+    assert.equal(upd.error, null);
+    const after = await asMember.from('game_signal').select('changed_at').eq('id', 1).single();
+    assert.ok(new Date(after.data!.changed_at).getTime() > new Date(before.data!.changed_at).getTime());
+  });
+
+  test('members cannot write game_signal', async () => {
+    const { data: before } = await admin.from('game_signal').select('changed_at').eq('id', 1).single();
+    const upd = await asMember.from('game_signal').update({ changed_at: '2000-01-01T00:00:00Z' }).eq('id', 1).select('id');
+    assert.ok(upd.error !== null || (upd.data?.length ?? 0) === 0);
+    const ins = await asMember.from('game_signal').insert({ id: 2 }).select('id');
+    assert.ok(ins.error !== null || (ins.data?.length ?? 0) === 0);
+    const del = await asMember.from('game_signal').delete().eq('id', 1).select('id');
+    assert.ok(del.error !== null || (del.data?.length ?? 0) === 0);
+    const { data: after } = await admin.from('game_signal').select('changed_at').eq('id', 1).single();
+    assert.equal(after?.changed_at, before?.changed_at);
   });
 });

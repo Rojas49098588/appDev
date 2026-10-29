@@ -10,7 +10,10 @@ import { fonts } from '../constants/fonts';
 import { STATS, SECTIONS } from '../constants/homeData';
 import { useFlags } from '../context/FlagsContext';
 import { useInventory } from '../context/InventoryContext';
+import { useGames } from '../context/GamesContext';
 import { pieceCount } from '../lib/inventory';
+import { shownFootball } from '../lib/games';
+import { formatGameDate } from '../lib/format';
 import TapeGutter from '../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
@@ -23,6 +26,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
   const { pieceTypes, pieces } = useInventory();
+  const { games, today } = useGames();
+  const nextFootball = shownFootball(games, today);
+  const gamesNote = nextFootball
+    ? `Next: vs. ${nextFootball.opponent}, ${nextFootball.gameDate ? formatGameDate(nextFootball.gameDate) : 'date TBD'}`
+    : 'No football game posted';
   // Archived members is a root stack route, outside the tab navigator.
   const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -153,6 +161,16 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               );
             })}
           </View>
+        </View>
+
+        <View style={styles.block}>
+          <View style={styles.blockHead}>
+            <Text style={styles.blockTitle}>Games</Text>
+            <Pressable onPress={() => rootNavigation.navigate('Games')}>
+              <Text style={styles.blockLink}>View</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.blockNote}>{gamesNote}</Text>
         </View>
 
         <View style={styles.block}>

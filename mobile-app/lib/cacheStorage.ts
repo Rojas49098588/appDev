@@ -6,7 +6,8 @@ export const CACHE_KEYS = {
   accounts: 'mustang.cache.accounts.v1',
   flags: 'mustang.cache.flags.v1',
   combos: 'mustang.cache.combos.v1',
-  game: 'mustang.cache.game.v1',
+  games: 'mustang.cache.games.v2',
+  poloColors: 'mustang.cache.poloColors.v1',
   pieceTypes: 'mustang.cache.pieceTypes.v1',
   pieces: 'mustang.cache.pieces.v1',
 } as const;
@@ -20,6 +21,7 @@ const LEGACY_KEYS = [
   'formation.combos.custom.v1',
   'formation.combos.deleted.v1',
   'formation.game.v1',
+  'mustang.cache.game.v1',
 ];
 
 export async function readCache<T>(key: string, isValid: (v: unknown) => v is T): Promise<Cached<T> | null> {

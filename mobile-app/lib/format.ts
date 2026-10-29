@@ -26,3 +26,12 @@ export function formatTime(ms: number): string {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${hour12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
 }
+
+// '14:30' -> '2:30pm'; '' when missing or invalid.
+export function formatClock(hhmm: string | null): string {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return '';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
+}

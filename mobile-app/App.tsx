@@ -29,11 +29,14 @@ import ImportInventoryScreen from './screens/ImportInventoryScreen';
 import AddPieceTypeScreen from './screens/AddPieceTypeScreen';
 import ArchivedMembersScreen from './screens/ArchivedMembersScreen';
 import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
+import GamesScreen from './screens/GamesScreen';
+import GameEditScreen from './screens/GameEditScreen';
+import PoloColorsScreen from './screens/PoloColorsScreen';
 import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
-import { GameProvider } from './context/GameContext';
+import { GamesProvider } from './context/GamesContext';
 import { CombosProvider } from './context/CombosContext';
 import { supabaseConfigError } from './lib/supabase';
 import { colors } from './constants/colors';
@@ -156,6 +159,21 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
             component={ArchivedMemberScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="Games"
+            component={GamesScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="GameEdit"
+            component={GameEditScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="PoloColors"
+            component={PoloColorsScreen}
+            options={{ headerShown: false }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </View>
@@ -199,13 +217,13 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <FlagsProvider>
-          <GameProvider>
+          <GamesProvider>
             <CombosProvider>
               <InventoryProvider>
                 <AppNavigator onReady={onLayoutRootView} />
               </InventoryProvider>
             </CombosProvider>
-          </GameProvider>
+          </GamesProvider>
         </FlagsProvider>
       </AuthProvider>
     </SafeAreaProvider>
