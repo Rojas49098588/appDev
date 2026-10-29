@@ -4,14 +4,14 @@ import { fonts } from '../constants/fonts';
 import { useConnection } from '../hooks/useConnection';
 import { useFlags } from '../context/FlagsContext';
 import { useCombos } from '../context/CombosContext';
-import { useGame } from '../context/GameContext';
+import { useGames } from '../context/GamesContext';
 import { formatTime } from '../lib/format';
 
 export default function OfflineBanner() {
   const { isOnline } = useConnection();
   const flags = useFlags();
   const combos = useCombos();
-  const game = useGame();
+  const game = useGames();
 
   if (!isOnline) {
     const syncTimes = [flags.syncedAt, combos.syncedAt, game.syncedAt].filter((t): t is number => t !== null);

@@ -5,7 +5,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useCombos } from '../context/CombosContext';
-import { useGame, type ComboSlot } from '../context/GameContext';
+import { useGames, type ComboSlot } from '../context/GamesContext';
+import { comboShortcutTarget } from '../lib/games';
 import { friendlyError } from '../lib/errors';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
@@ -18,7 +19,8 @@ const SLOT_LABELS: Record<ComboSlot, string> = { preGame: 'pregame', halftime: '
 
 export default function ComboDetailScreen({ navigation, route }: Props) {
   const { combos, deleteCombo } = useCombos();
-  const { game, setCombo } = useGame();
+  const { games, today, setGameCombo } = useGames();
+  const game = comboShortcutTarget(games, today);
   const { isOnline } = useConnection();
   const combo = combos.find((c) => c.id === route.params.comboId);
 
@@ -76,9 +78,9 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
   };
 
   const handleSetCombo = async (slot: ComboSlot) => {
-    if (!requireOnline(isOnline)) return;
+    if (!game || !requireOnline(isOnline)) return;
     try {
-      await setCombo(slot, combo.id);
+      await setGameCombo(game.id, slot, combo.id);
       successBuzz();
     } catch (error) {
       Alert.alert("Couldn't update game day", friendlyError(error));
@@ -125,7 +127,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.slotButtonRow}>
             <Pressable
-              style={[styles.slotButton, isPreGame && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
+              style={[styles.slotButton, isPreGame && styles.slotButtonActive, (!isOnline || !game) && OFFLINE_DIM]}
               onPress={() => handleSetCombo('preGame')}
             >
               <Text style={[styles.slotButtonText, isPreGame && styles.slotButtonTextActive]}>
@@ -133,7 +135,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.slotButton, isHalftime && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
+              style={[styles.slotButton, isHalftime && styles.slotButtonActive, (!isOnline || !game) && OFFLINE_DIM]}
               onPress={() => handleSetCombo('halftime')}
             >
               <Text style={[styles.slotButtonText, isHalftime && styles.slotButtonTextActive]}>

@@ -6,7 +6,9 @@ import { colors } from '../../constants/colors';
 import { fonts } from '../../constants/fonts';
 import type { Combo } from '../../constants/combosData';
 import { useCombos } from '../../context/CombosContext';
-import { useGame } from '../../context/GameContext';
+import { useGames } from '../../context/GamesContext';
+import { shownFootball } from '../../lib/games';
+import { formatGameDate } from '../../lib/format';
 import TapeGutter from '../../components/TapeGutter';
 
 type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
@@ -17,7 +19,8 @@ type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
 
 export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Props) {
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  const { game } = useGame();
+  const { games, today } = useGames();
+  const game = shownFootball(games, today);
   const { combos } = useCombos();
   const preGameCombo = game?.preGameComboId ? combos.find((c) => c.id === game.preGameComboId) : undefined;
   const halftimeCombo = game?.halftimeComboId ? combos.find((c) => c.id === game.halftimeComboId) : undefined;
@@ -34,7 +37,7 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
             </Pressable>
           </View>
           <Text style={styles.gameLine}>
-            {game ? `vs. ${game.opponent} — ${game.date}` : 'No game scheduled'}
+            {game ? `vs. ${game.opponent} — ${game.gameDate ? formatGameDate(game.gameDate) : ''}` : 'No game scheduled'}
           </Text>
 
           {game && (

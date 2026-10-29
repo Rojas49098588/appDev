@@ -33,7 +33,7 @@ import type { RootStackParamList, Role } from './navigation/types';
 import { FlagsProvider } from './context/FlagsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
-import { GameProvider } from './context/GameContext';
+import { GamesProvider } from './context/GamesContext';
 import { CombosProvider } from './context/CombosContext';
 import { supabaseConfigError } from './lib/supabase';
 import { colors } from './constants/colors';
@@ -199,13 +199,13 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <FlagsProvider>
-          <GameProvider>
+          <GamesProvider>
             <CombosProvider>
               <InventoryProvider>
                 <AppNavigator onReady={onLayoutRootView} />
               </InventoryProvider>
             </CombosProvider>
-          </GameProvider>
+          </GamesProvider>
         </FlagsProvider>
       </AuthProvider>
     </SafeAreaProvider>
