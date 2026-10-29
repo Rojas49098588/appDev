@@ -22,6 +22,8 @@ import type { PhotoChange } from '../lib/flagHistory';
 import { OFFLINE_DIM, useConnection } from '../hooks/useConnection';
 import { CloseIcon, DropIcon, WrenchIcon } from './icons';
 import Swatch from './Swatch';
+import PhotoPermissionNotice from './PhotoPermissionNotice';
+import { usePhotoPermission } from '../hooks/usePhotoPermission';
 
 export type FlagTarget = {
   piece: string;
@@ -105,12 +107,10 @@ function SheetBody({
   const hadPhoto = !!target.flag?.photoPath;
   const displayUri = pickedUri === undefined ? existingUrl : (pickedUri ?? undefined);
 
+  const photoPermission = usePhotoPermission();
+
   const pickFromLibrary = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'Allow photo library access in Settings to add a photo. You can still submit the flag without one.');
-      return;
-    }
+    if (!(await photoPermission.request('library'))) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
@@ -120,11 +120,7 @@ function SheetBody({
   };
 
   const takePhoto = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'Allow camera access in Settings to take a photo. You can still submit the flag without one.');
-      return;
-    }
+    if (!(await photoPermission.request('camera'))) return;
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.5 });
     if (!result.canceled) setPickedUri(result.assets[0].uri);
   };
@@ -237,6 +233,14 @@ function SheetBody({
           <Text style={styles.photoAddText}>Add photo</Text>
         </Pressable>
       )}
+      {photoPermission.block ? (
+        <PhotoPermissionNotice
+          block={photoPermission.block}
+          onTryAgain={photoPermission.block.source === 'camera' ? takePhoto : pickFromLibrary}
+          onDismiss={photoPermission.dismiss}
+          photoOptional
+        />
+      ) : null}
       <Pressable
         style={[
           styles.submit,
