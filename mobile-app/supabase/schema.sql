@@ -116,19 +116,58 @@ create table if not exists public.combos (
   created_at timestamptz not null default now()
 );
 
+-- Today for the band: the calendar date in Chicago, whatever the server's or the phone's timezone.
+create or replace function public.band_today() returns date
+language sql stable
+set search_path = public
+as $$ select (now() at time zone 'America/Chicago')::date $$;
+grant execute on function public.band_today() to authenticated;
+
 create table if not exists public.games (
   id uuid primary key default gen_random_uuid(),
-  opponent text not null,
-  game_date date not null,
+  sport text not null default 'football',
+  division text,
+  status text not null default 'draft',
+  opponent text not null default '',
+  game_date date,
+  kickoff_time time,
+  call_time time,
+  no_call_time boolean not null default false,
+  polo_colors jsonb not null default '[]',
+  polo_note text not null default '',
+  group_number int,
   pre_game_combo_id uuid references public.combos(id) on delete set null,
   halftime_combo_id uuid references public.combos(id) on delete set null,
   after_game_instructions text not null default '',
   instructions_posted_by uuid references public.profiles(id) on delete set null,
-  instructions_updated_at timestamptz,
-  is_current boolean not null default false
+  instructions_updated_at timestamptz
 );
 
-create unique index if not exists games_one_current on public.games (is_current) where is_current;
+-- Existing databases: bring the older games table up to the columns above.
+alter table public.games add column if not exists sport text not null default 'football';
+alter table public.games add column if not exists division text;
+alter table public.games add column if not exists status text not null default 'draft';
+alter table public.games add column if not exists kickoff_time time;
+alter table public.games add column if not exists call_time time;
+alter table public.games add column if not exists no_call_time boolean not null default false;
+alter table public.games add column if not exists polo_colors jsonb not null default '[]';
+alter table public.games add column if not exists polo_note text not null default '';
+alter table public.games add column if not exists group_number int;
+alter table public.games alter column game_date drop not null;
+alter table public.games alter column opponent set default '';
+drop index if exists public.games_one_current;
+alter table public.games drop column if exists is_current;
+
+alter table public.games drop constraint if exists games_sport_check;
+alter table public.games add constraint games_sport_check check (sport in ('football', 'basketball', 'volleyball'));
+alter table public.games drop constraint if exists games_division_check;
+alter table public.games add constraint games_division_check check (division in ('mens', 'womens'));
+alter table public.games drop constraint if exists games_status_check;
+alter table public.games add constraint games_status_check check (status in ('draft', 'ready'));
+alter table public.games drop constraint if exists games_group_number_check;
+alter table public.games add constraint games_group_number_check check (group_number between 1 and 5);
+alter table public.games drop constraint if exists games_polo_colors_check;
+alter table public.games add constraint games_polo_colors_check check (jsonb_typeof(polo_colors) = 'array');
 
 create table if not exists public.flags (
   id uuid primary key default gen_random_uuid(),
@@ -639,10 +678,67 @@ create policy pieces_delete on public.pieces for delete to authenticated using (
 
 alter table public.games enable row level security;
 drop policy if exists games_select on public.games;
-create policy games_select on public.games for select to authenticated using (true);
+create policy games_select on public.games for select to authenticated
+  using (public.is_staff() or (status = 'ready' and game_date >= public.band_today() and not public.is_archived()));
+drop policy if exists games_insert on public.games;
+create policy games_insert on public.games for insert to authenticated with check (public.is_staff());
 drop policy if exists games_update on public.games;
 create policy games_update on public.games for update to authenticated
   using (public.is_staff()) with check (public.is_staff());
+drop policy if exists games_delete on public.games;
+create policy games_delete on public.games for delete to authenticated using (public.is_staff());
+
+-- Normalizes a game on every save, refuses "ready" when a required field is
+-- missing, and stamps who last changed the after-game instructions. Past ready
+-- games are exempt from the check so a combo delete (FK set null) still works.
+create or replace function public.games_check_ready() returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.opponent := btrim(new.opponent);
+  if new.no_call_time then
+    new.call_time := null;
+  end if;
+  if new.sport = 'football' then
+    new.division := null;
+    new.group_number := null;
+  else
+    new.pre_game_combo_id := null;
+    new.halftime_combo_id := null;
+    new.after_game_instructions := '';
+  end if;
+
+  if new.status = 'ready' and (new.game_date is null or new.game_date >= public.band_today()) then
+    if new.opponent = ''
+       or new.game_date is null
+       or new.kickoff_time is null
+       or (new.call_time is null and not new.no_call_time)
+       or jsonb_array_length(new.polo_colors) < 1
+       or (new.sport = 'football' and (new.pre_game_combo_id is null or new.halftime_combo_id is null))
+       or (new.sport <> 'football' and (new.division is null or new.group_number is null))
+    then
+      raise exception 'Fill in every required field before marking this game ready.' using errcode = '23514';
+    end if;
+  end if;
+
+  if tg_op = 'INSERT' or new.after_game_instructions is distinct from old.after_game_instructions then
+    if btrim(new.after_game_instructions) = '' then
+      new.instructions_posted_by := null;
+      new.instructions_updated_at := null;
+    else
+      new.instructions_posted_by := auth.uid();
+      new.instructions_updated_at := now();
+    end if;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.games_check_ready() from public, anon, authenticated;
+drop trigger if exists games_check_ready on public.games;
+create trigger games_check_ready
+  before insert or update on public.games
+  for each row execute function public.games_check_ready();
 
 alter table public.flags enable row level security;
 drop policy if exists flags_select on public.flags;
