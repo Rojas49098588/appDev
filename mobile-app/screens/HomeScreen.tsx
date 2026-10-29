@@ -92,7 +92,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
                 navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
               }
             >
-              <Text style={styles.blockLink}>See all</Text>
+              <Text style={styles.blockLink}>See all ›</Text>
             </Pressable>
           </View>
           <View style={styles.sectionGrid}>
@@ -122,7 +122,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <View style={styles.blockHead}>
             <Text style={styles.blockTitle}>Inventory</Text>
             <Pressable onPress={() => navigation.navigate('Inventory')}>
-              <Text style={styles.blockLink}>View full</Text>
+              <Text style={styles.blockLink}>View full ›</Text>
             </Pressable>
           </View>
           {inventoryPreview.length === 0 && (
@@ -167,7 +167,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <View style={styles.blockHead}>
             <Text style={styles.blockTitle}>Games</Text>
             <Pressable onPress={() => rootNavigation.navigate('Games')}>
-              <Text style={styles.blockLink}>View</Text>
+              <Text style={styles.blockLink}>View ›</Text>
             </Pressable>
           </View>
           <Text style={styles.blockNote}>{gamesNote}</Text>
@@ -177,7 +177,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <View style={styles.blockHead}>
             <Text style={styles.blockTitle}>Archived members</Text>
             <Pressable onPress={() => rootNavigation.navigate('ArchivedMembers')}>
-              <Text style={styles.blockLink}>View</Text>
+              <Text style={styles.blockLink}>View ›</Text>
             </Pressable>
           </View>
           <Text style={styles.blockNote}>Snapshots of members who left, with the option to restore them.</Text>
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   blockHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
     marginBottom: 13,
   },
   blockTitle: {
@@ -297,13 +297,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.inkSoft,
   },
+  // Solid dark button so the block links are easy to spot.
   blockLink: {
-    fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-    paddingBottom: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.white,
+    backgroundColor: colors.ink,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    overflow: 'hidden',
   },
   sectionGrid: {
     flexDirection: 'row',
