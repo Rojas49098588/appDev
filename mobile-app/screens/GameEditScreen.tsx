@@ -192,7 +192,9 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
   const moveToDraft = () => {
     if (!game) return;
-    void runWrite("Couldn't move game back to draft", () => updateGame(game.id, draft, 'draft'));
+    void runWrite("Couldn't move game back to draft", async () => {
+      await updateGame(game.id, draft, 'draft');
+    });
   };
 
   const confirmDelete = () => {
