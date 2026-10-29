@@ -740,6 +740,76 @@ create trigger games_check_ready
   before insert or update on public.games
   for each row execute function public.games_check_ready();
 
+-- Polo colors staff can pick for a game. Everyone signed in reads; staff manage.
+create table if not exists public.polo_colors (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  swatch text not null check (swatch ~ '^#[0-9A-Fa-f]{6}$'),
+  sort_order int not null default 0,
+  created_at timestamptz default now()
+);
+alter table public.polo_colors enable row level security;
+drop policy if exists polo_colors_select on public.polo_colors;
+create policy polo_colors_select on public.polo_colors for select to authenticated using (true);
+drop policy if exists polo_colors_insert on public.polo_colors;
+create policy polo_colors_insert on public.polo_colors for insert to authenticated with check (public.is_staff());
+drop policy if exists polo_colors_update on public.polo_colors;
+create policy polo_colors_update on public.polo_colors for update to authenticated
+  using (public.is_staff()) with check (public.is_staff());
+drop policy if exists polo_colors_delete on public.polo_colors;
+create policy polo_colors_delete on public.polo_colors for delete to authenticated using (public.is_staff());
+
+-- One-row change signal: bumped on every games insert/update/delete so open screens can refetch.
+create table if not exists public.game_signal (
+  id int primary key check (id = 1),
+  changed_at timestamptz not null default now()
+);
+insert into public.game_signal (id) values (1) on conflict do nothing;
+alter table public.game_signal enable row level security;
+drop policy if exists game_signal_select on public.game_signal;
+create policy game_signal_select on public.game_signal for select to authenticated using (true);
+
+create or replace function public.bump_game_signal() returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  update public.game_signal set changed_at = now() where id = 1;
+  return null;
+end;
+$$;
+revoke all on function public.bump_game_signal() from public, anon, authenticated;
+drop trigger if exists games_bump_signal on public.games;
+create trigger games_bump_signal
+  after insert or update or delete on public.games
+  for each statement execute function public.bump_game_signal();
+
+-- A combo on a ready upcoming game cannot be deleted; staff change that game first.
+create or replace function public.combos_guard_in_use() returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  opp text;
+begin
+  select g.opponent into opp
+  from public.games g
+  where g.status = 'ready' and g.game_date >= public.band_today()
+    and (g.pre_game_combo_id = old.id or g.halftime_combo_id = old.id)
+  order by g.game_date
+  limit 1;
+  if found then
+    raise exception 'Used by vs. %. Change that game first.', opp using errcode = '23503';
+  end if;
+  return old;
+end;
+$$;
+revoke all on function public.combos_guard_in_use() from public, anon, authenticated;
+drop trigger if exists combos_guard_in_use on public.combos;
+create trigger combos_guard_in_use
+  before delete on public.combos
+  for each row execute function public.combos_guard_in_use();
+
 alter table public.flags enable row level security;
 drop policy if exists flags_select on public.flags;
 create policy flags_select on public.flags for select to authenticated
@@ -1244,7 +1314,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['profiles', 'combos', 'games', 'flags', 'piece_types', 'pieces'] loop
+  foreach t in array array['profiles', 'combos', 'games', 'flags', 'piece_types', 'pieces', 'game_signal', 'polo_colors'] loop
     if not exists (
       select 1 from pg_publication_tables
       where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t

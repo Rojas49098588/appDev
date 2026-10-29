@@ -1480,3 +1480,87 @@ describe('games', () => {
     assert.equal(cleared?.instructions_updated_at, null);
   });
 });
+
+describe('polo colors, combo guard, game signal', () => {
+  test('every signed-in user reads polo colors; only staff change them', async () => {
+    const { data, error } = await asMember.from('polo_colors').select('name');
+    assert.equal(error, null);
+    const names = (data ?? []).map((r) => r.name);
+    assert.ok(names.includes('Blue'));
+    assert.ok(names.includes('Red'));
+    const bad = await asMember.from('polo_colors').insert({ name: `Nope ${RUN}`, swatch: '#112233' }).select('id');
+    assert.ok(bad.error !== null || (bad.data?.length ?? 0) === 0);
+    let id: string | undefined;
+    try {
+      const ins = await asStaff.from('polo_colors').insert({ name: `Teal ${RUN}`, swatch: '#008080', sort_order: 9 }).select('id').single();
+      assert.equal(ins.error, null);
+      id = ins.data!.id;
+      const upd = await asStaff.from('polo_colors').update({ swatch: '#009090' }).eq('id', id).select('swatch').single();
+      assert.equal(upd.error, null);
+      assert.equal(upd.data?.swatch, '#009090');
+      const del = await asStaff.from('polo_colors').delete().eq('id', id).select('id');
+      assert.equal(del.data?.length, 1);
+      id = undefined;
+    } finally {
+      if (id) await admin.from('polo_colors').delete().eq('id', id);
+    }
+  });
+
+  test('combo used by a ready upcoming game cannot be deleted', async () => {
+    let comboId: string | undefined;
+    try {
+      const { data: combo, error } = await asStaff.from('combos').insert({ label: `Guard ${RUN}` }).select().single();
+      assert.equal(error, null);
+      comboId = combo!.id;
+      const set = await admin.from('games').update({ halftime_combo_id: comboId }).eq('id', READY_GAME);
+      assert.equal(set.error, null);
+      const del = await asStaff.from('combos').delete().eq('id', comboId).select('id');
+      assert.notEqual(del.error, null);
+      assert.equal(del.error!.message, 'Used by vs. RLS Fixture. Change that game first.');
+      const { data: still } = await admin.from('combos').select('id').eq('id', comboId);
+      assert.equal(still?.length, 1);
+    } finally {
+      await admin.from('games').update({ halftime_combo_id: SEED_COMBO_14 }).eq('id', READY_GAME);
+      if (comboId) await admin.from('combos').delete().eq('id', comboId);
+    }
+  });
+
+  test('combo used only by a draft or past game can be deleted', async () => {
+    let comboId: string | undefined;
+    try {
+      const { data: combo } = await asStaff.from('combos').insert({ label: `Free ${RUN}` }).select().single();
+      comboId = combo!.id;
+      await admin.from('games').update({ halftime_combo_id: comboId }).eq('id', DRAFT_GAME);
+      await admin.from('games').update({ halftime_combo_id: comboId }).eq('id', PAST_GAME);
+      const del = await asStaff.from('combos').delete().eq('id', comboId);
+      assert.equal(del.error, null);
+      comboId = undefined;
+      const { data: rows } = await admin.from('games').select('halftime_combo_id').in('id', [DRAFT_GAME, PAST_GAME]);
+      assert.equal(rows?.length, 2);
+      for (const r of rows ?? []) assert.equal(r.halftime_combo_id, null);
+    } finally {
+      if (comboId) await admin.from('combos').delete().eq('id', comboId);
+    }
+  });
+
+  test('game changes bump game_signal', async () => {
+    const before = await asMember.from('game_signal').select('changed_at').eq('id', 1).single();
+    assert.equal(before.error, null);
+    const upd = await asStaff.from('games').update({ opponent: `Bump ${RUN}` }).eq('id', DRAFT_GAME);
+    assert.equal(upd.error, null);
+    const after = await asMember.from('game_signal').select('changed_at').eq('id', 1).single();
+    assert.ok(new Date(after.data!.changed_at).getTime() > new Date(before.data!.changed_at).getTime());
+  });
+
+  test('members cannot write game_signal', async () => {
+    const { data: before } = await admin.from('game_signal').select('changed_at').eq('id', 1).single();
+    const upd = await asMember.from('game_signal').update({ changed_at: '2000-01-01T00:00:00Z' }).eq('id', 1).select('id');
+    assert.ok(upd.error !== null || (upd.data?.length ?? 0) === 0);
+    const ins = await asMember.from('game_signal').insert({ id: 2 }).select('id');
+    assert.ok(ins.error !== null || (ins.data?.length ?? 0) === 0);
+    const del = await asMember.from('game_signal').delete().eq('id', 1).select('id');
+    assert.ok(del.error !== null || (del.data?.length ?? 0) === 0);
+    const { data: after } = await admin.from('game_signal').select('changed_at').eq('id', 1).single();
+    assert.equal(after?.changed_at, before?.changed_at);
+  });
+});
