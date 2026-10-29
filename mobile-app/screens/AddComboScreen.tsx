@@ -25,6 +25,8 @@ import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnectio
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
 import { successBuzz } from '../lib/haptics';
+import { usePhotoPermission } from '../hooks/usePhotoPermission';
+import PhotoPermissionNotice from '../components/PhotoPermissionNotice';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddCombo'>;
 
@@ -39,13 +41,10 @@ export default function AddComboScreen({ navigation }: Props) {
   const [selectedColors, setSelectedColors] = useState<Record<string, string | null>>({});
   const [isSaving, setIsSaving] = useState(false);
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
+  const photoPermission = usePhotoPermission();
 
   const pickFromLibrary = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'Photo library access is required to choose an image.');
-      return;
-    }
+    if (!(await photoPermission.request('library'))) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -58,11 +57,7 @@ export default function AddComboScreen({ navigation }: Props) {
   };
 
   const takePhoto = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'Camera access is required to take a photo.');
-      return;
-    }
+    if (!(await photoPermission.request('camera'))) return;
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [3, 4],
@@ -150,6 +145,13 @@ export default function AddComboScreen({ navigation }: Props) {
                     <Text style={styles.photoButtonText}>Take photo</Text>
                   </Pressable>
                 </View>
+                {photoPermission.block ? (
+                  <PhotoPermissionNotice
+                    block={photoPermission.block}
+                    onTryAgain={photoPermission.block.source === 'camera' ? takePhoto : pickFromLibrary}
+                    onDismiss={photoPermission.dismiss}
+                  />
+                ) : null}
               </View>
 
               <View style={styles.field}>
