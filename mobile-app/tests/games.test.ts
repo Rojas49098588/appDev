@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  bandToday, comboInUse, comboShortcutTarget, isCourt, missingFields, shownCourt, shownFootball, sportLabel, staffSections,
+  bandToday, chicagoDayFallback, comboInUse, comboShortcutTarget, isCourt, missingFields, shownCourt, shownFootball, sportLabel, staffSections,
 } from '../lib/games.ts';
 import type { Game, GameDraft } from '../lib/models.ts';
 
@@ -125,4 +125,13 @@ test('comboShortcutTarget falls back to the next football draft', () => {
   assert.equal(comboShortcutTarget([undated, past, draft], '2026-11-01')?.id, 'dr');
   assert.equal(comboShortcutTarget([draft, ready], '2026-11-01')?.id, 'rd');
   assert.equal(comboShortcutTarget([undated, past], '2026-11-01'), null);
+});
+
+test('chicagoDayFallback matches Intl across DST changes and late nights', () => {
+  const samples = [
+    '2026-11-08T05:30:00Z', '2026-11-08T06:30:00Z', '2026-07-04T04:30:00Z', '2026-07-04T05:30:00Z',
+    '2026-03-08T07:59:00Z', '2026-03-08T08:01:00Z', '2026-11-01T06:30:00Z', '2026-11-01T07:30:00Z',
+    '2026-01-01T05:59:00Z', '2026-12-31T23:00:00Z',
+  ];
+  for (const s of samples) assert.equal(chicagoDayFallback(new Date(s)), bandToday(new Date(s)), s);
 });

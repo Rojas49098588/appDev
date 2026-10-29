@@ -8,13 +8,33 @@ const chicagoDay = new Intl.DateTimeFormat('en-CA', {
 
 // 'YYYY-MM-DD' in America/Chicago, whatever the phone's timezone.
 // Built from formatToParts so it never depends on the locale's separator or digit shapes.
-// If a runtime still returns non-ASCII digits we throw rather than send a bad date to the app.
+// Never throws (it runs while the app starts): if Intl gives anything odd, it falls back
+// to computing Chicago time from the US daylight-saving rules.
 export function bandToday(now: Date): string {
-  const parts: Record<string, string> = {};
-  for (const p of chicagoDay.formatToParts(now)) parts[p.type] = p.value;
-  const out = `${parts.year}-${parts.month}-${parts.day}`;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(out)) throw new Error(`bandToday: unexpected date format "${out}"`);
-  return out;
+  try {
+    const parts: Record<string, string> = {};
+    for (const p of chicagoDay.formatToParts(now)) parts[p.type] = p.value;
+    const out = `${parts.year}-${parts.month}-${parts.day}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(out)) return out;
+  } catch {
+    // fall through
+  }
+  return chicagoDayFallback(now);
+}
+
+// Chicago is UTC-6, or UTC-5 from 2am on the second Sunday of March
+// until 2am on the first Sunday of November.
+export function chicagoDayFallback(now: Date): string {
+  const year = now.getUTCFullYear();
+  const nthSunday = (month: number, n: number) => {
+    const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay();
+    return 1 + ((7 - firstDow) % 7) + (n - 1) * 7;
+  };
+  const dstStart = Date.UTC(year, 2, nthSunday(2, 2), 8); // 2am CST = 08:00 UTC
+  const dstEnd = Date.UTC(year, 10, nthSunday(10, 1), 7); // 2am CDT = 07:00 UTC
+  const t = now.getTime();
+  const offsetHours = t >= dstStart && t < dstEnd ? 5 : 6;
+  return new Date(t - offsetHours * 3600_000).toISOString().slice(0, 10);
 }
 
 export const isCourt = (sport: Sport): boolean => sport === 'basketball' || sport === 'volleyball';
