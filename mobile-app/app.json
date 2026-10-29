@@ -33,7 +33,8 @@
           "photosPermission": "Mustang Closet uses your photo library to let staff choose combo images.",
           "cameraPermission": "Mustang Closet uses your camera to let staff take combo photos."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
