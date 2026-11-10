@@ -166,6 +166,18 @@ Spec: `docs/superpowers/specs/2026-10-28-games-page-design.md`. Built on branch 
 
 **On-device checks: pending.** Nobody has run the Games page on a phone yet. Tests and `tsc` only, per the build plan.
 
+## 2026-11-10: Counted inventory (season totals, recounts, kept-at-home shirts)
+
+Spec: `docs/superpowers/specs/2026-11-10-counted-inventory-design.md`. Plan: `docs/superpowers/plans/2026-11-10-counted-inventory.md`. Branch `counted-inventory`.
+
+- Counted types (ties, spare polos, white shirts) now have **lines**: one per size or color, each with a season total and a wash-day count (`piece_types.lines`). The old `stock` column stays only for older app builds; `db:apply` copies it into lines once.
+- Staff Inventory cards show `count / expected`, "N missing" (amber) or "all in", and a **Recount** button. `RecountScreen` (route `Recount { pieceTypeId, mode: 'count' | 'totals' }`) has − / +, batch entry (`+12`, `−3`) and "Change season totals" (which can also add a size or color). Database functions `recount_piece_type` and `set_season_totals` are staff only.
+- Members pick their white shirt size and "I keep and wash my own" / "I leave mine in the bin" on My Inventory (`profiles.white_shirt_size`, `profiles.keeps_white_shirt`). Kept shirts lower the White shirt's expected count, so they aren't shown as missing. Not answered counts as leaving it in the bin.
+- **Setup:** staff create a counted piece type named exactly **White shirt** with its sizes and season totals. Until then, members see "Your white shirt sizes aren't set up yet."
+- **Release:** after merging, run `npm run db:apply` (LIVE), then publish. TEST already has the schema.
+
+**On-device checks: pending.** Tests, `test:rls` and `tsc` only.
+
 ## Required: on-device verification (nobody has done this yet)
 
 Every task in this plan was verified via `tsc`/`expo-doctor` plus hand-traced logic, because subagents in this process cannot run `npm start`/Expo Go. **The controller (me) also has not personally run this on a device.** This is the single most important thing to do before considering the new auth flow actually finished — it supersedes the old Member-View checklist that used to live here, which assumed the app opened straight to Sign Up:
