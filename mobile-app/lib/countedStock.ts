@@ -1,5 +1,6 @@
 // Counted inventory (ties, spare polos, white shirts): season totals, wash-day counts,
 // and shirts members keep at home. Pure functions so the screens only render results.
+import type { PieceType } from './models.ts';
 
 export type CountLine = { label: string; total: number; count: number };
 
@@ -18,6 +19,12 @@ const key = (s: string) => s.trim().toLowerCase();
 
 export function isWhiteShirt(name: string): boolean {
   return key(name) === key(WHITE_SHIRT);
+}
+
+/** The sizes members can pick: the active White shirt type's line labels, or [] without one. */
+export function whiteShirtSizes(types: PieceType[]): string[] {
+  const shirt = types.find((t) => !t.retired && t.kind === 'counted' && isWhiteShirt(t.name));
+  return shirt ? shirt.lines.map((l) => l.label) : [];
 }
 
 /**

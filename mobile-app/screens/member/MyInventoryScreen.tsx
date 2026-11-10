@@ -20,6 +20,8 @@ import Swatch from '../../components/Swatch';
 import FlagSheet, { STATUS_LABELS, type FlagTarget } from '../../components/FlagSheet';
 import { CheckIcon, FlagIcon } from '../../components/icons';
 import { successBuzz } from '../../lib/haptics';
+import { whiteShirtSizes } from '../../lib/countedStock';
+import WhiteShirtChoice from '../../components/WhiteShirtChoice';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MemberTabParamList, 'Inventory'>,
@@ -43,9 +45,18 @@ const rowKey = (row: Pick<FlagTarget, 'piece' | 'color'>) => `${row.piece}-${row
 
 export default function MyInventoryScreen(_props: Props) {
   const { flags, submitFlag: saveFlag } = useFlags();
-  const { account } = useAuth();
+  const { account, updateAccount } = useAuth();
   const { pieceTypes, pieces } = useInventory();
   const { isOnline } = useConnection();
+  const shirtSizes = whiteShirtSizes(pieceTypes);
+  const saveShirt = async (updates: { whiteShirtSize?: string; keepsWhiteShirt?: boolean }) => {
+    if (!requireOnline(isOnline)) return;
+    try {
+      await updateAccount(updates);
+    } catch (error) {
+      Alert.alert("Couldn't save", friendlyError(error));
+    }
+  };
   // The database only sends a member their own flags; filtering by id keeps
   // this correct if a staff account ever opens the member view.
   const myFlags = flags.filter((f) => f.memberId === account?.id);
@@ -70,7 +81,7 @@ export default function MyInventoryScreen(_props: Props) {
         {
           piece: MY_WHITE_SHIRT.piece,
           color: MY_WHITE_SHIRT.color,
-          size: MY_WHITE_SHIRT.size,
+          size: account?.whiteShirtSize || '—',
           itemName: ITEM_NAMES[MY_WHITE_SHIRT.piece],
           dirtyOnly: true,
           flag: findFlag(MY_WHITE_SHIRT.piece, MY_WHITE_SHIRT.color),
@@ -196,6 +207,15 @@ export default function MyInventoryScreen(_props: Props) {
                     />
                   ))}
                 </View>
+                {group.label === MY_WHITE_SHIRT.piece && account && (
+                  <WhiteShirtChoice
+                    sizes={shirtSizes}
+                    size={account.whiteShirtSize}
+                    keeps={account.keepsWhiteShirt}
+                    onChangeSize={(whiteShirtSize) => void saveShirt({ whiteShirtSize })}
+                    onChangeKeeps={(keepsWhiteShirt) => void saveShirt({ keepsWhiteShirt })}
+                  />
+                )}
               </View>
             ))}
           </ScrollView>

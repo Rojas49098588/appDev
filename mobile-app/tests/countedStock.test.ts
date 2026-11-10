@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, type ShirtOwner,
+  applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, whiteShirtSizes, type ShirtOwner,
 } from '../lib/countedStock.ts';
+import type { PieceType } from '../lib/models.ts';
 
 const owner = (o: Partial<ShirtOwner>): ShirtOwner =>
   ({ role: 'Member', archivedAt: null, whiteShirtSize: 'M', keepsWhiteShirt: true, ...o });
@@ -69,6 +70,17 @@ test('applyBatch rejects results below 0 and unreadable text', () => {
   assert.equal(applyBatch(5, 'x'), null);
   assert.equal(applyBatch(5, ''), null);
   assert.equal(applyBatch(5, '+1.5'), null);
+});
+
+test('whiteShirtSizes returns the White shirt lines, or [] without one', () => {
+  const t = (name: string, labels: string[]) =>
+    ({
+      id: name, name, kind: 'counted', colors: labels, sortOrder: 0, retired: false,
+      lines: labels.map((label) => ({ label, total: 10, count: 10 })), countedAt: null, countedByName: '',
+    }) as PieceType;
+  assert.deepEqual(whiteShirtSizes([t('Ties', ['Black']), t('White shirt', ['S', 'M', 'L', 'XL'])]), ['S', 'M', 'L', 'XL']);
+  assert.deepEqual(whiteShirtSizes([t('Ties', ['Black'])]), []);
+  assert.deepEqual(whiteShirtSizes([{ ...t('White shirt', ['S']), retired: true }]), []);
 });
 
 test('isWhiteShirt ignores case and spaces', () => {
