@@ -110,7 +110,10 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
     const finalNumbers = kind === 'numbered' ? withNumbers(numberText) : numbers;
     if (!finalNumbers) return;
     if (finalColors.length === 0) {
-      Alert.alert('Colors needed', 'Add at least one color.');
+      Alert.alert(
+        kind === 'counted' ? 'Sizes or colors needed' : 'Colors needed',
+        kind === 'counted' ? 'Add at least one size or color.' : 'Add at least one color.'
+      );
       return;
     }
     if (kind === 'numbered' && finalNumbers.length === 0) {
@@ -120,7 +123,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
     if (kind === 'counted') {
       const bad = finalColors.find((c) => stock[c] && !/^\d+$/.test(stock[c]));
       if (bad) {
-        Alert.alert('Check the quantities', `Quantity for ${bad} must be a whole number.`);
+        Alert.alert('Check the season totals', `The season total for ${bad} must be a whole number.`);
         return;
       }
     }
@@ -212,7 +215,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Colors</Text>
+                <Text style={styles.fieldLabel}>{kind === 'counted' ? 'Sizes or colors' : 'Colors'}</Text>
                 <View style={styles.chipRow}>
                   {pieceColors.map((c) => (
                     <Pressable
@@ -230,7 +233,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                     style={[styles.textInput, styles.flexOne]}
                     value={colorText}
                     onChangeText={setColorText}
-                    placeholder="+ color"
+                    placeholder={kind === 'counted' ? '+ size or color' : '+ color'}
                     placeholderTextColor={colors.inkFaint}
                     autoCapitalize="words"
                     onSubmitEditing={addColor}
@@ -279,8 +282,8 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                 </View>
               ) : (
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Quantity per color</Text>
-                  {pieceColors.length === 0 && <Text style={styles.preview}>Add a color first.</Text>}
+                  <Text style={styles.fieldLabel}>Season total</Text>
+                  {pieceColors.length === 0 && <Text style={styles.preview}>Add a size or color first.</Text>}
                   {pieceColors.map((c) => (
                     <View key={c} style={styles.stockRow}>
                       <Text style={styles.stockName}>{c}</Text>
