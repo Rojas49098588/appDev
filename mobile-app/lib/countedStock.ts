@@ -1,0 +1,64 @@
+// Counted inventory (ties, spare polos, white shirts): season totals, wash-day counts,
+// and shirts members keep at home. Pure functions so the screens only render results.
+
+export type CountLine = { label: string; total: number; count: number };
+
+export type ShirtOwner = {
+  role: 'Member' | 'Staff';
+  archivedAt: string | null;
+  whiteShirtSize: string;
+  keepsWhiteShirt: boolean | null;
+};
+
+export type LineStatus = CountLine & { kept: number; expected: number; missing: number };
+
+export const WHITE_SHIRT = 'White shirt';
+
+const key = (s: string) => s.trim().toLowerCase();
+
+export function isWhiteShirt(name: string): boolean {
+  return key(name) === key(WHITE_SHIRT);
+}
+
+/**
+ * How many active members keep their own shirt, per size label, and how many haven't
+ * answered. "Keep" with a size that isn't one of the labels can't be placed, so it counts
+ * as not answered.
+ */
+export function keptAtHome(owners: ShirtOwner[], labels: string[]): { kept: Record<string, number>; unanswered: number } {
+  const kept: Record<string, number> = Object.fromEntries(labels.map((l) => [l, 0]));
+  const byKey = new Map(labels.map((l) => [key(l), l]));
+  let unanswered = 0;
+  for (const o of owners) {
+    if (o.role !== 'Member' || o.archivedAt !== null) continue;
+    if (o.keepsWhiteShirt === false) continue;
+    const label = byKey.get(key(o.whiteShirtSize));
+    if (o.keepsWhiteShirt === true && label !== undefined) kept[label] += 1;
+    else unanswered += 1;
+  }
+  return { kept, unanswered };
+}
+
+export function lineStatuses(lines: CountLine[], kept: Record<string, number> = {}): LineStatus[] {
+  return lines.map((line) => {
+    const k = kept[line.label] ?? 0;
+    const expected = Math.max(0, line.total - k);
+    return { ...line, kept: k, expected, missing: Math.max(0, expected - line.count) };
+  });
+}
+
+export function cardSummary(statuses: LineStatus[]): { count: number; expected: number; missing: number } {
+  return statuses.reduce(
+    (sum, s) => ({ count: sum.count + s.count, expected: sum.expected + s.expected, missing: sum.missing + s.missing }),
+    { count: 0, expected: 0, missing: 0 },
+  );
+}
+
+/** Applies a batch like "+12", "12", "-3" or "−3" to a count; null if unreadable or below 0. */
+export function applyBatch(current: number, text: string): number | null {
+  const m = text.replace(/\s+/g, '').replace(/−/g, '-').match(/^([+-]?)(\d+)$/);
+  if (!m) return null;
+  const amount = parseInt(m[2], 10) * (m[1] === '-' ? -1 : 1);
+  const next = current + amount;
+  return next < 0 ? null : next;
+}
