@@ -101,7 +101,7 @@ export function memberPieceTypes(types: PieceType[], pieces: InventoryPiece[]): 
 }
 
 export function pieceCount(type: PieceType, pieces: InventoryPiece[]): number {
-  if (type.kind === 'counted') return Object.values(type.stock).reduce((sum, n) => sum + n, 0);
+  if (type.kind === 'counted') return type.lines.reduce((sum, line) => sum + line.count, 0);
   return pieces.filter((p) => p.pieceTypeId === type.id).length;
 }
 

@@ -14,7 +14,8 @@ const piece = (id: string, type: string, color: string, number: string, outForRe
   id, pieceTypeId: `t-${type}`, pieceType: type, color, number, outForRepair,
 });
 const type = (name: string, kind: 'numbered' | 'counted', over: Partial<PieceType> = {}): PieceType => ({
-  id: `t-${name}`, name, kind, colors: ['Blue', 'White'], stock: {}, sortOrder: 0, retired: false, ...over,
+  id: `t-${name}`, name, kind, colors: ['Blue', 'White'], sortOrder: 0, retired: false,
+  lines: [], countedAt: null, countedByName: '', ...over,
 });
 
 const maya = acct('u1', 'Maya', { Coats: '104' });
@@ -72,7 +73,7 @@ test('memberPieceTypes: numbered types with pieces only (no counted, retired or 
   const types = [
     type('Vests', 'numbered', { sortOrder: 3 }),
     type('Coats', 'numbered', { sortOrder: 2 }),
-    type('Ties', 'counted', { sortOrder: 1, stock: { Blue: 5 } }),
+    type('Ties', 'counted', { sortOrder: 1, lines: [{ label: 'Blue', total: 5, count: 5 }] }),
     type('Old', 'counted', { retired: true }),
     type('Hats', 'numbered', { retired: true }),
     type('Gloves', 'numbered', { sortOrder: 0 }),
@@ -81,14 +82,17 @@ test('memberPieceTypes: numbered types with pieces only (no counted, retired or 
   assert.deepEqual(memberPieceTypes(types, pieces).map((t) => t.name), ['Coats', 'Vests']);
 });
 
-test('pieceCount: numbered counts pieces, counted sums stock', () => {
+test('pieceCount: numbered counts pieces, counted sums line counts', () => {
   const pieces = [piece('a', 'Coats', 'Blue', '1'), piece('b', 'Coats', 'Blue', '2'), piece('c', 'Vests', 'Blue', '1')];
   assert.equal(pieceCount(type('Coats', 'numbered'), pieces), 2);
-  assert.equal(pieceCount(type('Ties', 'counted', { stock: { Blue: 3, White: 4 } }), pieces), 7);
+  const ties = type('Ties', 'counted', {
+    lines: [{ label: 'Black', total: 300, count: 300 }, { label: 'Red', total: 300, count: 287 }],
+  });
+  assert.equal(pieceCount(ties, pieces), 587);
 });
 
 test('mapPiecesToTypes names pieces and reports pieces whose type is missing', () => {
-  const types = [{ id: 't1', name: 'Coats', kind: 'numbered', colors: [], stock: {}, sortOrder: 0, retired: false }] as PieceType[];
+  const types = [type('Coats', 'numbered', { id: 't1', colors: [] })];
   const row = (id: string, t: string) => ({ id, piece_type_id: t, color: 'Black', number: '1', out_for_repair: false, created_at: '' });
   const out = mapPiecesToTypes([row('a', 't1'), row('b', 't2'), row('c', 't2')], types);
   assert.deepEqual(out.pieces.map((p) => [p.id, p.pieceType]), [['a', 'Coats']]);

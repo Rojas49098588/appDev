@@ -8,7 +8,8 @@ export type AccountUpdates = Partial<Omit<Account, 'id' | 'role' | 'numbers' | '
 export type ProfileUpdate = Partial<
   Pick<
     ProfileRow,
-    'first_name' | 'last_name' | 'instrument' | 'phone' | 'shoe_gender' | 'shoe_size' | 'height_feet' | 'height_inches' | 'weight'
+    | 'first_name' | 'last_name' | 'instrument' | 'phone' | 'shoe_gender' | 'shoe_size' | 'height_feet' | 'height_inches'
+    | 'weight' | 'white_shirt_size' | 'keeps_white_shirt'
   >
 >;
 
@@ -41,6 +42,8 @@ export function profileToAccount(row: ProfileRow): Account {
     weight: row.weight,
     numbers: row.numbers ?? {},
     archivedAt: row.archived_at ?? null,
+    whiteShirtSize: row.white_shirt_size ?? '',
+    keepsWhiteShirt: row.keeps_white_shirt ?? null,
   };
 }
 
@@ -83,6 +86,8 @@ export function accountUpdatesToProfile(updates: AccountUpdates): ProfileUpdate 
     patch.height_inches = updates.height.inches;
   }
   if (updates.weight !== undefined) patch.weight = updates.weight;
+  if (updates.whiteShirtSize !== undefined) patch.white_shirt_size = updates.whiteShirtSize;
+  if (updates.keepsWhiteShirt !== undefined) patch.keeps_white_shirt = updates.keepsWhiteShirt;
   return patch;
 }
 
@@ -169,9 +174,11 @@ export function rowToPieceType(row: PieceTypeRow): PieceType {
     name: row.name,
     kind: row.kind,
     colors: row.colors,
-    stock: row.stock,
     sortOrder: row.sort_order,
     retired: row.retired,
+    lines: row.lines ?? [],
+    countedAt: row.counted_at ?? null,
+    countedByName: row.counted_by_name ?? '',
   };
 }
 

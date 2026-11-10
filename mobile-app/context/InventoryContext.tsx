@@ -29,6 +29,9 @@ type InventoryContextValue = {
   }) => Promise<string>;
   addPieceColor: (typeId: string, color: string) => Promise<number>;
   addPieceNumber: (typeId: string, number: string, colors: string[]) => Promise<number>;
+  // Counted types: {label: count} for every line, and {label: season total} (new labels add lines).
+  recountPieceType: (typeId: string, counts: Record<string, number>) => Promise<void>;
+  setSeasonTotals: (typeId: string, totals: Record<string, number>) => Promise<void>;
 };
 
 const PIECE_BATCH_MS = 300;
@@ -259,13 +262,31 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
     [reload]
   );
 
+  const recountPieceType = useCallback(
+    async (typeId: string, counts: Record<string, number>): Promise<void> => {
+      const { error: rpcError } = await supabase.rpc('recount_piece_type', { p_type: typeId, p_counts: counts });
+      if (rpcError) throw rpcError;
+      await reload();
+    },
+    [reload]
+  );
+
+  const setSeasonTotals = useCallback(
+    async (typeId: string, totals: Record<string, number>): Promise<void> => {
+      const { error: rpcError } = await supabase.rpc('set_season_totals', { p_type: typeId, p_totals: totals });
+      if (rpcError) throw rpcError;
+      await reload();
+    },
+    [reload]
+  );
+
   const value = useMemo(
     () => ({
       pieceTypes, pieces: pieceList.items, syncedAt, error, reload, setOutForRepair,
-      importInventory, createPieceType, addPieceColor, addPieceNumber,
+      importInventory, createPieceType, addPieceColor, addPieceNumber, recountPieceType, setSeasonTotals,
     }),
     [pieceTypes, pieceList.items, syncedAt, error, reload, setOutForRepair,
-      importInventory, createPieceType, addPieceColor, addPieceNumber]
+      importInventory, createPieceType, addPieceColor, addPieceNumber, recountPieceType, setSeasonTotals]
   );
 
   return <InventoryContext.Provider value={value}>{children}</InventoryContext.Provider>;

@@ -53,7 +53,7 @@ export default function PieceCard({
     .filter((g) => g.shown.length > 0 || pieces.length === 0);
   const assignedTotal = pieces.filter((p) => assignmentFor(p).state === 'assigned').length;
   const present = new Set(groups.flatMap((g) => g.shown.map((x) => x.state)));
-  const rows = piece.colors.map((color) => ({ name: color, qty: piece.stock[color] ?? 0 }));
+  const rows = piece.lines.map((line) => ({ name: line.label, qty: line.count }));
   const hasTintedChip =
     piece.kind === 'numbered' &&
     groups.some((g) => g.shown.some((x) => chipStateFor(g.color, x.number) !== null));
