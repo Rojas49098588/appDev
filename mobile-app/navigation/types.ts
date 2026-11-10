@@ -36,6 +36,7 @@ export type RootStackParamList = {
   PieceTable: { pieceTypeId: string };
   ImportInventory: undefined;
   AddPieceType: undefined;
+  Recount: { pieceTypeId: string; mode: 'count' | 'totals' };
   AddCombo: undefined;
   ComboDetail: { comboId: string };
   ArchivedMembers: undefined;

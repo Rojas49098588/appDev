@@ -321,6 +321,7 @@ export default function InventoryScreen({ navigation }: Props) {
                 matches={(p) => pieceMatches(piece, p)}
                 kept={isWhiteShirt(piece.name) ? shirtsAtHome(piece).kept : undefined}
                 unanswered={isWhiteShirt(piece.name) ? shirtsAtHome(piece).unanswered : 0}
+                onRecount={() => navigation.navigate('Recount', { pieceTypeId: piece.id, mode: 'count' })}
               />
             );
           })}
