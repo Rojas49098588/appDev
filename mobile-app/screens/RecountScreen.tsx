@@ -17,7 +17,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
-import { applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, withNewLabels } from '../lib/countedStock';
+import { cardSummary, isWhiteShirt, keptAtHome, lineStatuses, moveBatch, withNewLabels } from '../lib/countedStock';
 import { friendlyError } from '../lib/errors';
 import { formatShortDate } from '../lib/format';
 import { successBuzz } from '../lib/haptics';
@@ -42,8 +42,8 @@ export default function RecountScreen({ navigation, route }: Props) {
     Object.fromEntries((piece?.lines ?? []).map((l) => [l.label, String(counting ? l.count : l.total)]))
   );
   const [order, setOrder] = useState<string[]>(() => (piece?.lines ?? []).map((l) => l.label));
-  const [batchFor, setBatchFor] = useState<string | null>(null);
-  const [batchText, setBatchText] = useState('');
+  // Batch amount per size, applied with Add or Remove.
+  const [batches, setBatches] = useState<Record<string, string>>({});
   const [newLabel, setNewLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -80,15 +80,23 @@ export default function RecountScreen({ navigation, route }: Props) {
     const next = Math.max(0, (whole(valueOf(label)) ?? 0) + delta);
     setValue(label, String(next));
   };
-  const applyBatchTo = (label: string) => {
-    const next = applyBatch(whole(valueOf(label)) ?? 0, batchText);
+  const batchOf = (label: string) => batches[label] ?? '0';
+  const setBatch = (label: string, text: string) => setBatches((cur) => ({ ...cur, [label]: text }));
+  const stepBatch = (label: string, delta: number) =>
+    setBatch(label, String(Math.max(0, (whole(batchOf(label)) ?? 0) + delta)));
+  const applyBatchTo = (label: string, direction: 'add' | 'remove') => {
+    const amount = whole(batchOf(label));
+    if (amount === null) {
+      Alert.alert('Check the batch', 'The batch must be a whole number, 0 or more.');
+      return;
+    }
+    const next = moveBatch(whole(valueOf(label)) ?? 0, amount, direction);
     if (next === null) {
-      Alert.alert("Can't add that", 'Type a whole number like +12 or −3.');
+      Alert.alert("Can't remove that many", `There aren't ${amount} ${label} to remove.`);
       return;
     }
     setValue(label, String(next));
-    setBatchFor(null);
-    setBatchText('');
+    setBatch(label, '0');
   };
 
   const addLine = () => {
@@ -179,27 +187,29 @@ export default function RecountScreen({ navigation, route }: Props) {
                         </Pressable>
                       </View>
                     </View>
-                    {batchFor === label ? (
-                      <View style={styles.batchRow}>
-                        <TextInput
-                          style={[styles.textInput, styles.flexOne]}
-                          value={batchText}
-                          onChangeText={setBatchText}
-                          placeholder="+12 or −3"
-                          placeholderTextColor={colors.inkFaint}
-                          keyboardType="numbers-and-punctuation"
-                          autoFocus
-                          onSubmitEditing={() => applyBatchTo(label)}
-                        />
-                        <Pressable style={styles.smallButton} onPress={() => applyBatchTo(label)}>
-                          <Text style={styles.smallButtonText}>Apply</Text>
-                        </Pressable>
-                      </View>
-                    ) : (
-                      <Pressable onPress={() => { setBatchFor(label); setBatchText(''); }}>
-                        <Text style={styles.link}>Add or remove a batch</Text>
+                    <View style={styles.batchLine}>
+                      <Text style={styles.batchLabel}>Batch</Text>
+                      <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, -1)} accessibilityLabel={`Smaller ${label} batch`}>
+                        <Text style={styles.stepText}>−</Text>
                       </Pressable>
-                    )}
+                      <TextInput
+                        style={[styles.countInput, styles.batchInput]}
+                        value={batchOf(label)}
+                        onChangeText={(t) => setBatch(label, t)}
+                        keyboardType="number-pad"
+                        selectTextOnFocus
+                        accessibilityLabel={`${label} batch`}
+                      />
+                      <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, 1)} accessibilityLabel={`Bigger ${label} batch`}>
+                        <Text style={styles.stepText}>+</Text>
+                      </Pressable>
+                      <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                        <Text style={styles.smallButtonText}>Add</Text>
+                      </Pressable>
+                      <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                        <Text style={styles.smallButtonText}>Remove</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 );
               })}
@@ -304,6 +314,24 @@ const styles = StyleSheet.create({
   },
   centered: { textAlign: 'center', marginTop: 14 },
   batchRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  batchLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.lineSoft,
+    borderStyle: 'dashed',
+  },
+  batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft },
+  batchInput: { width: 48 },
+  batchAction: {
+    borderWidth: 1,
+    borderColor: colors.ink,
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+  },
   textInput: {
     borderWidth: 1,
     borderColor: colors.line,

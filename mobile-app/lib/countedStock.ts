@@ -67,11 +67,8 @@ export function withNewLabels(order: string[], lineLabels: string[]): string[] {
   return [...order, ...lineLabels.filter((l) => !have.has(key(l)))];
 }
 
-/** Applies a batch like "+12", "12", "-3" or "−3" to a count; null if unreadable or below 0. */
-export function applyBatch(current: number, text: string): number | null {
-  const m = text.replace(/\s+/g, '').replace(/−/g, '-').match(/^([+-]?)(\d+)$/);
-  if (!m) return null;
-  const amount = parseInt(m[2], 10) * (m[1] === '-' ? -1 : 1);
-  const next = current + amount;
+/** Adds a batch to a count or removes one from it; null if the count would go below 0. */
+export function moveBatch(current: number, amount: number, direction: 'add' | 'remove'): number | null {
+  const next = direction === 'add' ? current + amount : current - amount;
   return next < 0 ? null : next;
 }

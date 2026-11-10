@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, whiteShirtSizes, withNewLabels, type ShirtOwner,
+  cardSummary, isWhiteShirt, keptAtHome, lineStatuses, moveBatch, whiteShirtSizes, withNewLabels, type ShirtOwner,
 } from '../lib/countedStock.ts';
 import type { PieceType } from '../lib/models.ts';
 
@@ -57,19 +57,15 @@ test('cardSummary sums lines', () => {
   assert.deepEqual(cardSummary(st), { count: 296, expected: 310, missing: 14 });
 });
 
-test('applyBatch adds and removes', () => {
-  assert.equal(applyBatch(80, '+12'), 92);
-  assert.equal(applyBatch(80, '12'), 92);
-  assert.equal(applyBatch(80, '-3'), 77);
-  assert.equal(applyBatch(80, '−3'), 77);
-  assert.equal(applyBatch(80, ' + 5 '), 85);
+test('moveBatch adds or removes a batch from the count', () => {
+  assert.equal(moveBatch(79, 12, 'add'), 91);
+  assert.equal(moveBatch(80, 3, 'remove'), 77);
+  assert.equal(moveBatch(12, 12, 'remove'), 0);
+  assert.equal(moveBatch(5, 0, 'add'), 5);
 });
 
-test('applyBatch rejects results below 0 and unreadable text', () => {
-  assert.equal(applyBatch(12, '-20'), null);
-  assert.equal(applyBatch(5, 'x'), null);
-  assert.equal(applyBatch(5, ''), null);
-  assert.equal(applyBatch(5, '+1.5'), null);
+test('moveBatch rejects results below 0', () => {
+  assert.equal(moveBatch(12, 20, 'remove'), null);
 });
 
 test('whiteShirtSizes returns the White shirt lines, or [] without one', () => {
