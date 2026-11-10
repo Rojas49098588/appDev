@@ -61,6 +61,12 @@ export function cardSummary(statuses: LineStatus[]): { count: number; expected: 
   );
 }
 
+/** The labels a recount screen shows: its own order, plus saved labels it doesn't have yet. */
+export function withNewLabels(order: string[], lineLabels: string[]): string[] {
+  const have = new Set(order.map(key));
+  return [...order, ...lineLabels.filter((l) => !have.has(key(l)))];
+}
+
 /** Applies a batch like "+12", "12", "-3" or "−3" to a count; null if unreadable or below 0. */
 export function applyBatch(current: number, text: string): number | null {
   const m = text.replace(/\s+/g, '').replace(/−/g, '-').match(/^([+-]?)(\d+)$/);

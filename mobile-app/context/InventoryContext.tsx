@@ -29,9 +29,10 @@ type InventoryContextValue = {
   }) => Promise<string>;
   addPieceColor: (typeId: string, color: string) => Promise<number>;
   addPieceNumber: (typeId: string, number: string, colors: string[]) => Promise<number>;
-  // Counted types: {label: count} for every line, and {label: season total} (new labels add lines).
+  // Counted types: {label: count} for every line, and season totals in display order
+  // (new labels are added as lines, in that order).
   recountPieceType: (typeId: string, counts: Record<string, number>) => Promise<void>;
-  setSeasonTotals: (typeId: string, totals: Record<string, number>) => Promise<void>;
+  setSeasonTotals: (typeId: string, totals: { label: string; total: number }[]) => Promise<void>;
 };
 
 const PIECE_BATCH_MS = 300;
@@ -272,7 +273,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
   );
 
   const setSeasonTotals = useCallback(
-    async (typeId: string, totals: Record<string, number>): Promise<void> => {
+    async (typeId: string, totals: { label: string; total: number }[]): Promise<void> => {
       const { error: rpcError } = await supabase.rpc('set_season_totals', { p_type: typeId, p_totals: totals });
       if (rpcError) throw rpcError;
       await reload();

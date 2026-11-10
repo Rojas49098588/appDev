@@ -17,7 +17,7 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
-import { applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses } from '../lib/countedStock';
+import { applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, withNewLabels } from '../lib/countedStock';
 import { friendlyError } from '../lib/errors';
 import { formatShortDate } from '../lib/format';
 import { successBuzz } from '../lib/haptics';
@@ -48,9 +48,11 @@ export default function RecountScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
+  // Sizes saved while this screen is open (e.g. by another staff member) show up too.
+  const labels = withNewLabels(order, (piece?.lines ?? []).map((l) => l.label));
   const kept = useMemo(
-    () => (piece && isWhiteShirt(piece.name) ? keptAtHome(accounts, order).kept : undefined),
-    [piece, accounts, order]
+    () => (counting && piece && isWhiteShirt(piece.name) ? keptAtHome(accounts, piece.lines.map((l) => l.label)).kept : undefined),
+    [counting, piece, accounts]
   );
 
   if (!piece) {
@@ -61,9 +63,13 @@ export default function RecountScreen({ navigation, route }: Props) {
     );
   }
 
+  // What's in a box: what was typed, else the saved number (lines added while open).
+  const saved = new Map(piece.lines.map((l) => [l.label, String(counting ? l.count : l.total)]));
+  const valueOf = (label: string) => values[label] ?? saved.get(label) ?? '0';
+
   // Live preview: typed counts against the season totals.
   const statuses = lineStatuses(
-    piece.lines.map((l) => ({ ...l, count: whole(values[l.label] ?? '') ?? 0 })),
+    piece.lines.map((l) => ({ ...l, count: whole(valueOf(l.label)) ?? 0 })),
     kept
   );
   const byLabel = new Map(statuses.map((s) => [s.label, s]));
@@ -71,11 +77,11 @@ export default function RecountScreen({ navigation, route }: Props) {
 
   const setValue = (label: string, text: string) => setValues((cur) => ({ ...cur, [label]: text }));
   const step = (label: string, delta: number) => {
-    const next = Math.max(0, (whole(values[label] ?? '') ?? 0) + delta);
+    const next = Math.max(0, (whole(valueOf(label)) ?? 0) + delta);
     setValue(label, String(next));
   };
   const applyBatchTo = (label: string) => {
-    const next = applyBatch(whole(values[label] ?? '') ?? 0, batchText);
+    const next = applyBatch(whole(valueOf(label)) ?? 0, batchText);
     if (next === null) {
       Alert.alert("Can't add that", 'Type a whole number like +12 or −3.');
       return;
@@ -88,7 +94,7 @@ export default function RecountScreen({ navigation, route }: Props) {
   const addLine = () => {
     const label = newLabel.trim();
     if (!label) return;
-    if (order.some((l) => l.toLowerCase() === label.toLowerCase())) {
+    if (labels.some((l) => l.toLowerCase() === label.toLowerCase())) {
       Alert.alert('Already added', `${label} is already in the list.`);
       return;
     }
@@ -99,21 +105,21 @@ export default function RecountScreen({ navigation, route }: Props) {
 
   const handleSave = async () => {
     if (savingRef.current) return;
-    const numbers: Record<string, number> = {};
-    for (const label of order) {
-      const n = whole(values[label] ?? '');
+    const entries: { label: string; total: number }[] = [];
+    for (const label of labels) {
+      const n = whole(valueOf(label));
       if (n === null) {
         Alert.alert('Check the numbers', `${label} must be a whole number, 0 or more.`);
         return;
       }
-      numbers[label] = n;
+      entries.push({ label, total: n });
     }
     if (!requireOnline(isOnline)) return;
     savingRef.current = true;
     setSaving(true);
     try {
-      if (counting) await recountPieceType(piece.id, numbers);
-      else await setSeasonTotals(piece.id, numbers);
+      if (counting) await recountPieceType(piece.id, Object.fromEntries(entries.map((e) => [e.label, e.total])));
+      else await setSeasonTotals(piece.id, entries);
       successBuzz();
       navigation.goBack();
     } catch (error) {
@@ -146,7 +152,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                   : 'Enter how many the season started with. New sizes or colors start with that many in the bins.'}
               </Text>
 
-              {order.map((label) => {
+              {labels.map((label) => {
                 const s = byLabel.get(label);
                 return (
                   <View key={label} style={styles.row}>
@@ -163,7 +169,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                         </Pressable>
                         <TextInput
                           style={styles.countInput}
-                          value={values[label] ?? ''}
+                          value={valueOf(label)}
                           onChangeText={(t) => setValue(label, t)}
                           keyboardType="number-pad"
                           accessibilityLabel={`${label} ${counting ? 'count' : 'season total'}`}
@@ -207,7 +213,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                       {summary.missing > 0 ? ` · ${summary.missing} missing` : ''}
                     </Text>
                   </View>
-                  <Pressable onPress={() => navigation.replace('Recount', { pieceTypeId, mode: 'totals' })}>
+                  <Pressable onPress={() => navigation.push('Recount', { pieceTypeId, mode: 'totals' })}>
                     <Text style={[styles.link, styles.centered]}>Change season totals</Text>
                   </Pressable>
                 </>

@@ -1355,9 +1355,9 @@ $$;
 revoke all on function public.recount_piece_type(uuid, jsonb) from public, anon;
 grant execute on function public.recount_piece_type(uuid, jsonb) to authenticated;
 
--- Staff only. p_totals is {label: season total}. Existing labels (ignoring case and
--- spaces) get the new total; new labels are added as lines whose count starts at the
--- total. colors is kept equal to the line labels.
+-- Staff only. p_totals is an ordered array [{"label", "total"}]. Existing labels (ignoring
+-- case and spaces at the ends) get the new total; new labels are added, in the order given,
+-- as lines whose count starts at the total. colors is kept equal to the line labels.
 create or replace function public.set_season_totals(p_type uuid, p_totals jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 declare
@@ -1365,6 +1365,7 @@ declare
   v_lines jsonb;
   seen text[] := '{}';
   kv record;
+  label text;
   k text;
   n int;
   idx int;
@@ -1379,26 +1380,30 @@ begin
   if t.kind <> 'counted' then
     raise exception '% is not a counted type', t.name using errcode = '22023';
   end if;
-  if p_totals is null or jsonb_typeof(p_totals) <> 'object' then
+  if p_totals is null or jsonb_typeof(p_totals) <> 'array' then
     raise exception 'invalid totals' using errcode = '22023';
   end if;
   v_lines := t.lines;
-  for kv in select key, value from jsonb_each(p_totals) loop
-    k := lower(btrim(kv.key));
+  for kv in select value as item from jsonb_array_elements(p_totals) with ordinality as e(value, ord) order by ord loop
+    if jsonb_typeof(kv.item) <> 'object' or jsonb_typeof(kv.item -> 'label') <> 'string' then
+      raise exception 'invalid totals' using errcode = '22023';
+    end if;
+    label := btrim(kv.item ->> 'label');
+    k := lower(label);
     if k = '' then
       raise exception 'a size or color needs a name' using errcode = '22023';
     end if;
     if k = any(seen) then
-      raise exception '% is listed twice', btrim(kv.key) using errcode = '22023';
+      raise exception '% is listed twice', label using errcode = '22023';
     end if;
     seen := seen || k;
-    n := public.require_whole(kv.value);
+    n := public.require_whole(kv.item -> 'total');
     idx := null;
     select ord - 1 into idx
       from jsonb_array_elements(v_lines) with ordinality as e(l, ord)
      where lower(btrim(l ->> 'label')) = k;
     if idx is null then
-      v_lines := v_lines || jsonb_build_array(jsonb_build_object('label', btrim(kv.key), 'total', n, 'count', n));
+      v_lines := v_lines || jsonb_build_array(jsonb_build_object('label', label, 'total', n, 'count', n));
     else
       v_lines := jsonb_set(v_lines, array[idx::text, 'total'], to_jsonb(n));
     end if;

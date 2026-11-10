@@ -1428,7 +1428,9 @@ describe('import and add inventory', () => {
   test('set_season_totals updates and appends', async () => {
     const { name, id } = await countedType('Totals');
     await asStaff.rpc('recount_piece_type', { p_type: id, p_counts: { Black: 300, Red: 287 } });
-    const ok = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: { Red: 320, Gold: 50 } });
+    const ok = await asStaff.rpc('set_season_totals', {
+      p_type: id, p_totals: [{ label: 'Red', total: 320 }, { label: 'Gold', total: 50 }],
+    });
     assert.equal(ok.error, null);
     const row = (await typeRow(name))!;
     assert.deepEqual(row.lines, [
@@ -1437,19 +1439,34 @@ describe('import and add inventory', () => {
       { label: 'Gold', total: 50, count: 50 },
     ]);
     assert.deepEqual(row.colors, ['Black', 'Red', 'Gold']);
-    const denied = await asMember.rpc('set_season_totals', { p_type: id, p_totals: { Red: 1 } });
+    const denied = await asMember.rpc('set_season_totals', { p_type: id, p_totals: [{ label: 'Red', total: 1 }] });
     assert.equal(denied.error?.code, '42501');
   });
 
   test('set_season_totals matches labels case-insensitively', async () => {
     const { name, id } = await countedType('Case');
-    const ok = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: { ' red ': 310 } });
+    const ok = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: [{ label: ' red ', total: 310 }] });
     assert.equal(ok.error, null);
     const lines = (await typeRow(name))!.lines;
     assert.equal(lines.length, 2);
     assert.deepEqual(lines[1], { label: 'Red', total: 310, count: 300 });
-    const dup = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: { Gold: 1, gold: 2 } });
+    const dup = await asStaff.rpc('set_season_totals', {
+      p_type: id, p_totals: [{ label: 'Gold', total: 1 }, { label: 'gold', total: 2 }],
+    });
     assert.equal(dup.error?.code, '22023');
+  });
+
+  test('set_season_totals adds several new lines in the order given', async () => {
+    const { name, id } = await countedType('Order');
+    // Typed order XL, S, 2XL differs from Postgres's own key order (S, XL, 2XL).
+    const ok = await asStaff.rpc('set_season_totals', {
+      p_type: id,
+      p_totals: [{ label: 'XL', total: 10 }, { label: 'S', total: 100 }, { label: '2XL', total: 5 }],
+    });
+    assert.equal(ok.error, null);
+    const row = (await typeRow(name))!;
+    assert.deepEqual(row.lines.map((l: { label: string }) => l.label), ['Black', 'Red', 'XL', 'S', '2XL']);
+    assert.deepEqual(row.colors, ['Black', 'Red', 'XL', 'S', '2XL']);
   });
 });
 

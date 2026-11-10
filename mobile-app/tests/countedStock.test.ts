@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, whiteShirtSizes, type ShirtOwner,
+  applyBatch, cardSummary, isWhiteShirt, keptAtHome, lineStatuses, whiteShirtSizes, withNewLabels, type ShirtOwner,
 } from '../lib/countedStock.ts';
 import type { PieceType } from '../lib/models.ts';
 
@@ -81,6 +81,12 @@ test('whiteShirtSizes returns the White shirt lines, or [] without one', () => {
   assert.deepEqual(whiteShirtSizes([t('Ties', ['Black']), t('White shirt', ['S', 'M', 'L', 'XL'])]), ['S', 'M', 'L', 'XL']);
   assert.deepEqual(whiteShirtSizes([t('Ties', ['Black'])]), []);
   assert.deepEqual(whiteShirtSizes([{ ...t('White shirt', ['S']), retired: true }]), []);
+});
+
+test('withNewLabels keeps the screen order and adds saved labels it is missing', () => {
+  assert.deepEqual(withNewLabels(['S', 'M', 'XS'], ['S', 'M', 'L']), ['S', 'M', 'XS', 'L']);
+  assert.deepEqual(withNewLabels(['S', 'm'], ['S', 'M']), ['S', 'm']);
+  assert.deepEqual(withNewLabels([], ['Black', 'Red']), ['Black', 'Red']);
 });
 
 test('isWhiteShirt ignores case and spaces', () => {
