@@ -80,6 +80,30 @@ test('parseNumberList rejects numbers too long to be real', () => {
   assert.deepEqual(parseNumberList('999999999'), { numbers: ['999999999'], error: null });
 });
 
+// The cases in docs/test-cases/piece-number-ranges.md, numbered the same way.
+test('parseNumberList: documented test cases (docs/test-cases)', () => {
+  // 1. Ordinary
+  assert.deepEqual(parseNumberList('104 to 120 every 4'), {
+    numbers: ['104', '108', '112', '116', '120'],
+    error: null,
+  });
+  // 2. Exactly at the 1000 limit: allowed
+  const atLimit = parseNumberList('1 to 1000');
+  assert.equal(atLimit.error, null);
+  assert.equal(atLimit.numbers.length, 1000);
+  assert.equal(atLimit.numbers[0], '1');
+  assert.equal(atLimit.numbers[999], '1000');
+  // 3. One past the limit: rejected, nothing created
+  assert.deepEqual(parseNumberList('1 to 1001'), { numbers: [], error: 'That range is more than 1000 numbers' });
+  // 4. Reversed range: rejected, nothing created
+  assert.deepEqual(parseNumberList('120 to 104'), {
+    numbers: [],
+    error: 'In "120 to 104" the start must not be after the end',
+  });
+  // 5. Start equals end: one number
+  assert.deepEqual(parseNumberList('7 to 7'), { numbers: ['7'], error: null });
+});
+
 test('classifyRows: Addison Sew with extra or non-breaking spaces still counts', () => {
   const cols = { name: 0, section: 1, coats: 2, bibbers: 3, vests: 4, repairs: 5 };
   const rows = classifyRows(
