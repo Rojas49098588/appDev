@@ -4,6 +4,8 @@ import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { InventoryPiece, PieceType } from '../lib/models';
 import { pieceCount, type Assignment } from '../lib/inventory';
+import { cardSummary, lineStatuses } from '../lib/countedStock';
+import { formatShortDate } from '../lib/format';
 import { ChevronDownIcon, SmallChevronRightIcon } from './icons';
 
 const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
@@ -21,6 +23,9 @@ export default function PieceCard({
   chipStateFor,
   assignmentFor,
   matches,
+  kept,
+  unanswered = 0,
+  onRecount,
 }: {
   piece: PieceType;
   // This type's pieces.
@@ -36,6 +41,10 @@ export default function PieceCard({
   assignmentFor: (piece: InventoryPiece) => Assignment;
   // Whether a piece passes the screen's active filters (only matching chips render).
   matches: (piece: InventoryPiece) => boolean;
+  // Counted types: shirts members keep at home per line label (White shirt only).
+  kept?: Record<string, number>;
+  unanswered?: number;
+  onRecount?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   // Numbered types: a chip per piece number, grouped by color. Counted types: a stock row per color.
@@ -53,7 +62,8 @@ export default function PieceCard({
     .filter((g) => g.shown.length > 0 || pieces.length === 0);
   const assignedTotal = pieces.filter((p) => assignmentFor(p).state === 'assigned').length;
   const present = new Set(groups.flatMap((g) => g.shown.map((x) => x.state)));
-  const rows = piece.lines.map((line) => ({ name: line.label, qty: line.count }));
+  const statuses = lineStatuses(piece.lines, kept);
+  const summary = cardSummary(statuses);
   const hasTintedChip =
     piece.kind === 'numbered' &&
     groups.some((g) => g.shown.some((x) => chipStateFor(g.color, x.number) !== null));
@@ -63,15 +73,26 @@ export default function PieceCard({
       <Pressable style={styles.pieceRow} onPress={() => setIsOpen((prev) => !prev)}>
         <View>
           <Text style={styles.pieceName}>{piece.name}</Text>
-          <Text style={styles.pieceSub}>{piece.colors.join(', ')}</Text>
+          <Text style={styles.pieceSub}>
+            {piece.kind === 'numbered' ? piece.colors.join(', ') : piece.lines.map((l) => l.label).join(', ')}
+          </Text>
         </View>
         <View style={styles.pieceRight}>
           <View>
             <Text style={styles.pieceQty}>
               {piece.kind === 'numbered'
                 ? `${assignedTotal} / ${pieceCount(piece, pieces)} assigned`
-                : pieceCount(piece, pieces)}
+                : `${summary.count} / ${summary.expected}`}
             </Text>
+            {piece.kind === 'counted' && piece.lines.length > 0 && (
+              <View style={styles.statusTags}>
+                {summary.missing > 0 ? (
+                  <Text style={[styles.countTag, styles.countTagMissing]}>{summary.missing} missing</Text>
+                ) : (
+                  <Text style={[styles.countTag, styles.countTagOk]}>all in</Text>
+                )}
+              </View>
+            )}
             {(repairCount > 0 || dirtyCount > 0) && (
               <View style={styles.statusTags}>
                 {repairCount > 0 && (
@@ -144,19 +165,44 @@ export default function PieceCard({
                   </ScrollView>
                 </View>
               ))
-              : rows.map((row, index) => (
+              : statuses.map((line, index) => (
                   <View
-                    key={row.name}
-                    style={[
-                      styles.styleRow,
-                      index === rows.length - 1 && styles.styleRowLast,
-                    ]}
+                    key={line.label}
+                    style={[styles.styleRow, index === statuses.length - 1 && styles.styleRowLast]}
                   >
-                    <Text style={styles.styleName}>{row.name}</Text>
-                    <Text style={styles.styleQty}>{row.qty}</Text>
+                    <View>
+                      <Text style={styles.styleName}>{line.label}</Text>
+                      {line.kept > 0 && <Text style={styles.keptNote}>{line.kept} kept at home</Text>}
+                    </View>
+                    <Text style={[styles.styleQty, line.missing > 0 && styles.styleQtyMissing]}>
+                      {line.count} / {line.expected}
+                      {line.missing > 0 ? ` · ${line.missing} missing` : ''}
+                    </Text>
                   </View>
                 ));
           })()}
+          {piece.kind === 'counted' && (
+            <View style={styles.countFooter}>
+              {unanswered > 0 && (
+                <Text style={styles.countMeta}>
+                  {unanswered === 1 ? "1 member hasn't answered" : `${unanswered} members haven't answered`}
+                </Text>
+              )}
+              <Text style={styles.countMeta}>
+                {piece.countedAt ? `Last counted ${formatShortDate(piece.countedAt)}` : 'Not counted yet'}
+              </Text>
+              {onRecount && (
+                <Pressable
+                  style={styles.recountBtn}
+                  onPress={onRecount}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Recount ${piece.name}`}
+                >
+                  <Text style={styles.recountText}>Recount</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
           {piece.kind === 'numbered' && onSeeAll && (
             <Pressable onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`}>
               <Text style={styles.seeAll}>See every {piece.name} {'›'}</Text>
@@ -344,4 +390,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.ink,
   },
+  styleQtyMissing: { color: colors.amber },
+  keptNote: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft, marginTop: 1 },
+  countTag: {
+    fontFamily: fonts.body,
+    fontSize: 10.5,
+    borderWidth: 1,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    overflow: 'hidden',
+  },
+  countTagMissing: { color: colors.amber, borderColor: colors.amber, backgroundColor: colors.amberTint },
+  countTagOk: { color: colors.wash, borderColor: colors.wash, backgroundColor: colors.washTint },
+  countFooter: { marginTop: 10, gap: 4 },
+  countMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.inkSoft },
+  recountBtn: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: colors.ink,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  recountText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
 });
