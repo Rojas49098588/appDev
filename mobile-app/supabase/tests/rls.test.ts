@@ -1388,6 +1388,88 @@ describe('import and add inventory', () => {
     assert.equal(again.data, 1);
     assert.deepEqual((await piecesOf(name)).map((p) => p.color), ['Blue', 'Gold', 'Red']);
   });
+
+  // Counted types: season totals and wash-day counts (docs/superpowers/specs/2026-11-10-counted-inventory-design.md).
+  async function countedType(label: string) {
+    const name = typeName(label);
+    const created = await asStaff.rpc('create_piece_type', {
+      p_name: name, p_kind: 'counted', p_colors: ['Black', 'Red'], p_numbers: [], p_stock: { Black: 300, Red: 300 },
+    });
+    assert.equal(created.error, null);
+    return { name, id: created.data as string };
+  }
+
+  test('create_piece_type counted builds lines', async () => {
+    const { name } = await countedType('Neckties');
+    assert.deepEqual((await typeRow(name))!.lines, [
+      { label: 'Black', total: 300, count: 300 },
+      { label: 'Red', total: 300, count: 300 },
+    ]);
+  });
+
+  test('recount_piece_type sets counts and who counted', async () => {
+    const { name, id } = await countedType('Recount');
+    const ok = await asStaff.rpc('recount_piece_type', { p_type: id, p_counts: { Black: 300, Red: 287 } });
+    assert.equal(ok.error, null);
+    const row = (await typeRow(name))!;
+    assert.deepEqual(row.lines.map((l: { count: number }) => l.count), [300, 287]);
+    assert.notEqual(row.counted_at, null);
+    assert.ok(row.counted_by_name.length > 0);
+
+    const missingLabel = await asStaff.rpc('recount_piece_type', { p_type: id, p_counts: { Black: 1 } });
+    assert.equal(missingLabel.error?.code, '22023');
+    const negative = await asStaff.rpc('recount_piece_type', { p_type: id, p_counts: { Black: -1, Red: 0 } });
+    assert.equal(negative.error?.code, '22023');
+    const denied = await asMember.rpc('recount_piece_type', { p_type: id, p_counts: { Black: 0, Red: 0 } });
+    assert.equal(denied.error?.code, '42501');
+    assert.deepEqual((await typeRow(name))!.lines.map((l: { count: number }) => l.count), [300, 287]);
+  });
+
+  test('set_season_totals updates and appends', async () => {
+    const { name, id } = await countedType('Totals');
+    await asStaff.rpc('recount_piece_type', { p_type: id, p_counts: { Black: 300, Red: 287 } });
+    const ok = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: { Red: 320, Gold: 50 } });
+    assert.equal(ok.error, null);
+    const row = (await typeRow(name))!;
+    assert.deepEqual(row.lines, [
+      { label: 'Black', total: 300, count: 300 },
+      { label: 'Red', total: 320, count: 287 },
+      { label: 'Gold', total: 50, count: 50 },
+    ]);
+    assert.deepEqual(row.colors, ['Black', 'Red', 'Gold']);
+    const denied = await asMember.rpc('set_season_totals', { p_type: id, p_totals: { Red: 1 } });
+    assert.equal(denied.error?.code, '42501');
+  });
+
+  test('set_season_totals matches labels case-insensitively', async () => {
+    const { name, id } = await countedType('Case');
+    const ok = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: { ' red ': 310 } });
+    assert.equal(ok.error, null);
+    const lines = (await typeRow(name))!.lines;
+    assert.equal(lines.length, 2);
+    assert.deepEqual(lines[1], { label: 'Red', total: 310, count: 300 });
+    const dup = await asStaff.rpc('set_season_totals', { p_type: id, p_totals: { Gold: 1, gold: 2 } });
+    assert.equal(dup.error?.code, '22023');
+  });
+});
+
+describe('white shirt fields', () => {
+  after(async () => {
+    await admin.from('profiles').update({ white_shirt_size: '', keeps_white_shirt: null }).in('id', [member.id, otherMember.id]);
+  });
+
+  test('members can set their own white shirt fields only', async () => {
+    const own = await asMember.from('profiles').update({ white_shirt_size: 'M', keeps_white_shirt: true })
+      .eq('id', member.id).select('white_shirt_size, keeps_white_shirt');
+    assert.equal(own.error, null);
+    assert.deepEqual(own.data, [{ white_shirt_size: 'M', keeps_white_shirt: true }]);
+
+    const other = await asMember.from('profiles').update({ white_shirt_size: 'L', keeps_white_shirt: true })
+      .eq('id', otherMember.id).select('id');
+    assert.ok(other.error !== null || (other.data?.length ?? 0) === 0);
+    const { data } = await admin.from('profiles').select('white_shirt_size, keeps_white_shirt').eq('id', otherMember.id).single();
+    assert.deepEqual(data, { white_shirt_size: '', keeps_white_shirt: null });
+  });
 });
 
 describe('games', () => {

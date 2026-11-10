@@ -30,6 +30,10 @@ create table if not exists public.profiles (
 -- db:apply can be re-run.
 alter table public.profiles add column if not exists numbers jsonb not null default '{}'::jsonb;
 alter table public.profiles add column if not exists archived_at timestamptz;
+-- The member's white shirt size ('' = not set) and whether they keep and wash their own
+-- (null = not answered, treated as leaving it in the bin). Members set these themselves.
+alter table public.profiles add column if not exists white_shirt_size text not null default '';
+alter table public.profiles add column if not exists keeps_white_shirt boolean;
 
 -- Piece and member numbers: trimmed digits, leading zeros stripped ('085' -> '85',
 -- '000' -> '0'). Null for anything that isn't digits, so writers can refuse it.
@@ -231,6 +235,22 @@ create table if not exists public.piece_types (
   retired boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Counted types: one line per size or color, [{"label","total","count"}]. total is the
+-- season's supply; count is what was in the bins at the last wash-day recount. Replaces
+-- stock, which stays only for older app builds.
+alter table public.piece_types add column if not exists lines jsonb not null default '[]'::jsonb;
+alter table public.piece_types add column if not exists counted_at timestamptz;
+alter table public.piece_types add column if not exists counted_by_name text not null default '';
+-- One-time move of stock into lines (re-running finds nothing left to move).
+update public.piece_types t
+   set lines = (
+     select coalesce(jsonb_agg(jsonb_build_object(
+              'label', c,
+              'total', coalesce((t.stock ->> c)::int, 0),
+              'count', coalesce((t.stock ->> c)::int, 0)) order by ord), '[]'::jsonb)
+       from unnest(t.colors) with ordinality as u(c, ord))
+ where t.kind = 'counted' and t.lines = '[]'::jsonb and t.stock <> '{}'::jsonb;
 
 create table if not exists public.pieces (
   id uuid primary key default gen_random_uuid(),
@@ -1117,6 +1137,7 @@ declare
   v_colors text[] := public.clean_list(p_colors);
   v_numbers text[];
   v_stock jsonb := '{}'::jsonb;
+  v_lines jsonb := '[]'::jsonb;
   dup text;
   kv record;
   new_id uuid;
@@ -1162,9 +1183,19 @@ begin
     end loop;
   end if;
 
+  if p_kind = 'counted' then
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'label', c,
+             'total', coalesce((v_stock ->> c)::int, 0),
+             'count', coalesce((v_stock ->> c)::int, 0)) order by ord), '[]'::jsonb)
+      into v_lines
+      from unnest(v_colors) with ordinality as u(c, ord);
+  end if;
+
   begin
-    insert into public.piece_types (name, kind, colors, stock, sort_order)
-    values (v_name, p_kind, v_colors, v_stock, (select coalesce(max(sort_order), -1) + 1 from public.piece_types))
+    insert into public.piece_types (name, kind, colors, stock, lines, sort_order)
+    values (v_name, p_kind, v_colors, v_stock, v_lines,
+            (select coalesce(max(sort_order), -1) + 1 from public.piece_types))
     returning id into new_id;
   exception when unique_violation then
     raise exception 'a piece type named % already exists', v_name using errcode = '23505';
@@ -1256,6 +1287,132 @@ end;
 $$;
 revoke all on function public.add_piece_number(uuid, text, text[]) from public, anon;
 grant execute on function public.add_piece_number(uuid, text, text[]) to authenticated;
+
+-- ---------- Counted types: wash-day recounts and season totals ----------
+-- A JSON value as a whole number >= 0, or 22023.
+create or replace function public.require_whole(v jsonb) returns int
+language plpgsql immutable as $$
+begin
+  if v is null or jsonb_typeof(v) <> 'number'
+     or (v #>> '{}')::numeric < 0 or (v #>> '{}')::numeric <> trunc((v #>> '{}')::numeric) then
+    raise exception 'counts must be whole numbers, 0 or more' using errcode = '22023';
+  end if;
+  return (v #>> '{}')::int;
+end;
+$$;
+
+-- Staff only. p_counts is {label: count} and must cover every line of the type exactly
+-- once (labels match ignoring case and spaces). Records when and by whom.
+create or replace function public.recount_piece_type(p_type uuid, p_counts jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  t public.piece_types%rowtype;
+  v_counts jsonb := '{}'::jsonb;
+  v_lines jsonb;
+  kv record;
+  k text;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can count inventory' using errcode = '42501';
+  end if;
+  select * into t from public.piece_types where id = p_type for update;
+  if not found then
+    raise exception 'no such piece type' using errcode = 'P0002';
+  end if;
+  if t.kind <> 'counted' then
+    raise exception '% is not a counted type', t.name using errcode = '22023';
+  end if;
+  if p_counts is null or jsonb_typeof(p_counts) <> 'object' then
+    raise exception 'invalid counts' using errcode = '22023';
+  end if;
+  for kv in select key, value from jsonb_each(p_counts) loop
+    k := lower(btrim(kv.key));
+    if v_counts ? k then
+      raise exception '% is listed twice', btrim(kv.key) using errcode = '22023';
+    end if;
+    v_counts := v_counts || jsonb_build_object(k, public.require_whole(kv.value));
+  end loop;
+  if (select count(*) from jsonb_array_elements(t.lines)) <> (select count(*) from jsonb_object_keys(v_counts))
+     or exists (select 1 from jsonb_array_elements(t.lines) as l
+                where not v_counts ? lower(btrim(l ->> 'label'))) then
+    raise exception 'count every size or color of %', t.name using errcode = '22023';
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'label', l ->> 'label',
+           'total', (l ->> 'total')::int,
+           'count', (v_counts ->> lower(btrim(l ->> 'label')))::int) order by ord), '[]'::jsonb)
+    into v_lines
+    from jsonb_array_elements(t.lines) with ordinality as e(l, ord);
+  update public.piece_types
+     set lines = v_lines,
+         counted_at = now(),
+         counted_by_name = coalesce((select btrim(first_name || ' ' || last_name)
+                                       from public.profiles where id = auth.uid()), '')
+   where id = p_type;
+end;
+$$;
+revoke all on function public.recount_piece_type(uuid, jsonb) from public, anon;
+grant execute on function public.recount_piece_type(uuid, jsonb) to authenticated;
+
+-- Staff only. p_totals is {label: season total}. Existing labels (ignoring case and
+-- spaces) get the new total; new labels are added as lines whose count starts at the
+-- total. colors is kept equal to the line labels.
+create or replace function public.set_season_totals(p_type uuid, p_totals jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  t public.piece_types%rowtype;
+  v_lines jsonb;
+  seen text[] := '{}';
+  kv record;
+  k text;
+  n int;
+  idx int;
+begin
+  if not public.is_staff() then
+    raise exception 'only staff can change season totals' using errcode = '42501';
+  end if;
+  select * into t from public.piece_types where id = p_type for update;
+  if not found then
+    raise exception 'no such piece type' using errcode = 'P0002';
+  end if;
+  if t.kind <> 'counted' then
+    raise exception '% is not a counted type', t.name using errcode = '22023';
+  end if;
+  if p_totals is null or jsonb_typeof(p_totals) <> 'object' then
+    raise exception 'invalid totals' using errcode = '22023';
+  end if;
+  v_lines := t.lines;
+  for kv in select key, value from jsonb_each(p_totals) loop
+    k := lower(btrim(kv.key));
+    if k = '' then
+      raise exception 'a size or color needs a name' using errcode = '22023';
+    end if;
+    if k = any(seen) then
+      raise exception '% is listed twice', btrim(kv.key) using errcode = '22023';
+    end if;
+    seen := seen || k;
+    n := public.require_whole(kv.value);
+    idx := null;
+    select ord - 1 into idx
+      from jsonb_array_elements(v_lines) with ordinality as e(l, ord)
+     where lower(btrim(l ->> 'label')) = k;
+    if idx is null then
+      v_lines := v_lines || jsonb_build_array(jsonb_build_object('label', btrim(kv.key), 'total', n, 'count', n));
+    else
+      v_lines := jsonb_set(v_lines, array[idx::text, 'total'], to_jsonb(n));
+    end if;
+  end loop;
+
+  update public.piece_types
+     set lines = v_lines,
+         colors = (select coalesce(array_agg(l ->> 'label' order by ord), '{}')
+                     from jsonb_array_elements(v_lines) with ordinality as e(l, ord))
+   where id = p_type;
+end;
+$$;
+revoke all on function public.set_season_totals(uuid, jsonb) from public, anon;
+grant execute on function public.set_season_totals(uuid, jsonb) to authenticated;
 
 -- ---------- Storage: combo photos ----------
 
