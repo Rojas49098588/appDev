@@ -1,4 +1,6 @@
 export const OFFLINE_MESSAGE = "Can't reach the server. Check your connection and try again.";
+// Shown when someone tries to change something while offline.
+export const OFFLINE_ALERT = { title: "You're offline", message: 'Connect to the internet to make changes.' };
 export const ARCHIVED_MESSAGE = 'This account has been archived. Talk to a uniform manager.';
 
 // Turns Supabase/network errors into messages suitable for an Alert.

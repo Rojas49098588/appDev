@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { useNetworkState } from 'expo-network';
+import { OFFLINE_ALERT } from '../lib/errors';
 
 export function useConnection(): { isOnline: boolean } {
   const state = useNetworkState();
@@ -26,7 +27,7 @@ export function useOnReconnect(callback: () => void): void {
 // Guard for edit actions: shows an alert and returns false when offline.
 export function requireOnline(isOnline: boolean): boolean {
   if (!isOnline) {
-    Alert.alert("You're offline", 'Connect to the internet to make changes.');
+    Alert.alert(OFFLINE_ALERT.title, OFFLINE_ALERT.message);
   }
   return isOnline;
 }

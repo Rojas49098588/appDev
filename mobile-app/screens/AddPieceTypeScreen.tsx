@@ -17,19 +17,17 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { PieceKind } from '../lib/models';
-import { parseNumberList } from '../lib/import/rows';
+import { addNumbers as mergeNumbers, saveProblem } from '../lib/pieceTypeForm';
 import { useInventory } from '../context/InventoryContext';
 import { friendlyError } from '../lib/errors';
 import { successBuzz } from '../lib/haptics';
-import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
+import { OFFLINE_DIM, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddPieceType'>;
-
-const byValue = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 
 export default function AddPieceTypeScreen({ navigation }: Props) {
   const { createPieceType } = useInventory();
@@ -74,13 +72,12 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
 
   // Returns the new number list, or null (after telling the user) when the text can't be read.
   const withNumbers = (text: string): string[] | null => {
-    if (!text.trim()) return numbers;
-    const parsed = parseNumberList(text);
-    if (parsed.error) {
-      Alert.alert("Can't read those numbers", parsed.error);
+    const result = mergeNumbers(numbers, text);
+    if (result.error) {
+      Alert.alert("Can't read those numbers", result.error);
       return null;
     }
-    return [...new Set([...numbers, ...parsed.numbers])].sort(byValue);
+    return result.numbers;
   };
 
   const addNumbers = () => {
@@ -109,17 +106,6 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
     if (!finalColors) return;
     const finalNumbers = kind === 'numbered' ? withNumbers(numberText) : numbers;
     if (!finalNumbers) return;
-    if (finalColors.length === 0) {
-      Alert.alert(
-        kind === 'counted' ? 'Sizes or colors needed' : 'Colors needed',
-        kind === 'counted' ? 'Add at least one size or color.' : 'Add at least one color.'
-      );
-      return;
-    }
-    if (kind === 'numbered' && finalNumbers.length === 0) {
-      Alert.alert('Numbers needed', 'Add at least one number.');
-      return;
-    }
     if (kind === 'counted') {
       const bad = finalColors.find((c) => stock[c] && !/^\d+$/.test(stock[c]));
       if (bad) {
@@ -127,7 +113,11 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
         return;
       }
     }
-    if (!requireOnline(isOnline)) return;
+    const problem = saveProblem({ name: trimmed, kind, colors: finalColors, numbers: finalNumbers, isOnline });
+    if (problem) {
+      Alert.alert(problem.title, problem.message);
+      return;
+    }
     savingRef.current = true;
     setSaving(true);
     setPieceColors(finalColors);
