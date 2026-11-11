@@ -1,4 +1,7 @@
 import type { HeightValue, Role } from '../navigation/types';
+import type { CountLine } from './countedStock.ts';
+
+export type { CountLine };
 
 export type ShoeSize = { gender: "Men's" | "Women's"; size: string };
 
@@ -12,9 +15,12 @@ export type PieceType = {
   name: string;
   kind: PieceKind;
   colors: string[];
-  stock: Record<string, number>;
   sortOrder: number;
   retired: boolean;
+  // Counted types only: one line per size or color (season total and wash-day count).
+  lines: CountLine[];
+  countedAt: string | null;
+  countedByName: string;
 };
 
 export type InventoryPiece = {
@@ -41,6 +47,9 @@ export type Account = {
   numbers: MemberNumbers;
   // ISO timestamp; null while the account is active.
   archivedAt: string | null;
+  // '' = not set. keepsWhiteShirt null = not answered (treated as leaving it in the bin).
+  whiteShirtSize: string;
+  keepsWhiteShirt: boolean | null;
 };
 
 export type FlagStatus = 'dirty' | 'repair';

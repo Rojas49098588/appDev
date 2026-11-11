@@ -19,6 +19,7 @@ import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
 import { chipState } from '../lib/flagHistory';
 import { assignmentFor, duplicateNumbers, ownerIndex, unknownNumbers } from '../lib/inventory';
+import { isWhiteShirt, keptAtHome } from '../lib/countedStock';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 
 type Props = CompositeScreenProps<
@@ -57,6 +58,8 @@ export default function InventoryScreen({ navigation }: Props) {
   const owners = useMemo(() => ownerIndex(accounts), [accounts]);
   const unknown = useMemo(() => unknownNumbers(accounts, pieces), [accounts, pieces]);
   const duplicates = useMemo(() => duplicateNumbers(accounts), [accounts]);
+  // White shirts members keep at home aren't missing; counted per size label.
+  const shirtsAtHome = (piece: PieceType) => keptAtHome(accounts, piece.lines.map((l) => l.label));
   const unassignedTotal = useMemo(
     () => pieces.filter((p) => assignmentFor(p, owners).state === 'unassigned').length,
     [pieces, owners]
@@ -316,6 +319,9 @@ export default function InventoryScreen({ navigation }: Props) {
                 chipStateFor={(c, s) => chipState(flags, piece.name, c, s)}
                 assignmentFor={(p) => assignmentFor(p, owners)}
                 matches={(p) => pieceMatches(piece, p)}
+                kept={isWhiteShirt(piece.name) ? shirtsAtHome(piece).kept : undefined}
+                unanswered={isWhiteShirt(piece.name) ? shirtsAtHome(piece).unanswered : 0}
+                onRecount={() => navigation.navigate('Recount', { pieceTypeId: piece.id, mode: 'count' })}
               />
             );
           })}

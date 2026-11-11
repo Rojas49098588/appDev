@@ -32,7 +32,11 @@ export function saveProblem(form: {
   isOnline: boolean;
 }): FormProblem | null {
   if (!form.name.trim()) return { title: 'Name needed', message: 'Give this piece type a name.' };
-  if (form.colors.length === 0) return { title: 'Colors needed', message: 'Add at least one color.' };
+  if (form.colors.length === 0) {
+    return form.kind === 'counted'
+      ? { title: 'Sizes or colors needed', message: 'Add at least one size or color.' }
+      : { title: 'Colors needed', message: 'Add at least one color.' };
+  }
   if (form.kind === 'numbered' && form.numbers.length === 0) {
     return { title: 'Numbers needed', message: 'Add at least one number.' };
   }

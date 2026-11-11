@@ -17,7 +17,7 @@ const type = (name: string, colors: string[]): PieceType => ({
   name,
   kind: 'numbered',
   colors,
-  stock: {},
+  lines: [], countedAt: null, countedByName: '',
   sortOrder: 0,
   retired: false,
 });

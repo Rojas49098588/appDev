@@ -9,6 +9,7 @@ const profile: ProfileRow = {
   role: 'Member', phone: '', shoe_gender: null, shoe_size: '', height_feet: '5', height_inches: '6',
   weight: '130', numbers: { Coats: '208', Bibbers: '212' },
   archived_at: null, created_at: '2026-09-29T00:00:00Z',
+  white_shirt_size: '', keeps_white_shirt: null,
 };
 
 test('profileToAccount maps columns and defaults a missing shoe gender', () => {
@@ -17,8 +18,19 @@ test('profileToAccount maps columns and defaults a missing shoe gender', () => {
     role: 'Member', phone: '', shoeSize: { gender: "Men's", size: '' },
     height: { feet: '5', inches: '6' }, weight: '130',
     numbers: { Coats: '208', Bibbers: '212' }, archivedAt: null,
+    whiteShirtSize: '', keepsWhiteShirt: null,
   });
   assert.equal(profileToAccount({ ...profile, archived_at: '2026-10-07T12:00:00Z' }).archivedAt, '2026-10-07T12:00:00Z');
+  const keeps = profileToAccount({ ...profile, white_shirt_size: 'M', keeps_white_shirt: true });
+  assert.equal(keeps.whiteShirtSize, 'M');
+  assert.equal(keeps.keepsWhiteShirt, true);
+});
+
+test('accountUpdatesToProfile maps the white shirt fields', () => {
+  assert.deepEqual(accountUpdatesToProfile({ keepsWhiteShirt: false, whiteShirtSize: 'L' }), {
+    keeps_white_shirt: false,
+    white_shirt_size: 'L',
+  });
 });
 
 test('accountUpdatesToProfile only includes provided fields and never email or role', () => {
@@ -146,11 +158,20 @@ test('rowToArchive reads old size keys and new numbers', () => {
 test('rowToPieceType and rowToPiece map columns', () => {
   const t: PieceTypeRow = {
     id: 't1', name: 'Coats', kind: 'numbered', colors: ['Blue', 'White'], stock: {},
-    sort_order: 2, retired: false, created_at: '',
+    sort_order: 2, retired: false, created_at: '', lines: [], counted_at: null, counted_by_name: '',
   };
   assert.deepEqual(rowToPieceType(t), {
-    id: 't1', name: 'Coats', kind: 'numbered', colors: ['Blue', 'White'], stock: {}, sortOrder: 2, retired: false,
+    id: 't1', name: 'Coats', kind: 'numbered', colors: ['Blue', 'White'], sortOrder: 2, retired: false,
+    lines: [], countedAt: null, countedByName: '',
   });
+  const ties: PieceTypeRow = {
+    ...t, kind: 'counted', lines: [{ label: 'Red', total: 300, count: 287 }],
+    counted_at: '2026-11-02T18:00:00Z', counted_by_name: 'Abigail Rojas',
+  };
+  const mapped = rowToPieceType(ties);
+  assert.deepEqual(mapped.lines, [{ label: 'Red', total: 300, count: 287 }]);
+  assert.equal(mapped.countedAt, '2026-11-02T18:00:00Z');
+  assert.equal(mapped.countedByName, 'Abigail Rojas');
   const p: PieceRow = { id: 'p1', piece_type_id: 't1', color: 'Blue', number: '104', out_for_repair: true, created_at: '' };
   assert.deepEqual(rowToPiece(p, 'Coats'), {
     id: 'p1', pieceTypeId: 't1', pieceType: 'Coats', color: 'Blue', number: '104', outForRepair: true,

@@ -27,6 +27,7 @@ import PieceHistoryScreen from './screens/PieceHistoryScreen';
 import PieceTableScreen from './screens/PieceTableScreen';
 import ImportInventoryScreen from './screens/ImportInventoryScreen';
 import AddPieceTypeScreen from './screens/AddPieceTypeScreen';
+import RecountScreen from './screens/RecountScreen';
 import ArchivedMembersScreen from './screens/ArchivedMembersScreen';
 import ArchivedMemberScreen from './screens/ArchivedMemberScreen';
 import GamesScreen from './screens/GamesScreen';
@@ -142,6 +143,11 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
           <Stack.Screen
             name="AddPieceType"
             component={AddPieceTypeScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Recount"
+            component={RecountScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

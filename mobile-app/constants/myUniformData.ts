@@ -35,4 +35,5 @@ export function uniformFor(
 
 // Not part of the staff inventory — a member-view-only field. Flaggable in
 // My Inventory, but only as Dirty — see FlagItemScreen.
-export const MY_WHITE_SHIRT = { piece: 'White shirt', color: 'White', size: 'M' };
+// Each member's size comes from their profile (Account.whiteShirtSize).
+export const MY_WHITE_SHIRT = { piece: 'White shirt', color: 'White' };

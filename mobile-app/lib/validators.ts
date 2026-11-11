@@ -17,7 +17,8 @@ export function isAccount(v: unknown): v is Account {
     isObject(shoeSize) && (shoeSize.gender === "Men's" || shoeSize.gender === "Women's") && isString(shoeSize.size) &&
     isObject(height) && isString(height.feet) && isString(height.inches) &&
     isObject(numbers) && Object.values(numbers).every(isString) && v.uniformSizes === undefined &&
-    isStringOrNull(v.archivedAt)
+    isStringOrNull(v.archivedAt) &&
+    isString(v.whiteShirtSize) && (v.keepsWhiteShirt === null || typeof v.keepsWhiteShirt === 'boolean')
   );
 }
 
@@ -74,9 +75,14 @@ function isPieceType(v: unknown): v is PieceType {
   return (
     isObject(v) && isString(v.id) && isString(v.name) && (v.kind === 'numbered' || v.kind === 'counted') &&
     Array.isArray(v.colors) && v.colors.every(isString) &&
-    isObject(v.stock) && Object.values(v.stock).every((n) => typeof n === 'number') &&
-    typeof v.sortOrder === 'number' && typeof v.retired === 'boolean'
+    typeof v.sortOrder === 'number' && typeof v.retired === 'boolean' &&
+    Array.isArray(v.lines) && v.lines.every(isCountLine) &&
+    isStringOrNull(v.countedAt) && isString(v.countedByName)
   );
+}
+
+function isCountLine(v: unknown): boolean {
+  return isObject(v) && isString(v.label) && typeof v.total === 'number' && typeof v.count === 'number';
 }
 
 export const isPieceTypeList = (v: unknown): v is PieceType[] => Array.isArray(v) && v.every(isPieceType);

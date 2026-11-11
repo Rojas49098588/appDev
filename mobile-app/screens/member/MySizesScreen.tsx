@@ -21,7 +21,7 @@ export default function MySizesScreen() {
       label: 'Shoe size',
       value: shoeSize ? `${shoeSize.gender} · ${shoeSize.size || '—'}` : '—',
     },
-    { label: MY_WHITE_SHIRT.piece, value: `${MY_WHITE_SHIRT.color} · ${MY_WHITE_SHIRT.size}` },
+    { label: MY_WHITE_SHIRT.piece, value: `${MY_WHITE_SHIRT.color} · ${account?.whiteShirtSize || '—'}` },
   ];
 
   return (

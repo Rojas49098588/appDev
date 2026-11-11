@@ -1,5 +1,5 @@
 // Shapes of rows as Supabase returns them (snake_case, matching supabase/schema.sql).
-import type { Division, GameStatus, PoloColor, Sport } from './models.ts';
+import type { CountLine, Division, GameStatus, PoloColor, Sport } from './models.ts';
 
 export type ProfileRow = {
   id: string;
@@ -17,6 +17,8 @@ export type ProfileRow = {
   numbers: Record<string, string>;
   archived_at: string | null;
   created_at: string;
+  white_shirt_size: string;
+  keeps_white_shirt: boolean | null;
 };
 
 // archive_member() builds the snapshot from the profile row plus open flags.
@@ -107,10 +109,14 @@ export type PieceTypeRow = {
   name: string;
   kind: 'numbered' | 'counted';
   colors: string[];
+  // Old per-color counts, kept only for older app builds; the app reads lines.
   stock: Record<string, number>;
   sort_order: number;
   retired: boolean;
   created_at: string;
+  lines: CountLine[];
+  counted_at: string | null;
+  counted_by_name: string;
 };
 
 export type PieceRow = {

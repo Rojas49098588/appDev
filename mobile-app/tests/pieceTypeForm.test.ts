@@ -63,3 +63,10 @@ test('save needs a name, a color and, for numbered types, a number', () => {
   assert.equal(saveProblem({ ...coats, numbers: [] })?.title, 'Numbers needed');
   assert.equal(saveProblem({ ...coats, kind: 'counted', numbers: [] }), null);
 });
+
+test('counted types ask for a size or color', () => {
+  assert.deepEqual(saveProblem({ ...coats, kind: 'counted', colors: [], numbers: [] }), {
+    title: 'Sizes or colors needed',
+    message: 'Add at least one size or color.',
+  });
+});
