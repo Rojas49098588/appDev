@@ -4,6 +4,7 @@ import {
   ARCHIVED_MESSAGE,
   OFFLINE_MESSAGE,
   RESET_CODE_INVALID_MESSAGE,
+  SERVER_SLOW_MESSAGE,
   TOO_MANY_REQUESTS_MESSAGE,
   friendlyError,
 } from '../lib/errors.ts';
@@ -11,6 +12,16 @@ import {
 test('network failures become the offline message', () => {
   assert.equal(friendlyError(new TypeError('Network request failed')), OFFLINE_MESSAGE);
   assert.equal(friendlyError({ name: 'AuthRetryableFetchError', message: 'x' }), OFFLINE_MESSAGE);
+  assert.equal(friendlyError({ name: 'AuthRetryableFetchError', message: 'x', status: 0 }), OFFLINE_MESSAGE);
+});
+
+test('a server that answered with a timeout is not called offline', () => {
+  for (const status of [502, 503, 504]) {
+    assert.equal(
+      friendlyError({ name: 'AuthRetryableFetchError', message: 'upstream request timeout', status }),
+      SERVER_SLOW_MESSAGE
+    );
+  }
 });
 
 test('known Supabase errors get plain-language messages', () => {

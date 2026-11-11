@@ -5,6 +5,7 @@ export const ARCHIVED_MESSAGE = 'This account has been archived. Talk to a unifo
 export const RESET_CODE_INVALID_MESSAGE =
   'That code is wrong or has expired. Check the email, or tap "Send a new code".';
 export const TOO_MANY_REQUESTS_MESSAGE = 'Too many tries. Wait a minute, then try again.';
+export const SERVER_SLOW_MESSAGE = 'The server took too long to answer. Wait a minute, then try again.';
 
 // Turns Supabase/network errors into messages suitable for an Alert.
 export function friendlyError(error: unknown): string {
@@ -12,7 +13,10 @@ export function friendlyError(error: unknown): string {
   const message = typeof e.message === 'string' ? e.message : '';
   const code = typeof e.code === 'string' ? e.code : '';
   const name = typeof e.name === 'string' ? e.name : '';
+  const status = typeof e.status === 'number' ? e.status : 0;
 
+  // Supabase answered, but with a gateway error (e.g. it timed out sending an email).
+  if (name === 'AuthRetryableFetchError' && status >= 502 && status <= 504) return SERVER_SLOW_MESSAGE;
   if (name === 'AuthRetryableFetchError' || /network request failed|failed to fetch|fetch failed/i.test(message)) {
     return OFFLINE_MESSAGE;
   }
