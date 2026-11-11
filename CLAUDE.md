@@ -29,6 +29,7 @@ Commands (run from `mobile-app/`):
 - `npm run db:apply:test` / `npm run db:check:test` — apply (schema + seed + `test-seed.sql`) / check the TEST project
 - `npm run test:members -- <csv>` — create TEST-project member accounts for the member rows of a roster CSV (refuses to run if the test URL equals the live URL, or if the live URL can't be read)
 - `npm run start:test` — start Expo against the TEST project, using `mobile-app/.env.test.local` (template `mobile-app/.env.test.example`; git-ignored; anon key only)
+- `eas build --platform ios --profile production --auto-submit` — build the iOS app in the cloud and upload it to App Store Connect for TestFlight (asks for the Apple ID login; the build number goes up on its own). Uses the LIVE Supabase project through the EAS `production` environment variables, not `.env.local`. Needs an up-to-date `eas-cli` (`npm install -g eas-cli@latest`): old versions fail the Apple login with "iTunes service key is empty". iOS bundle ID: `com.abigailrojas.mustangcloset`.
 
 Entry point is `index.ts` → `App.tsx`. Config (app name, icons, platform-specific settings) lives in `app.json`.
 

@@ -66,6 +66,12 @@ cd "C:\dev\App Dev\mobile-app"
 npx eas build --platform android --profile preview
 ```
 
+Build the iPhone app and upload it to TestFlight (LIVE database). Asks for your Apple ID login; afterwards, add the build to a tester group in App Store Connect → TestFlight:
+```
+cd "C:\dev\App Dev\mobile-app"
+eas build --platform ios --profile production --auto-submit
+```
+
 Apply database changes to LIVE. Run this only after merging to master:
 ```
 cd "C:\dev\App Dev\mobile-app"
