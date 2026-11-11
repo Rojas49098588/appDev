@@ -2,6 +2,10 @@ export const OFFLINE_MESSAGE = "Can't reach the server. Check your connection an
 // Shown when someone tries to change something while offline.
 export const OFFLINE_ALERT = { title: "You're offline", message: 'Connect to the internet to make changes.' };
 export const ARCHIVED_MESSAGE = 'This account has been archived. Talk to a uniform manager.';
+export const RESET_CODE_INVALID_MESSAGE =
+  'That code is wrong or has expired. Check the email, or tap "Send a new code".';
+export const TOO_MANY_REQUESTS_MESSAGE = 'Too many tries. Wait a minute, then try again.';
+export const SERVER_SLOW_MESSAGE = 'The server took too long to answer. Wait a minute, then try again.';
 
 // Turns Supabase/network errors into messages suitable for an Alert.
 export function friendlyError(error: unknown): string {
@@ -9,13 +13,24 @@ export function friendlyError(error: unknown): string {
   const message = typeof e.message === 'string' ? e.message : '';
   const code = typeof e.code === 'string' ? e.code : '';
   const name = typeof e.name === 'string' ? e.name : '';
+  const status = typeof e.status === 'number' ? e.status : 0;
 
+  // Supabase answered, but with a gateway error (e.g. it timed out sending an email).
+  if (name === 'AuthRetryableFetchError' && status >= 502 && status <= 504) return SERVER_SLOW_MESSAGE;
   if (name === 'AuthRetryableFetchError' || /network request failed|failed to fetch|fetch failed/i.test(message)) {
     return OFFLINE_MESSAGE;
   }
   // Archiving bans the auth user, so Supabase refuses its sign-in.
   if (code === 'user_banned' || /user is banned/i.test(message)) return ARCHIVED_MESSAGE;
   if (/invalid login credentials/i.test(message)) return 'Incorrect email or password.';
+  // Password reset: wrong/expired code, too many emails or tries, reusing the old password.
+  if (code === 'otp_expired' || /token has expired or is invalid/i.test(message)) return RESET_CODE_INVALID_MESSAGE;
+  if (/rate_limit|over_.*_limit/i.test(code) || /rate limit|only request this after/i.test(message)) {
+    return TOO_MANY_REQUESTS_MESSAGE;
+  }
+  if (code === 'same_password' || /should be different from the old password/i.test(message)) {
+    return 'Your new password must be different from your old one.';
+  }
   if (/already (been )?registered/i.test(message)) return 'An account with this email already exists.';
   if (/database error saving new user/i.test(message)) {
     return 'That invite code is no longer valid. Go back and enter the current code.';
