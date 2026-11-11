@@ -8,7 +8,7 @@ Planned and completed features for this repository.
 
 _Added 2026-11-10._ Users who forget their password currently have no way to reset it in the app. Add a "Forgot password?" option on Login so they can set a new one.
 
-**Status (2026-11-11):** app code done on branch `password-reset` (Forgot password screen, emailed code, new password, signed straight in), checked against the TEST project without email. Still to do: set up Gmail SMTP and the email template in Supabase (TEST first, then LIVE), try it on a phone, then merge and build.
+**Status (2026-11-11):** app code done on branch `password-reset` (Forgot password screen, emailed code, new password, signed straight in), checked against the TEST project without email. TEST project: Gmail SMTP (`smtp.gmail.com`, port **587**; 465 timed out) and the Reset Password template with `{{ .Token }}` are set up, and a full reset worked on a phone (2026-11-11). Still to do: the same SMTP settings and template on LIVE, then merge and build.
 
 **Note:** Supabase's built-in email sender only delivers to the project's own team and is heavily rate-limited, so reset emails to real members need custom SMTP set up first (the same blocker that keeps email change read-only).
 
