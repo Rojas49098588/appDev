@@ -6,11 +6,18 @@ Tracked issues for this repository.
 
 ## Open
 
-- **Supabase backend not yet verified on a device.** _Opened 2026-09-30._ Everything since the backend move has been checked with `tsc`, unit tests and RLS tests only. The on-device checklist (plan `docs/superpowers/plans/2026-09-29-supabase-backend.md`, Task 9 Step 3) is still pending.
-- **Plan 3 import / add-inventory not yet verified on a device.** _Opened 2026-10-24._ Checked with unit tests, `tsc` and RLS tests only. The on-device checklist is in this plan's Task 8 Step 3 (`docs/superpowers/plans/2026-10-23-inventory-import.md`), to run with `npm run start:test` against the TEST project.
-- **Games page: long side-by-side combo buttons wrap, and their text isn't centered.** _Opened 2026-10-28._ Found in review of the Set buttons on the Catalogue combo screen (`ComboDetailScreen`, branch `games-page`, Task 9). **Fixed 2026-10-28** (final fix wave): target shown once as a caption above centered "Set for pregame" / "Set for halftime" buttons.
+_None._
 
 ## Fixed
+
+### Games page (2026-10-28)
+
+- **Long side-by-side combo buttons wrapped, and their text wasn't centered.** _Opened 2026-10-28, fixed 2026-10-28._ Found in review of the Set buttons on the Catalogue combo screen (`ComboDetailScreen`, branch `games-page`, Task 9). The target is now shown once as a caption above centered "Set for pregame" / "Set for halftime" buttons. (`b32307d`)
+
+### Device checks (2026-11-01)
+
+- **Supabase backend not yet verified on a device.** _Opened 2026-09-30, closed 2026-11-01._ The user ran the on-device checklist (plan `docs/superpowers/plans/2026-09-29-supabase-backend.md`, Task 9 Step 3) and everything passed. No code change.
+- **Plan 3 import / add-inventory not yet verified on a device.** _Opened 2026-10-24, closed 2026-11-01._ The user ran the on-device checklist (`docs/superpowers/plans/2026-10-23-inventory-import.md`, Task 8 Step 3) against the TEST project and everything passed. No code change.
 
 ### Member View (2026-09-14 to 09-15)
 
