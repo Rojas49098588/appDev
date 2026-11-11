@@ -24,6 +24,7 @@ export type MemberProfileParams = {
 
 export type RootStackParamList = {
   Login: undefined;
+  ForgotPassword: { email?: string } | undefined;
   InviteCode: undefined;
   SignUp: { inviteCode: string };
   MainTabs: UserParams;

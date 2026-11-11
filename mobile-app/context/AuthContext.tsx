@@ -54,6 +54,14 @@ type AuthContextValue = {
   archiveMember: (id: string) => Promise<void>;
   restoreMember: (id: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  // Forgot password, in three steps: email a code, check the code (this signs
+  // them in, without loading the account yet), then save the new password and
+  // load the account. Kept apart so a rejected password doesn't use up the code.
+  sendPasswordResetCode: (email: string) => Promise<void>;
+  verifyPasswordResetCode: (email: string, code: string) => Promise<void>;
+  finishPasswordReset: (newPassword: string) => Promise<Account>;
+  // Signs out a reset that checked the code but never saved a password.
+  cancelPasswordReset: () => Promise<void>;
   // Refetches your profile (and, for staff, every account).
   refreshAccount: () => Promise<void>;
 };
@@ -346,6 +354,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  // Supabase answers the same whether or not the email has an account, so the
+  // screen can't be used to find out who's in the band.
+  const sendPasswordResetCode = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email));
+    if (error) throw error;
+  }, []);
+
+  const verifyPasswordResetCode = useCallback(async (email: string, code: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email: normalizeEmail(email),
+      token: code,
+      type: 'recovery',
+    });
+    if (error) throw error;
+  }, []);
+
+  const finishPasswordReset = useCallback(
+    async (newPassword: string): Promise<Account> => {
+      const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      try {
+        return await loadProfile(data.user.id);
+      } catch (loadError) {
+        // The password is saved; don't leave a hidden session behind.
+        warn('could not load profile after password reset')(loadError);
+        await supabase.auth.signOut({ scope: 'local' }).catch(warn('signOut failed'));
+        throw new Error('Your password was changed, but we couldn\'t load your account. Please log in.');
+      }
+    },
+    [loadProfile]
+  );
+
+  const cancelPasswordReset = useCallback(async () => {
+    if (accountRef.current) return; // Finished and signed in: nothing to undo.
+    await supabase.auth.signOut({ scope: 'local' }).catch(warn('signOut failed'));
+  }, []);
+
   const setAccountRole = useCallback(
     async (id: string, nextRole: Role) => {
       const { error } = await supabase.rpc('set_role', { target: id, new_role: nextRole });
@@ -418,11 +463,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       archiveMember,
       restoreMember,
       changePassword,
+      sendPasswordResetCode,
+      verifyPasswordResetCode,
+      finishPasswordReset,
+      cancelPasswordReset,
       refreshAccount,
     }),
     [
       session, account, accounts, isLoading, sessionVersion, checkInviteCode, signUp, logIn, logOut,
-      updateAccount, setAccountRole, setMemberNumbers, archiveMember, restoreMember, changePassword, refreshAccount,
+      updateAccount, setAccountRole, setMemberNumbers, archiveMember, restoreMember, changePassword,
+      sendPasswordResetCode, verifyPasswordResetCode, finishPasswordReset, cancelPasswordReset, refreshAccount,
     ]
   );
 

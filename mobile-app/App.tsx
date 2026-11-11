@@ -14,6 +14,7 @@ import {
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
 import LoginScreen from './screens/LoginScreen';
 import InviteCodeScreen from './screens/InviteCodeScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import MainTabs from './screens/MainTabs';
 import MemberTabs from './screens/MemberTabs';
@@ -86,6 +87,11 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName={initialRouteName}>
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="InviteCode"
             component={InviteCodeScreen}

@@ -116,6 +116,13 @@ export default function LoginScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 secureTextEntry={!showPassword}
               />
+              <Pressable
+                style={styles.forgotRow}
+                onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() || undefined })}
+                hitSlop={8}
+              >
+                <Text style={styles.showLink}>Forgot password?</Text>
+              </Pressable>
             </View>
 
             <Pressable
@@ -165,6 +172,7 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   passwordFieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft },
+  forgotRow: { alignSelf: 'flex-end', marginTop: 8 },
   showLink: {
     fontFamily: fonts.body,
     fontSize: 11.5,

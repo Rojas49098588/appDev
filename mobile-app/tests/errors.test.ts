@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ARCHIVED_MESSAGE, OFFLINE_MESSAGE, friendlyError } from '../lib/errors.ts';
+import {
+  ARCHIVED_MESSAGE,
+  OFFLINE_MESSAGE,
+  RESET_CODE_INVALID_MESSAGE,
+  TOO_MANY_REQUESTS_MESSAGE,
+  friendlyError,
+} from '../lib/errors.ts';
 
 test('network failures become the offline message', () => {
   assert.equal(friendlyError(new TypeError('Network request failed')), OFFLINE_MESSAGE);
@@ -22,6 +28,26 @@ test('a duplicate open flag gets a plain-language message', () => {
   assert.equal(
     friendlyError({ code: '23505', message: 'duplicate key value violates unique constraint "flags_one_open_per_piece"' }),
     'This member already has an open flag on that color.'
+  );
+});
+
+test('password reset errors get plain-language messages', () => {
+  assert.equal(
+    friendlyError({ code: 'otp_expired', message: 'Token has expired or is invalid' }),
+    RESET_CODE_INVALID_MESSAGE
+  );
+  assert.equal(friendlyError({ message: 'Token has expired or is invalid' }), RESET_CODE_INVALID_MESSAGE);
+  assert.equal(
+    friendlyError({ code: 'over_email_send_rate_limit', message: 'email rate limit exceeded' }),
+    TOO_MANY_REQUESTS_MESSAGE
+  );
+  assert.equal(
+    friendlyError({ message: 'For security purposes, you can only request this after 42 seconds.' }),
+    TOO_MANY_REQUESTS_MESSAGE
+  );
+  assert.equal(
+    friendlyError({ code: 'same_password', message: 'New password should be different from the old password.' }),
+    'Your new password must be different from your old one.'
   );
 });
 
