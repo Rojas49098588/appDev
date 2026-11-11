@@ -8,7 +8,11 @@
     "icon": "./assets/Diamond_M.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.abigailrojas.mustangcloset",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.mobileapp.signup",
