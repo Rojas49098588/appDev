@@ -6,7 +6,21 @@ Tracked issues for this repository.
 
 ## Open
 
-_None._
+### Password reset emails don't reach @smu.edu inboxes
+
+_Opened 2026-11-11. Paused (the user moved on to accessibility work)._
+
+**What happens:** on the LIVE project, Forgot password for `abigailr@smu.edu` never arrives. Not in the inbox, spam or Microsoft quarantine.
+
+**What's known:**
+- The app and Supabase work. LIVE recorded the reset at 4:28 PM on 2026-11-11 (`auth.users.recovery_sent_at`, code still pending), and the email shows in the Mustang Closet Gmail account's **Sent** folder, so Gmail sent it.
+- On TEST, the same flow to a Gmail address (`sanrio.cactus42@gmail.com`) arrived and the reset finished.
+- So SMU's Microsoft 365 mail system is delaying or silently dropping automated mail from a new Gmail account. A first attempt had also gone to the TEST project by mistake (the Expo server was still running `start:test`), and TEST has no account for that email, so nothing was sent then.
+
+**Next steps:**
+1. Check the Mustang Closet Gmail inbox for a bounce from "Mail Delivery Subsystem" and note the reason here.
+2. Prove LIVE works with a non-SMU address (for example a LIVE member account for `sanrio.cactus42@gmail.com`).
+3. If SMU keeps dropping it, either ask members to sign up with personal emails for now, or switch to sending from our own domain (Resend; see `features.md` → Password reset), which school filters trust more. Ask SMU IT whether they can allow the sender.
 
 ## Fixed
 
