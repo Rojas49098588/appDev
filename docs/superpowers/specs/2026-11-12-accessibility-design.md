@@ -15,8 +15,8 @@ like plain text. Separately, the member flag sheet colors "Needs repair" blue, w
 2. Default text colors meet the WCAG AA readability guideline (4.5 : 1) for everyone.
 3. Every tappable text link looks like a button and is easy to tap.
 4. Each flag status has one color and one icon, used everywhere, so meaning never relies on color alone.
-5. A Settings screen with a text-and-button **Size** slider, a **High contrast** toggle, and (staff) an
-   **Expanded / Condensed** layout choice for Inventory and Recount.
+5. A Settings screen with a text-and-button **Size** slider, a **High contrast** toggle, and an
+   **Expanded / Condensed** layout choice (staff Inventory and Recount; member white shirt size and My Sizes).
 6. Every screen can be used with a screen reader (VoiceOver on iPhone, TalkBack on Android): every
    control is announced with a clear name, its kind, and its state.
 
@@ -123,11 +123,17 @@ made solid on purpose on 2026-10-28 (`290e9da`) and already read as buttons.
   together** inside the app and **adds to** the phone's own text size.
 - **Readability → High contrast:** off by default. On: grays become nearly black, outlined buttons get a
   white fill and thicker black border, input boxes and card borders get stronger.
-- **Layout → Inventory and Recount:** Expanded / Condensed segmented control, **Expanded by default**.
+- **Layout:** Expanded / Condensed segmented control, **Expanded by default**, shown to **everyone**
+  (staff and members; see section 6). Its hint names what it changes for that role.
 
-### 6. Expanded and Condensed (staff Inventory and Recount)
+### 6. Expanded and Condensed
 
-- **Condensed** = today's layout.
+- **Condensed** = today's layout, everywhere.
+- **Expanded, member white shirt size** (`components/WhiteShirtChoice.tsx`, on My Inventory): bigger
+  size buttons (today 7 pt vertical padding, 12.5 pt text) with more space between them, and more space
+  between the size row and the keep-at-home choice.
+- **Expanded, member My Sizes** (`screens/member/MySizesScreen.tsx`): instead of the 2 × 2 boxes, each
+  piece is a **full-width rectangle** (label on the left, size on the right), stacked one per row.
 - **Expanded, Inventory card open** (`PieceCard` breakdown for numbered types): each color is its own
   boxed section with more space; its numbers are split into rows **by hundreds** ("100–199", "200–299", …,
   with a small label above each row), and each row scrolls sideways on its own; bigger number chips.
@@ -167,7 +173,6 @@ Today about 56 of ~167 `Pressable`s carry an `accessibilityLabel` or `accessibil
 - **Settings are saved on the phone**, not the account: stored in AsyncStorage under their own key,
   **not** in `CACHE_KEYS`, because `clearAllCaches()` wipes those on logout. They load before the first
   screen renders (Login included) so someone who needs big text can log in. On a new phone they're set again.
-- **The Layout setting is shown to staff only**; members never see Inventory or Recount.
 - **Bottom tab labels** don't grow past about 1.3 × (iPhone apps keep tab bars fixed; the icons carry
   meaning). Everything else grows.
 - **When layouts switch** (section 1): when the combined text scale passes about 1.35 ×; tune on a device.
