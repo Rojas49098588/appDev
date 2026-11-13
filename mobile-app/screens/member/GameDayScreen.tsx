@@ -12,6 +12,7 @@ import { shownCourt, shownFootball, sportLabel } from '../../lib/games';
 import { formatClock, formatGameDate } from '../../lib/format';
 import type { Game, PoloColor } from '../../lib/models';
 import TapeGutter from '../../components/TapeGutter';
+import TitleRow from '../../components/TitleRow';
 import SegmentTabs from '../../components/SegmentTabs';
 
 type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
@@ -33,12 +34,19 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
       <View style={styles.appBody}>
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Game day</Text>
-            <Pressable style={styles.avatar} onPress={onAvatarPress}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.header}
+            title={
+                <Text style={styles.title}>Game day</Text>
+            }
+            action={
+                <>
+                    <Pressable style={styles.avatar} onPress={onAvatarPress}>
+                      <Text style={styles.avatarText}>{initials}</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <View style={styles.tabs}>
             <SegmentTabs options={['Football', 'BB / VB']} value={tab} onChange={setTab} />
           </View>
@@ -241,9 +249,9 @@ function makeStyles(t: Theme) {
   },
   emptyTitle: { fontFamily: fonts.blockTitle, fontSize: t.font(15), color: t.colors.ink, marginBottom: 4 },
   emptySub: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, textAlign: 'center' },
-  factsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  factsRow: { flexDirection: t.isLarge ? 'column' : 'row', gap: 10, marginBottom: 10 },
   fact: {
-    flex: 1,
+    flex: t.isLarge ? 0 : 1,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
@@ -278,7 +286,8 @@ function makeStyles(t: Theme) {
     paddingHorizontal: 16,
     marginBottom: 10,
   },
-  groupK: { fontFamily: fonts.body, fontSize: t.font(10.5), letterSpacing: 1, color: t.colors.inkFaint },
+  // Light text on the dark block (inkFaint is now too dark here).
+  groupK: { fontFamily: fonts.body, fontSize: t.font(10.5), letterSpacing: 1, color: t.colors.lineSoft },
   groupWord: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13), color: t.colors.white, marginTop: 2 },
   groupNum: { fontFamily: fonts.wordmark, fontSize: t.font(44), color: t.colors.white },
   hint: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkFaint, marginTop: 10 },

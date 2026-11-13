@@ -32,7 +32,7 @@ const whole = (text: string): number | null => (/^\d+$/.test(text.trim()) ? pars
 
 // Wash-day recount (mode 'count') or season totals (mode 'totals') for a counted piece type.
 export default function RecountScreen({ navigation, route }: Props) {
-  const { colors } = useTheme();
+  const { colors, expanded } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { pieceTypeId, mode } = route.params;
   const { pieceTypes, recountPieceType, setSeasonTotals } = useInventory();
@@ -206,13 +206,27 @@ export default function RecountScreen({ navigation, route }: Props) {
                       <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, 1)} accessibilityLabel={`Bigger ${label} batch`}>
                         <Text style={styles.stepText}>+</Text>
                       </Pressable>
-                      <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
-                        <Text style={styles.smallButtonText}>Add</Text>
-                      </Pressable>
-                      <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
-                        <Text style={styles.smallButtonText}>Remove</Text>
-                      </Pressable>
+                      {!expanded && (
+                        <>
+                          <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                            <Text style={styles.smallButtonText}>{expanded ? `Add ${batchOf(label)}` : 'Add'}</Text>
+                          </Pressable>
+                          <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                            <Text style={styles.smallButtonText}>{expanded ? `Remove ${batchOf(label)}` : 'Remove'}</Text>
+                          </Pressable>
+                        </>
+                      )}
                     </View>
+                    {expanded && (
+                      <View style={styles.batchButtons}>
+                        <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                          <Text style={styles.smallButtonText}>{expanded ? `Add ${batchOf(label)}` : 'Add'}</Text>
+                        </Pressable>
+                        <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                          <Text style={styles.smallButtonText}>{expanded ? `Remove ${batchOf(label)}` : 'Remove'}</Text>
+                        </Pressable>
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -283,32 +297,33 @@ function makeStyles(t: Theme) {
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
-    padding: 12,
-    marginBottom: 8,
+    padding: t.expanded ? 16 : 12,
+    marginBottom: t.expanded ? 16 : 8,
+    borderRadius: t.expanded ? 10 : 0,
   },
-  rowMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink, minWidth: 40 },
+  rowMain: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
+  label: { fontFamily: t.expanded ? fonts.bodySemiBold : fonts.bodyMedium, fontSize: t.font(t.expanded ? 17 : 14), color: t.colors.ink, minWidth: 40 },
   of: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkFaint },
   ofMissing: { color: t.colors.amber },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto' },
   stepBtn: {
-    width: 32,
-    height: 32,
+    width: t.expanded ? 40 : 32,
+    height: t.expanded ? 40 : 32,
     borderWidth: 1,
     borderColor: t.colors.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepText: { fontFamily: fonts.body, fontSize: t.font(17), color: t.colors.inkSoft },
+  stepText: { fontFamily: fonts.body, fontSize: t.font(t.expanded ? 20 : 17), color: t.colors.inkSoft },
   countInput: {
-    width: 64,
+    minWidth: t.expanded ? 70 : 64,
     borderWidth: 1,
     borderColor: t.colors.line,
-    paddingVertical: 6,
+    paddingVertical: t.expanded ? 9 : 6,
     paddingHorizontal: 8,
     textAlign: 'right',
     fontFamily: fonts.mono,
-    fontSize: t.font(15),
+    fontSize: t.font(t.expanded ? 16 : 15),
     color: t.colors.ink,
   },
   centeredButton: { alignSelf: 'center', marginTop: 14 },
@@ -317,14 +332,16 @@ function makeStyles(t: Theme) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
-    paddingTop: 10,
+    flexWrap: 'wrap',
+    marginTop: t.expanded ? 14 : 10,
+    paddingTop: t.expanded ? 12 : 10,
     borderTopWidth: 1,
     borderTopColor: t.colors.lineSoft,
     borderStyle: 'dashed',
   },
   batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
-  batchInput: { width: 48 },
+  batchInput: { width: t.expanded ? 56 : 48 },
+  batchButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   batchAction: {
     borderWidth: 1,
     borderColor: t.colors.ink,

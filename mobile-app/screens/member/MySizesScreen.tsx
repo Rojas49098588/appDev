@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemedStyles, type Theme } from '../../hooks/useTheme';
+import { useTheme, useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import { MY_WHITE_SHIRT, NO_SIZE, uniformFor } from '../../constants/myUniformData';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,8 @@ import TapeGutter from '../../components/TapeGutter';
 
 export default function MySizesScreen() {
   const styles = useThemedStyles(makeStyles);
+  const { expanded, isLarge } = useTheme();
+  const asList = expanded || isLarge;
   const { account } = useAuth();
   const { pieceTypes, pieces } = useInventory();
   const shoeSize = account?.shoeSize;
@@ -32,6 +34,16 @@ export default function MySizesScreen() {
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <Text style={styles.title}>My sizes</Text>
           <Text style={styles.subtitle}>Assigned sizes</Text>
+          {asList ? (
+            <View style={styles.list}>
+              {cells.map((cell) => (
+                <View key={cell.label} style={styles.listRow} accessible accessibilityLabel={`${cell.label}: ${cell.value}`}>
+                  <Text style={styles.listLabel}>{cell.label}</Text>
+                  <Text style={styles.listValue}>{cell.value}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
           <View style={styles.grid}>
             {cells.map((cell, index) => (
               <View
@@ -47,6 +59,7 @@ export default function MySizesScreen() {
               </View>
             ))}
           </View>
+          )}
           <View style={styles.note}>
             <Text style={styles.noteText}>
               If any of these look wrong, let a uniform manager know — sizes can only be changed
@@ -79,6 +92,21 @@ function makeStyles(t: Theme) {
     backgroundColor: t.colors.surface,
     padding: 14,
   },
+  // Expanded / large text: one full-width rectangle per piece.
+  list: { gap: 10, marginBottom: 20 },
+  listRow: {
+    flexDirection: t.isLarge ? 'column' : 'row',
+    justifyContent: 'space-between',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  listLabel: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.inkSoft, flexShrink: 1 },
+  listValue: { fontFamily: fonts.bodySemiBold, fontSize: t.font(17), color: t.colors.ink },
   cellBorderRight: { borderRightWidth: 1, borderRightColor: t.colors.line },
   cellBorderBottom: { borderBottomWidth: 1, borderBottomColor: t.colors.line },
   cellLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 4 },

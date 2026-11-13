@@ -422,7 +422,7 @@ function makeStyles(t: Theme) {
     gap: 8,
   },
   heightInput: {
-    width: 56,
+    minWidth: 56,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,

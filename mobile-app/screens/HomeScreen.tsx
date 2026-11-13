@@ -19,6 +19,7 @@ import { pieceCount } from '../lib/inventory';
 import { shownFootball } from '../lib/games';
 import { formatGameDate } from '../lib/format';
 import TapeGutter from '../components/TapeGutter';
+import TitleRow from '../components/TitleRow';
 import { StatusIcon } from '../components/StatusLabel';
 import { statusLook } from '../lib/flagStatus';
 
@@ -31,6 +32,7 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { isLarge } = useTheme();
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
   const { pieceTypes, pieces } = useInventory();
@@ -76,16 +78,23 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
       <View style={styles.appBody}>
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.wordmark}>Mustang Closet</Text>
-            <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
-            <Text style={styles.seasonTag}>Fall 2026 season</Text>
-          </View>
-          <Pressable style={styles.avatar} onPress={onAvatarPress}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </Pressable>
-        </View>
+        <TitleRow
+          style={styles.header}
+          title={
+              <View>
+                <Text style={styles.wordmark}>Mustang Closet</Text>
+                <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
+                <Text style={styles.seasonTag}>Fall 2026 season</Text>
+              </View>
+          }
+          action={
+              <>
+                  <Pressable style={styles.avatar} onPress={onAvatarPress}>
+                    <Text style={styles.avatarText}>{initials}</Text>
+                  </Pressable>
+              </>
+          }
+        />
 
         <View style={styles.statsGrid}>
           {stats.map((stat, index) => (
@@ -93,8 +102,8 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               key={stat.label}
               style={[
                 styles.statCell,
-                index % 2 === 0 && styles.statCellBorderRight,
-                index < 2 && styles.statCellBorderBottom,
+                !isLarge && index % 2 === 0 && styles.statCellBorderRight,
+                (isLarge ? index < stats.length - 1 : index < 2) && styles.statCellBorderBottom,
               ]}
             >
               <Text style={[styles.statNum, stat.flag && styles.statNumFlag]}>{stat.value}</Text>
@@ -104,16 +113,23 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Members by section</Text>
-            <Pressable
-              onPress={() =>
-                navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
-              }
-            >
-              <Text style={styles.blockLink}>See all ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle}>Members by section</Text>
+            }
+            action={
+                <>
+                    <Pressable
+                      onPress={() =>
+                        navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
+                      }
+                    >
+                      <Text style={styles.blockLink}>See all ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <View style={styles.sectionGrid}>
             {sections.map((section) => (
               <Pressable
@@ -135,12 +151,19 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Inventory</Text>
-            <Pressable onPress={() => navigation.navigate('Inventory')}>
-              <Text style={styles.blockLink}>View full ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle}>Inventory</Text>
+            }
+            action={
+                <>
+                    <Pressable onPress={() => navigation.navigate('Inventory')}>
+                      <Text style={styles.blockLink}>View full ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           {inventoryPreview.length === 0 && (
             <Text style={styles.blockNote}>No inventory yet. Import your spreadsheet to get started.</Text>
           )}
@@ -150,7 +173,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               const warnColor = colors[look.colorKey];
               return (
                 <View key={item.piece} style={styles.invRow}>
-                  <View>
+                  <View style={styles.invLeft}>
                     <Text style={styles.invPiece}>{item.piece}</Text>
                     <Text style={styles.invSizes}>{item.sizes}</Text>
                   </View>
@@ -170,22 +193,36 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Games</Text>
-            <Pressable onPress={() => rootNavigation.navigate('Games')}>
-              <Text style={styles.blockLink}>View ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle}>Games</Text>
+            }
+            action={
+                <>
+                    <Pressable onPress={() => rootNavigation.navigate('Games')}>
+                      <Text style={styles.blockLink}>View ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <Text style={styles.blockNote}>{gamesNote}</Text>
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Archived members</Text>
-            <Pressable onPress={() => rootNavigation.navigate('ArchivedMembers')}>
-              <Text style={styles.blockLink}>View ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle}>Archived members</Text>
+            }
+            action={
+                <>
+                    <Pressable onPress={() => rootNavigation.navigate('ArchivedMembers')}>
+                      <Text style={styles.blockLink}>View ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <Text style={styles.blockNote}>Snapshots of members who left, with the option to restore them.</Text>
         </View>
         </ScrollView>
@@ -258,7 +295,7 @@ function makeStyles(t: Theme) {
     marginBottom: 26,
   },
   statCell: {
-    width: '50%',
+    width: t.isLarge ? '100%' : '50%',
     backgroundColor: t.colors.surface,
     padding: 14,
     paddingBottom: 15,
@@ -320,7 +357,7 @@ function makeStyles(t: Theme) {
     gap: 8,
   },
   sectionCard: {
-    width: '31.5%',
+    width: t.isLarge ? '100%' : '31.5%',
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
@@ -346,9 +383,10 @@ function makeStyles(t: Theme) {
     borderTopColor: t.colors.line,
   },
   invRow: {
-    flexDirection: 'row',
+    flexDirection: t.isLarge ? 'column' : 'row',
+    gap: t.isLarge ? 6 : 10,
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
     paddingVertical: 11,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.lineSoft,
@@ -364,8 +402,9 @@ function makeStyles(t: Theme) {
     color: t.colors.inkSoft,
     marginTop: 2,
   },
+  invLeft: { flexShrink: 1 },
   invRight: {
-    alignItems: 'flex-end',
+    alignItems: t.isLarge ? 'flex-start' : 'flex-end',
   },
   invQty: {
     fontFamily: fonts.mono,

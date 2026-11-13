@@ -8,6 +8,7 @@ import { cardSummary, lineStatuses } from '../lib/countedStock';
 import { formatShortDate } from '../lib/format';
 import { ChevronDownIcon, DropIcon, SmallChevronRightIcon, WrenchIcon } from './icons';
 import OutlineButton from './OutlineButton';
+import { bandNumbers } from '../lib/numberBands';
 
 const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 
@@ -47,7 +48,7 @@ export default function PieceCard({
   unanswered?: number;
   onRecount?: () => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, expanded } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [isOpen, setIsOpen] = useState(false);
   // Numbered types: a chip per piece number, grouped by color. Counted types: a stock row per color.
@@ -134,42 +135,51 @@ export default function PieceCard({
                       {group.assigned} of {group.total} assigned
                     </Text>
                   </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.chipStrip}
-                  >
-                    {group.shown.map(({ number: size, state: assign }) => {
-                      const state = chipStateFor(group.color, size);
-                      return (
-                        <Pressable
-                          key={size}
-                          style={[
-                            styles.sizeChip,
-                            assign === 'assigned' && styles.chipAssigned,
-                            assign === 'unassigned' && styles.chipUnassigned,
-                            assign === 'out_for_repair' && styles.chipOut,
-                            state === 'repair' && styles.sizeChipRepair,
-                            state === 'dirty' && styles.sizeChipDirty,
-                          ]}
-                          onPress={() => onSizePress(group.color, size)}
-                          accessibilityLabel={`${group.color} ${size} history`}
-                        >
-                          <Text
-                            style={[
-                              styles.sizeChipText,
-                              state === 'repair' && styles.sizeChipTextRepair,
-                              state === 'dirty' && styles.sizeChipTextDirty,
-                            ]}
-                          >
-                            {size}
-                          </Text>
-                          {state === 'repair' && <WrenchIcon color={colors.rust} size={10} />}
-                          {state === 'dirty' && <DropIcon color={colors.wash} size={10} />}
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
+                  {(expanded
+                    ? bandNumbers(group.shown.map((s) => s.number))
+                    : [{ label: '', numbers: group.shown.map((s) => s.number) }]
+                  ).map((band) => (
+                    <View key={band.label || 'all'}>
+                      {band.label !== '' && <Text style={styles.bandLabel}>{band.label}</Text>}
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.chipStrip}
+                      >
+                        {band.numbers.map((size) => {
+                          const assign = group.shown.find((s) => s.number === size)!.state;
+                          const state = chipStateFor(group.color, size);
+                          return (
+                            <Pressable
+                              key={size}
+                              style={[
+                                styles.sizeChip,
+                                assign === 'assigned' && styles.chipAssigned,
+                                assign === 'unassigned' && styles.chipUnassigned,
+                                assign === 'out_for_repair' && styles.chipOut,
+                                state === 'repair' && styles.sizeChipRepair,
+                                state === 'dirty' && styles.sizeChipDirty,
+                              ]}
+                              onPress={() => onSizePress(group.color, size)}
+                              accessibilityLabel={`${group.color} ${size} history`}
+                            >
+                              <Text
+                                style={[
+                                  styles.sizeChipText,
+                                  state === 'repair' && styles.sizeChipTextRepair,
+                                  state === 'dirty' && styles.sizeChipTextDirty,
+                                ]}
+                              >
+                                {size}
+                              </Text>
+                              {state === 'repair' && <WrenchIcon color={colors.rust} size={10} />}
+                              {state === 'dirty' && <DropIcon color={colors.wash} size={10} />}
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  ))}
                 </View>
               ))
               : statuses.map((line, index) => (
@@ -249,8 +259,9 @@ function makeStyles(t: Theme) {
     marginBottom: 8,
   },
   pieceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: t.isLarge ? 'column' : 'row',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
+    gap: 8,
     justifyContent: 'space-between',
     padding: 14,
   },
@@ -320,9 +331,16 @@ function makeStyles(t: Theme) {
   },
   colorGroup: {
     marginBottom: 14,
+    // Expanded: each color is its own box with room to breathe.
+    ...(t.expanded
+      ? { borderWidth: 1, borderColor: t.colors.lineSoft, backgroundColor: t.colors.white, borderRadius: 10, paddingVertical: 12 }
+      : {}),
   },
   colorHead: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: t.expanded ? 12 : 0,
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginBottom: 7,
@@ -337,9 +355,15 @@ function makeStyles(t: Theme) {
     fontSize: t.font(10.5),
     color: t.colors.inkSoft,
   },
-  chipStrip: {
-    marginHorizontal: -14,
-    paddingHorizontal: 14,
+  chipStrip: t.expanded ? { paddingHorizontal: 12, marginBottom: 8 } : { marginHorizontal: -14, paddingHorizontal: 14 },
+  bandLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: t.font(11),
+    letterSpacing: 0.4,
+    color: t.colors.inkSoft,
+    paddingHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 5,
   },
   sizeChip: {
     flexDirection: 'row',
@@ -347,13 +371,13 @@ function makeStyles(t: Theme) {
     gap: 3,
     borderWidth: 1,
     borderColor: t.colors.line,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginRight: 6,
+    paddingVertical: t.expanded ? 8 : 5,
+    paddingHorizontal: t.expanded ? 10 : 8,
+    marginRight: t.expanded ? 8 : 6,
   },
   sizeChipText: {
     fontFamily: fonts.mono,
-    fontSize: t.font(10.5),
+    fontSize: t.font(t.expanded ? 13 : 10.5),
     color: t.colors.inkSoft,
   },
   chipAssigned: { borderColor: t.colors.ink, backgroundColor: '#FFFFFF' },

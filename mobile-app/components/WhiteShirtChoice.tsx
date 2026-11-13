@@ -67,16 +67,24 @@ export default function WhiteShirtChoice({
 
 function makeStyles(t: Theme) {
   return StyleSheet.create({
-  box: { borderWidth: 1, borderColor: t.colors.line, backgroundColor: t.colors.surface, padding: 12, marginTop: 8 },
+  box: { borderWidth: 1, borderColor: t.colors.line, backgroundColor: t.colors.surface, padding: t.expanded ? 16 : 12, marginTop: 8 },
   label: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
-  spaced: { marginTop: 12 },
+  spaced: { marginTop: t.expanded ? 20 : 12 },
   note: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  choices: { gap: 7 },
-  chip: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 7, paddingHorizontal: 12 },
-  choice: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 9, paddingHorizontal: 12 },
+  // Expanded: bigger size buttons with more room between them.
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: t.expanded ? 10 : 7 },
+  choices: { gap: t.expanded ? 10 : 7 },
+  chip: {
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    paddingVertical: t.expanded ? 12 : 7,
+    paddingHorizontal: t.expanded ? 16 : 12,
+    minWidth: t.expanded ? 52 : undefined,
+    alignItems: 'center',
+  },
+  choice: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: t.expanded ? 13 : 9, paddingHorizontal: 12 },
   chipActive: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
-  chipText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
+  chipText: { fontFamily: fonts.body, fontSize: t.font(t.expanded ? 14 : 12.5), color: t.colors.inkSoft },
   chipTextActive: { color: t.colors.paper },
 });
 }

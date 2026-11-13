@@ -445,7 +445,7 @@ function makeStyles(t: Theme) {
   segmentText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12.5), color: t.colors.ink },
   segmentTextActive: { color: t.colors.paper },
   shoeSizeInput: {
-    width: 70,
+    minWidth: 70,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
@@ -458,7 +458,7 @@ function makeStyles(t: Theme) {
   },
   heightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
   heightInput: {
-    width: 56,
+    minWidth: 56,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
@@ -472,7 +472,7 @@ function makeStyles(t: Theme) {
   heightUnit: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.ink },
   weightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
   weightInput: {
-    width: 70,
+    minWidth: 70,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
