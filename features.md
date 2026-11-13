@@ -4,6 +4,12 @@ Planned and completed features for this repository.
 
 ## Planned
 
+### Games: "Full uniform" instead of a polo (do first, after accessibility)
+
+_Added 2026-11-12._ For special events like homecoming, the band is in full uniform from call time, so there's no polo. On the staff game editor, add a **Full uniform** choice in the Polo section that replaces the polo colors, and show it on member Game Day as "Full uniform from call time" (no color dot).
+
+Needs a small database change: today a game can't be marked ready without at least one polo color (`games_check_ready` requires `polo_colors` to have one entry), so ready must also accept Full uniform. Workaround until then: add "Full uniform" under Polo → **Edit colors** and pick it (it shows like a color, with a dot).
+
 ### Password reset (for the next build)
 
 _Added 2026-11-10._ Users who forget their password currently have no way to reset it in the app. Add a "Forgot password?" option on Login so they can set a new one.
