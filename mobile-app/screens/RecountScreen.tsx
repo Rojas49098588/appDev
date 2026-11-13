@@ -23,6 +23,7 @@ import { formatShortDate } from '../lib/format';
 import { successBuzz } from '../lib/haptics';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
+import OutlineButton from '../components/OutlineButton';
 import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Recount'>;
@@ -225,9 +226,11 @@ export default function RecountScreen({ navigation, route }: Props) {
                       {summary.missing > 0 ? ` · ${summary.missing} missing` : ''}
                     </Text>
                   </View>
-                  <Pressable onPress={() => navigation.push('Recount', { pieceTypeId, mode: 'totals' })}>
-                    <Text style={[styles.link, styles.centered]}>Change season totals</Text>
-                  </Pressable>
+                  <OutlineButton
+                    label="Change season totals"
+                    style={styles.centeredButton}
+                    onPress={() => navigation.push('Recount', { pieceTypeId, mode: 'totals' })}
+                  />
                 </>
               ) : (
                 <View style={styles.batchRow}>
@@ -308,14 +311,7 @@ function makeStyles(t: Theme) {
     fontSize: t.font(15),
     color: t.colors.ink,
   },
-  link: {
-    fontFamily: fonts.body,
-    fontSize: t.font(12),
-    color: t.colors.wash,
-    textDecorationLine: 'underline',
-    marginTop: 8,
-  },
-  centered: { textAlign: 'center', marginTop: 14 },
+  centeredButton: { alignSelf: 'center', marginTop: 14 },
   batchRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   batchLine: {
     flexDirection: 'row',

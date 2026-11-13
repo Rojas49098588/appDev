@@ -17,6 +17,7 @@ import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import TapeGutter from '../components/TapeGutter';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
+import OutlineButton from '../components/OutlineButton';
 import { BackChevronIcon } from '../components/icons';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import { useAuth } from '../context/AuthContext';
@@ -214,9 +215,11 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   <View style={styles.field}>
                     <View style={styles.passwordLabelRow}>
                       <Text style={styles.passwordFieldLabel}>New password</Text>
-                      <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                        <Text style={styles.smallLink}>{showPassword ? 'Hide' : 'Show'}</Text>
-                      </Pressable>
+                      <OutlineButton
+                        label={showPassword ? 'Hide' : 'Show'}
+                        accessibilityLabel={showPassword ? 'Hide passwords' : 'Show passwords'}
+                        onPress={() => setShowPassword((prev) => !prev)}
+                      />
                     </View>
                     <TextInput
                       style={styles.textInput}
@@ -257,12 +260,8 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   </Pressable>
 
                   <View style={styles.linkRow}>
-                    <Pressable onPress={resendCode} disabled={isBusy}>
-                      <Text style={styles.smallLink}>Send a new code</Text>
-                    </Pressable>
-                    <Pressable onPress={switchEmail} disabled={isBusy}>
-                      <Text style={styles.smallLink}>Use a different email</Text>
-                    </Pressable>
+                    <OutlineButton label="Send a new code" onPress={resendCode} disabled={isBusy} />
+                    <OutlineButton label="Use a different email" onPress={switchEmail} disabled={isBusy} />
                   </View>
                 </>
               )}
@@ -308,12 +307,6 @@ function makeStyles(t: Theme) {
     marginBottom: 7,
   },
   passwordFieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft },
-  smallLink: {
-    fontFamily: fonts.body,
-    fontSize: t.font(11.5),
-    color: t.colors.inkSoft,
-    textDecorationLine: 'underline',
-  },
   textInput: {
     borderWidth: 1,
     borderColor: t.colors.line,
@@ -328,6 +321,6 @@ function makeStyles(t: Theme) {
   submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   submitButtonBusy: { opacity: 0.5 },
   submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
-  linkRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+  linkRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginTop: 18 },
 });
 }

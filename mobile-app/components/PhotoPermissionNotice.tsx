@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
+import OutlineButton from './OutlineButton';
 import { fonts } from '../constants/fonts';
-import { ImagePlaceholderIcon, SmallChevronRightIcon } from './icons';
+import { ImagePlaceholderIcon } from './icons';
 import { noticeCopy, type PermissionBlock } from '../lib/photoPermission';
 
 type Props = {
@@ -40,18 +41,12 @@ export default function PhotoPermissionNotice({ block, onTryAgain, onDismiss, ph
       </Pressable>
 
       <View style={styles.linkRow}>
-        <Pressable
-          style={styles.learnMore}
+        <OutlineButton
+          label={showMore ? 'Hide details' : 'Learn more ›'}
+          accessibilityLabel={showMore ? 'Hide details' : 'Learn more'}
           onPress={() => setShowMore((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showMore }}
-        >
-          <Text style={styles.linkText}>{showMore ? 'Hide details' : 'Learn more'}</Text>
-          {!showMore ? <SmallChevronRightIcon color={colors.wash} /> : null}
-        </Pressable>
-        <Pressable onPress={onDismiss} accessibilityRole="button" hitSlop={8}>
-          <Text style={styles.dismissText}>Not now</Text>
-        </Pressable>
+        />
+        <OutlineButton label="Not now" onPress={onDismiss} />
       </View>
 
       {showMore ? (
@@ -82,9 +77,6 @@ function makeStyles(t: Theme) {
   button: { backgroundColor: t.colors.ink, paddingVertical: 11, alignItems: 'center' },
   buttonText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13.5), color: t.colors.white },
   linkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
-  learnMore: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 2 },
-  linkText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(12.5), color: t.colors.wash },
-  dismissText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
   more: { borderTopWidth: 1, borderTopColor: t.colors.line, marginTop: 10, paddingTop: 10, gap: 6 },
   moreText: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.ink, lineHeight: t.font(17) },
 });

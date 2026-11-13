@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
+import OutlineButton from '../components/OutlineButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -104,9 +105,11 @@ export default function LoginScreen({ navigation }: Props) {
             <View style={styles.field}>
               <View style={styles.passwordLabelRow}>
                 <Text style={styles.passwordFieldLabel}>Password</Text>
-                <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                  <Text style={styles.showLink}>{showPassword ? 'Hide' : 'Show'}</Text>
-                </Pressable>
+                <OutlineButton
+                  label={showPassword ? 'Hide' : 'Show'}
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                />
               </View>
               <TextInput
                 style={styles.textInput}
@@ -118,13 +121,11 @@ export default function LoginScreen({ navigation }: Props) {
                 autoCapitalize="none"
                 secureTextEntry={!showPassword}
               />
-              <Pressable
+              <OutlineButton
+                label="Forgot password?"
                 style={styles.forgotRow}
                 onPress={() => navigation.navigate('ForgotPassword', { email: email.trim() || undefined })}
-                hitSlop={8}
-              >
-                <Text style={styles.showLink}>Forgot password?</Text>
-              </Pressable>
+              />
             </View>
 
             <Pressable
@@ -141,14 +142,14 @@ export default function LoginScreen({ navigation }: Props) {
               <View style={styles.dividerLine} />
             </View>
 
-            <Pressable
-              style={styles.createAccountRow}
-              onPress={() => navigation.navigate('InviteCode')}
-            >
-              <Text style={styles.createAccountText}>
-                New to Mustang Closet? <Text style={styles.createAccountLink}>Create an account</Text>
-              </Text>
-            </Pressable>
+            <View style={styles.createAccountRow}>
+              <Text style={styles.createAccountText}>New to Mustang Closet?</Text>
+              <OutlineButton
+                label="Create an account"
+                style={styles.createAccountButton}
+                onPress={() => navigation.navigate('InviteCode')}
+              />
+            </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -176,12 +177,6 @@ function makeStyles(t: Theme) {
   },
   passwordFieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft },
   forgotRow: { alignSelf: 'flex-end', marginTop: 8 },
-  showLink: {
-    fontFamily: fonts.body,
-    fontSize: t.font(11.5),
-    color: t.colors.inkSoft,
-    textDecorationLine: 'underline',
-  },
   textInput: {
     borderWidth: 1,
     borderColor: t.colors.line,
@@ -200,10 +195,6 @@ function makeStyles(t: Theme) {
   dividerText: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginHorizontal: 12 },
   createAccountRow: { alignItems: 'center' },
   createAccountText: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft },
-  createAccountLink: {
-    fontFamily: fonts.bodyMedium,
-    color: t.colors.ink,
-    textDecorationLine: 'underline',
-  },
+  createAccountButton: { alignSelf: 'center', marginTop: 8 },
 });
 }

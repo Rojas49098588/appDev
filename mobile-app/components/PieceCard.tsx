@@ -7,6 +7,7 @@ import { pieceCount, type Assignment } from '../lib/inventory';
 import { cardSummary, lineStatuses } from '../lib/countedStock';
 import { formatShortDate } from '../lib/format';
 import { ChevronDownIcon, SmallChevronRightIcon } from './icons';
+import OutlineButton from './OutlineButton';
 
 const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 
@@ -194,33 +195,25 @@ export default function PieceCard({
                 {piece.countedAt ? `Last counted ${formatShortDate(piece.countedAt)}` : 'Not counted yet'}
               </Text>
               {onRecount && (
-                <Pressable
-                  style={styles.recountBtn}
+                <OutlineButton
+                  label="Recount"
+                  onSurface
                   onPress={onRecount}
-                  accessibilityRole="button"
                   accessibilityLabel={`Recount ${piece.name}`}
-                >
-                  <Text style={styles.recountText}>Recount</Text>
-                </Pressable>
+                />
               )}
             </View>
           )}
           {piece.kind === 'numbered' && onSeeAll && (
-            <Pressable onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`}>
-              <Text style={styles.seeAll}>See every {piece.name} {'›'}</Text>
-            </Pressable>
+            <OutlineButton label={`See every ${piece.name} ›`} onSurface onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`} />
           )}
           {piece.kind === 'numbered' && (onAddColor || onAddNumber) && (
             <View style={styles.addLinks}>
               {onAddColor && (
-                <Pressable onPress={onAddColor} accessibilityLabel={`Add color to ${piece.name}`}>
-                  <Text style={styles.seeAll}>Add color</Text>
-                </Pressable>
+                <OutlineButton label="+ Add color" onSurface onPress={onAddColor} accessibilityLabel={`Add color to ${piece.name}`} />
               )}
               {onAddNumber && (
-                <Pressable onPress={onAddNumber} accessibilityLabel={`Add number to ${piece.name}`}>
-                  <Text style={styles.seeAll}>Add number</Text>
-                </Pressable>
+                <OutlineButton label="+ Add number" onSurface onPress={onAddNumber} accessibilityLabel={`Add number to ${piece.name}`} />
               )}
             </View>
           )}
@@ -363,14 +356,7 @@ function makeStyles(t: Theme) {
   sizeChipDirty: { borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
   sizeChipTextRepair: { color: t.colors.rust },
   sizeChipTextDirty: { color: t.colors.wash },
-  seeAll: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: t.font(12),
-    color: t.colors.ink,
-    textDecorationLine: 'underline',
-    marginBottom: 8,
-  },
-  addLinks: { flexDirection: 'row', gap: 18 },
+  addLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   legend: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft },
   styleRow: {
     flexDirection: 'row',
@@ -407,13 +393,5 @@ function makeStyles(t: Theme) {
   countTagOk: { color: t.colors.wash, borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
   countFooter: { marginTop: 10, gap: 4 },
   countMeta: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.inkSoft },
-  recountBtn: {
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: t.colors.ink,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  recountText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12.5), color: t.colors.ink },
 });
 }

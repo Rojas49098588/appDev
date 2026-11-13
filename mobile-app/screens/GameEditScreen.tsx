@@ -27,6 +27,7 @@ import { isCourt, missingFields } from '../lib/games';
 import { successBuzz } from '../lib/haptics';
 import type { Division, GameDraft, GameStatus, Sport } from '../lib/models';
 import TapeGutter from '../components/TapeGutter';
+import OutlineButton from '../components/OutlineButton';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import ComboPickerSheet from '../components/ComboPickerSheet';
 import { BackChevronIcon, CheckIcon } from '../components/icons';
@@ -260,9 +261,11 @@ export default function GameEditScreen({ navigation, route }: Props) {
             <Text style={combo ? styles.inputText : styles.placeholder}>{combo ? combo.label : 'No combo chosen'}</Text>
             {combo && combo.sub !== '' && <Text style={styles.comboSub}>{combo.sub}</Text>}
           </View>
-          <Pressable onPress={() => setComboSlot(slot)} hitSlop={8}>
-            <Text style={styles.link}>{combo ? 'Change' : 'Choose'}</Text>
-          </Pressable>
+          <OutlineButton
+            label={combo ? 'Change' : 'Choose'}
+            accessibilityLabel={`${combo ? 'Change' : 'Choose'} ${heading} combo`}
+            onPress={() => setComboSlot(slot)}
+          />
         </View>
         {errText(heading)}
       </View>
@@ -394,9 +397,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                     onChange={onPicked(picker)}
                   />
                   {Platform.OS === 'ios' && (
-                    <Pressable style={styles.pickerDone} onPress={closePicker}>
-                      <Text style={styles.link}>Done</Text>
-                    </Pressable>
+                    <OutlineButton label="Done" style={styles.pickerDone} onPress={closePicker} />
                   )}
                 </View>
               )}
@@ -404,9 +405,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               <View style={styles.field}>
                 <View style={styles.labelRow}>
                   {label('Polo')}
-                  <Pressable onPress={() => navigation.navigate('PoloColors')} hitSlop={8}>
-                    <Text style={styles.link}>Edit colors</Text>
-                  </Pressable>
+                  <OutlineButton label="Edit colors" onPress={() => navigation.navigate('PoloColors')} />
                 </View>
                 <View style={styles.chipRow}>
                   {poloOptions.map((opt) => {
@@ -548,7 +547,6 @@ function makeStyles(t: Theme) {
   fieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   req: { color: t.colors.rust },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  link: { fontFamily: fonts.bodyMedium, fontSize: t.font(12.5), color: t.colors.wash },
   input: {
     borderWidth: 1,
     borderColor: t.colors.line,

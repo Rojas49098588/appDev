@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles, type Theme } from '../hooks/useTheme';
+import OutlineButton from './OutlineButton';
 import { fonts } from '../constants/fonts';
 import { useConnection } from '../hooks/useConnection';
 import { useFlags } from '../context/FlagsContext';
@@ -35,9 +36,7 @@ export default function OfflineBanner() {
     return (
       <View style={[styles.banner, styles.errorBanner]}>
         <Text style={styles.text}>Can't reach server</Text>
-        <Pressable onPress={retry} hitSlop={8}>
-          <Text style={[styles.text, styles.retry]}>Retry</Text>
-        </Pressable>
+        <OutlineButton label="Retry" onPress={retry} accessibilityLabel="Retry connecting" />
       </View>
     );
   }
@@ -65,9 +64,6 @@ function makeStyles(t: Theme) {
     fontFamily: fonts.bodyMedium,
     fontSize: t.font(12),
     color: t.colors.ink,
-  },
-  retry: {
-    textDecorationLine: 'underline',
   },
 });
 }
