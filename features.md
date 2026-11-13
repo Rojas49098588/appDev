@@ -22,4 +22,6 @@ _Added 2026-11-10._ Users who forget their password currently have no way to res
 
 ## Done
 
-_None yet._
+### Accessibility (2026-11-12, branch `accessibility`)
+
+Large-text layouts, darker default grays, High contrast, a Size slider, Expanded / Condensed views (staff Inventory and Recount, member white shirt size and My Sizes), outlined buttons instead of text links, one color and icon per flag status, and screen reader support. Settings live on a new **Settings** screen (Account / Profile → Settings ›). Design: `docs/superpowers/specs/2026-11-12-accessibility-design.md`; plan: `docs/superpowers/plans/2026-11-12-accessibility.md`. Still to do: the on-phone walk-through (largest text size, High contrast, VoiceOver).
