@@ -42,7 +42,7 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
             action={
                 <>
                     <Pressable accessibilityRole="button" accessibilityLabel="Your profile and settings" style={styles.avatar} onPress={onAvatarPress}>
-                      <Text style={styles.avatarText}>{initials}</Text>
+                      <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
                     </Pressable>
                 </>
             }
@@ -237,7 +237,7 @@ function makeStyles(t: Theme) {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: t.font(14), color: t.colors.paper },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: 14, color: t.colors.paper },
   tabs: { marginTop: 8, marginBottom: 16 },
   gameLine: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginBottom: 14 },
   emptyBox: {

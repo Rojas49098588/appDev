@@ -307,8 +307,8 @@ function makeStyles(t: Theme) {
   ofMissing: { color: t.colors.amber },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto' },
   stepBtn: {
-    width: t.expanded ? 40 : 32,
-    height: t.expanded ? 40 : 32,
+    minWidth: t.expanded ? 40 : 32,
+    minHeight: t.expanded ? 40 : 32,
     borderWidth: 1,
     borderColor: t.colors.line,
     alignItems: 'center',
@@ -340,7 +340,7 @@ function makeStyles(t: Theme) {
     borderStyle: 'dashed',
   },
   batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
-  batchInput: { width: t.expanded ? 56 : 48 },
+  batchInput: { minWidth: t.expanded ? 56 : 48 },
   batchButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   batchAction: {
     borderWidth: 1,

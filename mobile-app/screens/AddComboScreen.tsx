@@ -158,7 +158,7 @@ export default function AddComboScreen({ navigation }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Name</Text>
-                <TextInput accessibilityLabel="e.g. Combo 15"
+                <TextInput accessibilityLabel="Name"
                   style={styles.textInput}
                   placeholder="e.g. Combo 15"
                   placeholderTextColor={colors.inkFaint}
@@ -170,7 +170,7 @@ export default function AddComboScreen({ navigation }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Description (optional)</Text>
-                <TextInput accessibilityLabel="e.g. Field — away"
+                <TextInput accessibilityLabel="Description"
                   style={styles.textInput}
                   placeholder="e.g. Field — away"
                   placeholderTextColor={colors.inkFaint}

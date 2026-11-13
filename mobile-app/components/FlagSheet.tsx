@@ -8,6 +8,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -181,90 +182,93 @@ function SheetBody({
         </Pressable>
       </View>
 
-      {target.dirtyOnly ? (
-        <Text style={styles.dirtyOnlyNote}>
-          Only flag your white shirt as dirty if you've left it in the bin for washing.
-        </Text>
-      ) : (
-        <>
-          <Text style={styles.question}>What's wrong with it?</Text>
-          <View style={styles.optionGrid}>
-            {options.map(([value, icon]) => {
-              const selected = status === value;
-              const look = statusLook(value);
-              const tint = selected ? colors[look.colorKey] : colors.inkSoft;
-              return (
-                <Pressable
-                  key={value}
-                  style={[
-                    styles.option,
-                    selected && { borderColor: colors[look.colorKey], backgroundColor: colors[look.tintKey!] },
-                  ]}
-                  onPress={() => setStatus(value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                >
-                  {icon(tint)}
-                  <Text style={[styles.optionLabel, { color: tint }]}>{STATUS_LABELS[value]}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </>
-      )}
+      {/* Scrolls so large text never pushes the controls off the screen. */}
+      <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
+        {target.dirtyOnly ? (
+          <Text style={styles.dirtyOnlyNote}>
+            Only flag your white shirt as dirty if you've left it in the bin for washing.
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.question}>What's wrong with it?</Text>
+            <View style={styles.optionGrid}>
+              {options.map(([value, icon]) => {
+                const selected = status === value;
+                const look = statusLook(value);
+                const tint = selected ? colors[look.colorKey] : colors.inkSoft;
+                return (
+                  <Pressable
+                    key={value}
+                    style={[
+                      styles.option,
+                      selected && { borderColor: colors[look.colorKey], backgroundColor: colors[look.tintKey!] },
+                    ]}
+                    onPress={() => setStatus(value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    {icon(tint)}
+                    <Text style={[styles.optionLabel, { color: tint }]}>{STATUS_LABELS[value]}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        )}
 
-      <Text style={styles.noteLabel}>
-        Add a note <Text style={styles.noteOptional}>(optional)</Text>
-      </Text>
-      <TextInput accessibilityLabel="e.g. mud stain on left sleeve"
-        style={styles.noteInput}
-        value={comment}
-        onChangeText={setComment}
-        placeholder="e.g. mud stain on left sleeve"
-        placeholderTextColor={colors.inkFaint}
-        multiline
-      />
-      <Text style={styles.noteLabel}>
-        Add a photo <Text style={styles.noteOptional}>(optional)</Text>
-      </Text>
-      {displayUri ? (
-        <View style={styles.photoWrap}>
-          <Image source={{ uri: displayUri }} style={styles.photoThumb} accessibilityLabel="Flag photo" />
-          <Pressable accessibilityRole="button"
-            style={styles.photoRemove}
-            onPress={() => setPickedUri(null)}
-            accessibilityLabel="Remove photo"
-          >
-            <CloseIcon color={colors.white} size={14} />
-          </Pressable>
-        </View>
-      ) : (
-        <Pressable style={styles.photoAdd} onPress={addPhoto} accessibilityRole="button" accessibilityLabel="Add photo">
-          <Text style={styles.photoAddText}>Add photo</Text>
-        </Pressable>
-      )}
-      {photoPermission.block ? (
-        <PhotoPermissionNotice
-          block={photoPermission.block}
-          onTryAgain={photoPermission.block.source === 'camera' ? takePhoto : pickFromLibrary}
-          onDismiss={photoPermission.dismiss}
-          photoOptional
+        <Text style={styles.noteLabel}>
+          Add a note <Text style={styles.noteOptional}>(optional)</Text>
+        </Text>
+        <TextInput accessibilityLabel="Note"
+          style={styles.noteInput}
+          value={comment}
+          onChangeText={setComment}
+          placeholder="e.g. mud stain on left sleeve"
+          placeholderTextColor={colors.inkFaint}
+          multiline
         />
-      ) : null}
-      <Pressable
-        style={[
-          styles.submit,
-          submitButton.disabled ? styles.submitDisabled : { backgroundColor: colors[submitButton.colorKey] },
-          (!isOnline || isSaving) && OFFLINE_DIM,
-        ]}
-        disabled={submitButton.disabled || isSaving}
-        onPress={submit}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: submitButton.disabled || isSaving }}
-      >
-        {status ? <StatusIcon icon={statusLook(status).icon} color={colors.white} size={18} /> : null}
-        <Text style={[styles.submitText, submitButton.disabled && styles.submitTextDisabled]}>{submitButton.label}</Text>
-      </Pressable>
+        <Text style={styles.noteLabel}>
+          Add a photo <Text style={styles.noteOptional}>(optional)</Text>
+        </Text>
+        {displayUri ? (
+          <View style={styles.photoWrap}>
+            <Image source={{ uri: displayUri }} style={styles.photoThumb} accessibilityLabel="Flag photo" />
+            <Pressable accessibilityRole="button"
+              style={styles.photoRemove}
+              onPress={() => setPickedUri(null)}
+              accessibilityLabel="Remove photo"
+            >
+              <CloseIcon color={colors.white} size={14} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable style={styles.photoAdd} onPress={addPhoto} accessibilityRole="button" accessibilityLabel="Add photo">
+            <Text style={styles.photoAddText}>Add photo</Text>
+          </Pressable>
+        )}
+        {photoPermission.block ? (
+          <PhotoPermissionNotice
+            block={photoPermission.block}
+            onTryAgain={photoPermission.block.source === 'camera' ? takePhoto : pickFromLibrary}
+            onDismiss={photoPermission.dismiss}
+            photoOptional
+          />
+        ) : null}
+        <Pressable
+          style={[
+            styles.submit,
+            submitButton.disabled ? styles.submitDisabled : { backgroundColor: colors[submitButton.colorKey] },
+            (!isOnline || isSaving) && OFFLINE_DIM,
+          ]}
+          disabled={submitButton.disabled || isSaving}
+          onPress={submit}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: submitButton.disabled || isSaving }}
+        >
+          {status ? <StatusIcon icon={statusLook(status).icon} color={colors.white} size={18} /> : null}
+          <Text style={[styles.submitText, submitButton.disabled && styles.submitTextDisabled]}>{submitButton.label}</Text>
+        </Pressable>
+      </ScrollView>
     </Pressable>
   );
 }
@@ -273,8 +277,10 @@ function makeStyles(t: Theme) {
   return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
+  scroll: { flexGrow: 0 },
   sheet: {
     backgroundColor: t.colors.white,
+    maxHeight: '90%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,

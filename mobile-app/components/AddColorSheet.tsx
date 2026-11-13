@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
-  StyleSheet,
+  ScrollView, StyleSheet,
   Text,
   TextInput,
   View,
@@ -94,27 +94,30 @@ function Body({
     <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       <View style={styles.handle} />
       <Text style={styles.title} accessibilityRole="header">Add color to {piece.name}</Text>
-      <TextInput accessibilityLabel="Color (e.g. Gold)"
-        style={styles.input}
-        value={color}
-        onChangeText={setColor}
-        placeholder="Color (e.g. Gold)"
-        placeholderTextColor={colors.inkFaint}
-        autoCapitalize="words"
-        autoFocus
-      />
-      {name !== '' && (
-        <Text style={styles.preview}>
-          Adds {name} {piece.name} in all {numberCount} {numberCount === 1 ? 'number' : 'numbers'}
-        </Text>
-      )}
-      <Pressable accessibilityRole="button"
-        style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
-        disabled={saving}
-        onPress={save}
-      >
-        <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add color'}</Text>
-      </Pressable>
+      {/* Scrolls so large text never pushes the controls off the screen. */}
+      <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
+        <TextInput accessibilityLabel="Color"
+          style={styles.input}
+          value={color}
+          onChangeText={setColor}
+          placeholder="Color (e.g. Gold)"
+          placeholderTextColor={colors.inkFaint}
+          autoCapitalize="words"
+          autoFocus
+        />
+        {name !== '' && (
+          <Text style={styles.preview}>
+            Adds {name} {piece.name} in all {numberCount} {numberCount === 1 ? 'number' : 'numbers'}
+          </Text>
+        )}
+        <Pressable accessibilityRole="button"
+          style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
+          disabled={saving}
+          onPress={save}
+        >
+          <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add color'}</Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
@@ -123,8 +126,10 @@ function makeStyles(t: Theme) {
   return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
+  scroll: { flexGrow: 0 },
   sheet: {
     backgroundColor: t.colors.white,
+    maxHeight: '90%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,

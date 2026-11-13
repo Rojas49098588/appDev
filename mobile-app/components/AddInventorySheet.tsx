@@ -1,4 +1,4 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
@@ -29,14 +29,17 @@ export default function AddInventorySheet({ visible, onClose, onImport, onNewTyp
         </Pressable>
         <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
           <View style={styles.handle} />
-          <Pressable accessibilityRole="button" style={styles.option} onPress={onImport}>
-            <Text style={styles.optionTitle}>Import spreadsheet</Text>
-            <Text style={styles.optionSub}>Add pieces, numbers and repairs from a CSV</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" style={styles.option} onPress={onNewType}>
-            <Text style={styles.optionTitle}>New piece type</Text>
-            <Text style={styles.optionSub}>Coats, ties, hats, anything new</Text>
-          </Pressable>
+          {/* Scrolls so large text never pushes the controls off the screen. */}
+          <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
+            <Pressable accessibilityRole="button" style={styles.option} onPress={onImport}>
+              <Text style={styles.optionTitle}>Import spreadsheet</Text>
+              <Text style={styles.optionSub}>Add pieces, numbers and repairs from a CSV</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" style={styles.option} onPress={onNewType}>
+              <Text style={styles.optionTitle}>New piece type</Text>
+              <Text style={styles.optionSub}>Coats, ties, hats, anything new</Text>
+            </Pressable>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -47,8 +50,10 @@ function makeStyles(t: Theme) {
   return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
+  scroll: { flexGrow: 0 },
   sheet: {
     backgroundColor: t.colors.white,
+    maxHeight: '90%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,

@@ -186,7 +186,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Height</Text>
                 <View style={styles.heightRow}>
-                  <TextInput accessibilityLabel="0"
+                  <TextInput accessibilityLabel="Height, feet"
                     style={styles.heightInput}
                     placeholder="0"
                     placeholderTextColor={colors.inkFaint}
@@ -198,7 +198,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                     maxLength={1}
                   />
                   <Text style={styles.heightUnit}>'</Text>
-                  <TextInput accessibilityLabel="0"
+                  <TextInput accessibilityLabel="Height, inches"
                     style={styles.heightInput}
                     placeholder="0"
                     placeholderTextColor={colors.inkFaint}
@@ -216,7 +216,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Weight</Text>
                 <View style={styles.weightRow}>
-                  <TextInput accessibilityLabel="0"
+                  <TextInput accessibilityLabel="Weight"
                     style={styles.weightInput}
                     placeholder="0"
                     placeholderTextColor={colors.inkFaint}
@@ -394,7 +394,7 @@ function makeStyles(t: Theme) {
     gap: 8,
   },
   heightInput: {
-    width: 56,
+    minWidth: 56,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,
@@ -416,7 +416,7 @@ function makeStyles(t: Theme) {
     gap: 8,
   },
   weightInput: {
-    width: 70,
+    minWidth: 70,
     borderWidth: 1,
     borderColor: t.colors.line,
     backgroundColor: t.colors.surface,

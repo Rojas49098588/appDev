@@ -4,6 +4,8 @@ import type { Member } from '../constants/membersData';
 import type { Flag } from '../constants/flagsData';
 import type { Role } from '../navigation/types';
 import { SmallChevronRightIcon } from './icons';
+import { StatusIcon } from './StatusLabel';
+import { statusLook } from '../lib/flagStatus';
 import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 export default function MemberRow({
@@ -28,7 +30,7 @@ export default function MemberRow({
   return (
     <Pressable accessibilityRole="button" style={styles.row} onPress={onPress}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initials}</Text>
+        <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
       </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>
@@ -41,12 +43,13 @@ export default function MemberRow({
         </View>
         <Text style={styles.section}>{member.section}</Text>
         {flags.map((flag) => {
-          const itemColor = flag.status === 'repair' ? colors.rust : colors.wash;
+          const look = statusLook(flag.status);
+          const itemColor = colors[look.colorKey];
           return (
             <View key={flag.id} style={styles.itemRow}>
-              <View style={[styles.dot, { backgroundColor: itemColor }]} />
+              <StatusIcon icon={look.icon} color={itemColor} size={12} />
               <Text style={[styles.itemText, { color: itemColor }]}>
-                {flag.piece} — {flag.color} — {flag.size}
+                {flag.piece} — {flag.color} — {flag.size} · {look.label}
               </Text>
             </View>
           );
@@ -79,7 +82,7 @@ function makeStyles(t: Theme) {
   },
   avatarText: {
     fontFamily: fonts.wordmark,
-    fontSize: t.font(13),
+    fontSize: 13,
     color: t.colors.paper,
   },
   info: {
@@ -120,12 +123,6 @@ function makeStyles(t: Theme) {
     alignItems: 'center',
     gap: 5,
     marginTop: 6,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
   },
   itemText: {
     fontFamily: fonts.body,

@@ -62,6 +62,7 @@ function makeStyles(t: Theme) {
   },
   text: {
     fontFamily: fonts.bodyMedium,
+    flexShrink: 1,
     fontSize: t.font(12),
     color: t.colors.ink,
   },

@@ -170,7 +170,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Name</Text>
-                <TextInput accessibilityLabel="e.g. Hats"
+                <TextInput accessibilityLabel="Name"
                   style={styles.textInput}
                   value={name}
                   onChangeText={setName}
@@ -241,7 +241,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Numbers</Text>
                   <View style={styles.inputRow}>
-                    <TextInput accessibilityLabel="104, 112, 120  or  104 to 232 every 4"
+                    <TextInput accessibilityLabel="Numbers"
                       style={[styles.textInput, styles.flexOne]}
                       value={numberText}
                       onChangeText={setNumberText}
@@ -279,7 +279,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                   {pieceColors.map((c) => (
                     <View key={c} style={styles.stockRow}>
                       <Text style={styles.stockName}>{c}</Text>
-                      <TextInput accessibilityLabel="0"
+                      <TextInput accessibilityLabel={`${c} season total`}
                         style={[styles.textInput, styles.stockInput]}
                         value={stock[c] ?? ''}
                         onChangeText={(t) => setStock((cur) => ({ ...cur, [c]: t }))}

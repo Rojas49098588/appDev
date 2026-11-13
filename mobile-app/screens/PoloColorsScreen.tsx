@@ -112,7 +112,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
 
           <View style={styles.field}>
             <Text style={styles.label}>Add a color</Text>
-            <TextInput accessibilityLabel="e.g. Navy"
+            <TextInput accessibilityLabel="Color name"
               style={styles.textInput}
               value={name}
               onChangeText={setName}

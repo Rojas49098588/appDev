@@ -149,7 +149,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
             </View>
 
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
+              <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
             </View>
 
             <Text style={styles.roleBadge}>{route.params.role}</Text>
@@ -370,7 +370,7 @@ function makeStyles(t: Theme) {
   },
   avatarText: {
     fontFamily: fonts.wordmark,
-    fontSize: t.font(36),
+    fontSize: 36,
     color: t.colors.paper,
   },
   roleBadge: {

@@ -238,7 +238,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
           </View>
 
           <Text style={styles.name}>{name}</Text>
@@ -276,7 +276,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
                   return (
                     <View key={typeName} style={styles.sizeField}>
                       <Text style={styles.sizeLabel}>{typeName}</Text>
-                      <TextInput accessibilityLabel="—"
+                      <TextInput accessibilityLabel={`${typeName} number`}
                         style={styles.sizeInput}
                         value={value}
                         onChangeText={(text) => {
@@ -436,7 +436,7 @@ function makeStyles(t: Theme) {
     justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: t.font(36), color: t.colors.paper },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: 36, color: t.colors.paper },
   name: { fontFamily: fonts.bodySemiBold, fontSize: t.font(18), color: t.colors.ink },
   sectionBadge: {
     fontFamily: fonts.body,

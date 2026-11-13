@@ -143,7 +143,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
           </View>
 
           <Text style={styles.roleBadge}>{role}</Text>
@@ -395,7 +395,7 @@ function makeStyles(t: Theme) {
     justifyContent: 'center',
     marginBottom: 4,
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: t.font(36), color: t.colors.paper },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: 36, color: t.colors.paper },
   roleBadge: {
     fontFamily: fonts.bodyMedium,
     fontSize: t.font(12),

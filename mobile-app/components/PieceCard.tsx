@@ -92,7 +92,7 @@ export default function PieceCard({
         style={styles.pieceRow}
         onPress={() => setIsOpen((prev) => !prev)}
       >
-        <View>
+        <View style={styles.pieceLeft}>
           <Text style={styles.pieceName}>{piece.name}</Text>
           <Text style={styles.pieceSub}>
             {piece.kind === 'numbered' ? piece.colors.join(', ') : piece.lines.map((l) => l.label).join(', ')}
@@ -294,6 +294,7 @@ function makeStyles(t: Theme) {
     color: t.colors.inkSoft,
     marginTop: 2,
   },
+  pieceLeft: { flexShrink: 1 },
   pieceRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -408,9 +409,11 @@ function makeStyles(t: Theme) {
   addLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   legend: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft },
   styleRow: {
-    flexDirection: 'row',
+    // Large text: the count drops under the name instead of being pushed off.
+    flexDirection: t.isLarge ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
+    gap: 4,
     paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.lineSoft,

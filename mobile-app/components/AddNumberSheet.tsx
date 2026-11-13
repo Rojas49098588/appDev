@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
-  StyleSheet,
+  ScrollView, StyleSheet,
   Text,
   TextInput,
   View,
@@ -92,42 +92,45 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
     <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       <View style={styles.handle} />
       <Text style={styles.title} accessibilityRole="header">Add number to {piece.name}</Text>
-      <TextInput accessibilityLabel="Number"
-        style={styles.input}
-        value={text}
-        onChangeText={setText}
-        placeholder="Number"
-        placeholderTextColor={colors.inkFaint}
-        keyboardType="number-pad"
-        onFocus={() => setNumericFocused(true)}
-        onBlur={() => setNumericFocused(false)}
-        autoFocus
-      />
-      <Text style={styles.label}>Colors</Text>
-      <View style={styles.choiceRow}>
-        {piece.colors.map((c) => {
-          const on = checked.includes(c);
-          return (
-            <Pressable
-              key={c}
-              style={[styles.choice, on && styles.choiceOn]}
-              onPress={() => toggle(c)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-            >
-              <Text style={[styles.choiceText, on && styles.choiceTextOn]}>{c}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <KeyboardDoneBar visible={numericFocused} />
-      <Pressable accessibilityRole="button"
-        style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
-        disabled={saving}
-        onPress={save}
-      >
-        <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add number'}</Text>
-      </Pressable>
+      {/* Scrolls so large text never pushes the controls off the screen. */}
+      <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
+        <TextInput accessibilityLabel="Number"
+          style={styles.input}
+          value={text}
+          onChangeText={setText}
+          placeholder="Number"
+          placeholderTextColor={colors.inkFaint}
+          keyboardType="number-pad"
+          onFocus={() => setNumericFocused(true)}
+          onBlur={() => setNumericFocused(false)}
+          autoFocus
+        />
+        <Text style={styles.label}>Colors</Text>
+        <View style={styles.choiceRow}>
+          {piece.colors.map((c) => {
+            const on = checked.includes(c);
+            return (
+              <Pressable
+                key={c}
+                style={[styles.choice, on && styles.choiceOn]}
+                onPress={() => toggle(c)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+              >
+                <Text style={[styles.choiceText, on && styles.choiceTextOn]}>{c}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <KeyboardDoneBar visible={numericFocused} />
+        <Pressable accessibilityRole="button"
+          style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
+          disabled={saving}
+          onPress={save}
+        >
+          <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add number'}</Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
@@ -136,8 +139,10 @@ function makeStyles(t: Theme) {
   return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
+  scroll: { flexGrow: 0 },
   sheet: {
     backgroundColor: t.colors.white,
+    maxHeight: '90%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,

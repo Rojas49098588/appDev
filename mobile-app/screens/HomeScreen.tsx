@@ -90,7 +90,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           action={
               <>
                   <Pressable accessibilityRole="button" accessibilityLabel="Your profile and settings" style={styles.avatar} onPress={onAvatarPress}>
-                    <Text style={styles.avatarText}>{initials}</Text>
+                    <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
                   </Pressable>
               </>
           }
@@ -285,7 +285,7 @@ function makeStyles(t: Theme) {
   avatarText: {
     fontFamily: fonts.wordmark,
     color: t.colors.paper,
-    fontSize: t.font(14),
+    fontSize: 14,
   },
   statsGrid: {
     flexDirection: 'row',

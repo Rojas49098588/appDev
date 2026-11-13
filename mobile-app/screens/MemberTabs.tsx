@@ -79,7 +79,8 @@ function makeStyles(t: Theme) {
   },
   tabLabel: {
     fontFamily: fonts.body,
-    fontSize: t.font(9.5),
+    // Fixed: only the phone setting grows it, capped by maxFontSizeMultiplier.
+    fontSize: 9.5,
   },
 });
 }

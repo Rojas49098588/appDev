@@ -339,7 +339,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 {label('Opposing university')}
-                <TextInput accessibilityLabel="e.g. Tulane"
+                <TextInput accessibilityLabel="Opponent"
                   style={[styles.input, styles.inputText, bad('Opposing university') && styles.inputErr]}
                   value={draft.opponent}
                   onChangeText={(opponent) => set({ opponent })}
@@ -429,7 +429,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 {label('Polo note (optional)', false)}
-                <TextInput accessibilityLabel="e.g. Bring the long-sleeve"
+                <TextInput accessibilityLabel="Polo note"
                   style={[styles.input, styles.inputText]}
                   value={draft.poloNote}
                   onChangeText={(poloNote) => set({ poloNote })}
@@ -576,7 +576,7 @@ function makeStyles(t: Theme) {
   chipTextOn: { color: t.colors.paper },
   dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: t.colors.line },
   groupBtn: {
-    width: 48,
+    minWidth: 48,
     paddingVertical: 10,
     alignItems: 'center',
     borderWidth: 1,
