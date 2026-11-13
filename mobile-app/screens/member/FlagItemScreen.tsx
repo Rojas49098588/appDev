@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { colors } from '../../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import { useFlags } from '../../context/FlagsContext';
 import type { FlagStatus } from '../../constants/flagsData';
@@ -27,6 +27,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'FlagItem'>;
 const DIRTY_ONLY_PIECES = ['White shirt'];
 
 export default function FlagItemScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { piece, color, size } = route.params;
   const { flags, submitFlag } = useFlags();
   const { account } = useAuth();
@@ -141,8 +143,9 @@ export default function FlagItemScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   content: { flexGrow: 1, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 16 },
   header: {
@@ -152,63 +155,64 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  closeIcon: { fontSize: 18, color: colors.ink },
+  closeIcon: { fontSize: t.font(18), color: t.colors.ink },
   pageTitle: {
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   pieceCard: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 14,
     marginBottom: 20,
   },
-  pieceName: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.ink },
-  pieceSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  fieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+  pieceName: { fontFamily: fonts.bodyMedium, fontSize: t.font(15), color: t.colors.ink },
+  pieceSub: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 2 },
+  fieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   dirtyOnlyNote: {
     fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.wash,
-    backgroundColor: colors.washTint,
+    fontSize: t.font(12),
+    color: t.colors.wash,
+    backgroundColor: t.colors.washTint,
     padding: 12,
     marginBottom: 20,
   },
-  segmented: { flexDirection: 'row', borderWidth: 1, borderColor: colors.ink, marginBottom: 20 },
+  segmented: { flexDirection: 'row', borderWidth: 1, borderColor: t.colors.ink, marginBottom: 20 },
   segment: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 13,
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
   },
-  segmentBorderRight: { borderRightWidth: 1, borderRightColor: colors.ink },
-  segmentActive: { backgroundColor: colors.wash },
-  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.ink },
-  segmentTextActive: { color: colors.paper },
+  segmentBorderRight: { borderRightWidth: 1, borderRightColor: t.colors.ink },
+  segmentActive: { backgroundColor: t.colors.wash },
+  segmentText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13.5), color: t.colors.ink },
+  segmentTextActive: { color: t.colors.paper },
   commentInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 8,
   },
-  hint: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
+  hint: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.inkFaint },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.surface,
+    borderTopColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 18,
   },
-  submitButton: { backgroundColor: colors.wash, paddingVertical: 14, alignItems: 'center' },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitButton: { backgroundColor: t.colors.wash, paddingVertical: 14, alignItems: 'center' },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
 });
+}

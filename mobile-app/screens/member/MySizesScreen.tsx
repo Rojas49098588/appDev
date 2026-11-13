@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../../constants/colors';
+import { useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import { MY_WHITE_SHIRT, NO_SIZE, uniformFor } from '../../constants/myUniformData';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,7 @@ import { useInventory } from '../../context/InventoryContext';
 import TapeGutter from '../../components/TapeGutter';
 
 export default function MySizesScreen() {
+  const styles = useThemedStyles(makeStyles);
   const { account } = useAuth();
   const { pieceTypes, pieces } = useInventory();
   const shoeSize = account?.shoeSize;
@@ -58,35 +59,37 @@ export default function MySizesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { padding: 18, paddingBottom: 28 },
-  title: { fontFamily: fonts.wordmark, fontSize: 24, color: colors.ink, marginBottom: 16 },
-  subtitle: { fontFamily: fonts.blockTitle, fontSize: 15.5, color: colors.ink, marginBottom: 10 },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(24), color: t.colors.ink, marginBottom: 16 },
+  subtitle: { fontFamily: fonts.blockTitle, fontSize: t.font(15.5), color: t.colors.ink, marginBottom: 10 },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     marginBottom: 20,
   },
   cell: {
     width: '50%',
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
     padding: 14,
   },
-  cellBorderRight: { borderRightWidth: 1, borderRightColor: colors.line },
-  cellBorderBottom: { borderBottomWidth: 1, borderBottomColor: colors.line },
-  cellLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 4 },
-  cellValue: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.ink },
+  cellBorderRight: { borderRightWidth: 1, borderRightColor: t.colors.line },
+  cellBorderBottom: { borderBottomWidth: 1, borderBottomColor: t.colors.line },
+  cellLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 4 },
+  cellValue: { fontFamily: fonts.bodyMedium, fontSize: t.font(15), color: t.colors.ink },
   note: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 14,
   },
-  noteText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, lineHeight: 18 },
+  noteText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, lineHeight: t.font(18) },
 });
+}

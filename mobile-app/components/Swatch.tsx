@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Rect } from 'react-native-svg';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 const BLUE = '#346FA3';
 const RED = '#A8483D';
@@ -24,6 +24,8 @@ const STRIPED: Record<string, [string, string]> = {
 };
 
 export default function Swatch({ color, large = false }: { color: string; large?: boolean }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const size = large ? 44 : 28;
   const shape = { width: size, height: size, borderRadius: size / 2 };
 
@@ -37,6 +39,7 @@ export default function Swatch({ color, large = false }: { color: string; large?
 // Plain rotated bands clipped to a circle. An SVG <Pattern> with
 // patternTransform renders as broken triangles on iOS.
 function StripedSwatch({ size, style, stripes }: { size: number; style: object; stripes: [string, string] }) {
+  const styles = useThemedStyles(makeStyles);
   // useId returns ":r0:"-style ids, which break url(#...) references.
   const clipId = `stripes${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const center = size / 2;
@@ -63,7 +66,9 @@ function StripedSwatch({ size, style, stripes }: { size: number; style: object; 
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   swatch: { borderWidth: 1, borderColor: 'rgba(30, 35, 40, 0.1)' },
   clip: { overflow: 'hidden' },
 });
+}

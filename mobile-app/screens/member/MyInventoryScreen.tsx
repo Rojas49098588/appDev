@@ -5,7 +5,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MemberTabParamList, RootStackParamList } from '../../navigation/types';
-import { colors } from '../../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import { MY_WHITE_SHIRT, UNASSIGNED_SIZE, uniformFor } from '../../constants/myUniformData';
 import { useFlags } from '../../context/FlagsContext';
@@ -44,6 +44,8 @@ const ITEM_NAMES: Record<string, string> = {
 const rowKey = (row: Pick<FlagTarget, 'piece' | 'color'>) => `${row.piece}-${row.color}`;
 
 export default function MyInventoryScreen(_props: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { flags, submitFlag: saveFlag } = useFlags();
   const { account, updateAccount } = useAuth();
   const { pieceTypes, pieces } = useInventory();
@@ -242,6 +244,8 @@ export default function MyInventoryScreen(_props: Props) {
 }
 
 function FilterPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       style={[styles.pill, active ? styles.pillActive : styles.pillIdle]}
@@ -255,6 +259,8 @@ function FilterPill({ label, active, onPress }: { label: string; active: boolean
 }
 
 function InventoryRow({ row, highlightN, onFlag }: { row: FlagTarget; highlightN: number; onFlag: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const glow = useRef(new Animated.Value(0)).current;
 
   // Flash the row amber after a flag is saved, then fade back.
@@ -301,29 +307,30 @@ function InventoryRow({ row, highlightN, onFlag }: { row: FlagTarget; highlightN
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 96 },
-  title: { fontFamily: fonts.wordmark, fontSize: 28, color: colors.ink },
-  subtitle: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.inkSoft, marginTop: 6 },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(28), color: t.colors.ink },
+  subtitle: { fontFamily: fonts.bodyMedium, fontSize: t.font(15), color: t.colors.inkSoft, marginTop: 6 },
   filters: { flexDirection: 'row', gap: 8, marginTop: 22 },
   pill: { minHeight: 44, borderRadius: 22, paddingHorizontal: 20, justifyContent: 'center' },
-  pillActive: { backgroundColor: colors.wash },
-  pillIdle: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.lineSoft },
-  pillText: { fontFamily: fonts.bodySemiBold, fontSize: 14 },
-  empty: { fontFamily: fonts.body, fontSize: 14, color: colors.inkSoft, marginTop: 28 },
+  pillActive: { backgroundColor: t.colors.wash },
+  pillIdle: { backgroundColor: t.colors.white, borderWidth: 1, borderColor: t.colors.lineSoft },
+  pillText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14) },
+  empty: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.inkSoft, marginTop: 28 },
   group: { marginTop: 28 },
   groupLabel: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
+    fontSize: t.font(11),
     letterSpacing: 1.8,
-    color: colors.inkSoft,
+    color: t.colors.inkSoft,
     paddingHorizontal: 4,
     marginBottom: 10,
   },
-  groupDot: { color: colors.inkFaint },
+  groupDot: { color: t.colors.inkFaint },
   rows: { gap: 8 },
   row: {
     minHeight: 72,
@@ -335,8 +342,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  rowLabel: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.ink },
-  rowStatus: { fontFamily: fonts.bodySemiBold, fontSize: 13, marginTop: 2 },
+  rowLabel: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.ink },
+  rowStatus: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13), marginTop: 2 },
   flagButton: {
     minHeight: 44,
     minWidth: 76,
@@ -348,9 +355,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
   },
-  flagButtonIdle: { backgroundColor: colors.white, borderColor: colors.line },
-  flagButtonEdit: { backgroundColor: colors.washTint, borderColor: colors.wash },
-  flagButtonText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.wash },
+  flagButtonIdle: { backgroundColor: t.colors.white, borderColor: t.colors.line },
+  flagButtonEdit: { backgroundColor: t.colors.washTint, borderColor: t.colors.wash },
+  flagButtonText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.wash },
   toast: {
     position: 'absolute',
     left: 14,
@@ -361,7 +368,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     borderRadius: 12,
-    backgroundColor: colors.toast,
+    backgroundColor: t.colors.toast,
     paddingHorizontal: 16,
     paddingVertical: 12,
     elevation: 6,
@@ -374,11 +381,12 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.good,
+    backgroundColor: t.colors.good,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toastText: { flex: 1, fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.white },
+  toastText: { flex: 1, fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.white },
   toastUndo: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  toastUndoText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.mint },
+  toastUndoText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.mint },
 });
+}

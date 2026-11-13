@@ -13,17 +13,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon } from '../components/icons';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InviteCode'>;
 
 export default function InviteCodeScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [code, setCode] = useState('');
   const { scrollRef, handleScroll, scrollToFocusedInput } = useScrollToInput();
   const { checkInviteCode } = useAuth();
@@ -99,8 +101,9 @@ export default function InviteCodeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { padding: 18, paddingBottom: 28 },
@@ -108,45 +111,46 @@ const styles = StyleSheet.create({
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   title: {
     fontFamily: fonts.wordmark,
-    fontSize: 22,
-    color: colors.ink,
+    fontSize: t.font(22),
+    color: t.colors.ink,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.inkSoft,
+    fontSize: t.font(12.5),
+    color: t.colors.inkSoft,
     textAlign: 'center',
     marginBottom: 28,
   },
   field: { marginBottom: 20 },
   fieldLabel: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     marginBottom: 7,
     textAlign: 'center',
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.mono,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
     textAlign: 'center',
     letterSpacing: 2,
   },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center' },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center' },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
   hint: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkFaint,
+    fontSize: t.font(11.5),
+    color: t.colors.inkFaint,
     textAlign: 'center',
     marginTop: 16,
   },
 });
+}

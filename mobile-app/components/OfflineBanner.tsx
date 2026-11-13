@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useConnection } from '../hooks/useConnection';
 import { useFlags } from '../context/FlagsContext';
@@ -8,6 +8,7 @@ import { useGames } from '../context/GamesContext';
 import { formatTime } from '../lib/format';
 
 export default function OfflineBanner() {
+  const styles = useThemedStyles(makeStyles);
   const { isOnline } = useConnection();
   const flags = useFlags();
   const combos = useCombos();
@@ -44,7 +45,8 @@ export default function OfflineBanner() {
   return null;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   banner: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -52,19 +54,20 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 6,
     paddingHorizontal: 16,
-    backgroundColor: colors.washTint,
+    backgroundColor: t.colors.washTint,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
+    borderTopColor: t.colors.line,
   },
   errorBanner: {
-    backgroundColor: colors.rustTint,
+    backgroundColor: t.colors.rustTint,
   },
   text: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12,
-    color: colors.ink,
+    fontSize: t.font(12),
+    color: t.colors.ink,
   },
   retry: {
     textDecorationLine: 'underline',
   },
 });
+}

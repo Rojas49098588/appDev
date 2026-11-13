@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 
 // Member's white shirt size and whether they keep and wash their own, so staff don't
@@ -17,6 +17,7 @@ export default function WhiteShirtChoice({
   onChangeSize: (size: string) => void;
   onChangeKeeps: (keeps: boolean) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   if (sizes.length === 0) {
     return <Text style={styles.note}>Your white shirt sizes aren't set up yet.</Text>;
   }
@@ -64,16 +65,18 @@ export default function WhiteShirtChoice({
   );
 }
 
-const styles = StyleSheet.create({
-  box: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, padding: 12, marginTop: 8 },
-  label: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  box: { borderWidth: 1, borderColor: t.colors.line, backgroundColor: t.colors.surface, padding: 12, marginTop: 8 },
+  label: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   spaced: { marginTop: 12 },
-  note: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 8 },
+  note: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   choices: { gap: 7 },
-  chip: { borderWidth: 1, borderColor: colors.line, paddingVertical: 7, paddingHorizontal: 12 },
-  choice: { borderWidth: 1, borderColor: colors.line, paddingVertical: 9, paddingHorizontal: 12 },
-  chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
-  chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
-  chipTextActive: { color: colors.paper },
+  chip: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 7, paddingHorizontal: 12 },
+  choice: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 9, paddingHorizontal: 12 },
+  chipActive: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
+  chipText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
+  chipTextActive: { color: t.colors.paper },
 });
+}

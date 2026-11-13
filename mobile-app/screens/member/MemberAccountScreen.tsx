@@ -17,7 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { INSTRUMENTS } from '../../constants/instruments';
-import { colors } from '../../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import { isPlausiblePhone, isValidPassword } from '../../constants/validation';
 import { friendlyError } from '../../lib/errors';
@@ -44,6 +44,8 @@ const TEXT_FIELDS: {
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 export default function MemberAccountScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { account, updateAccount, logOut } = useAuth();
   const { isOnline } = useConnection();
   const role = account?.role ?? route.params.role;
@@ -332,6 +334,7 @@ function ProfileField({
   onFocus?: (event: FocusEvent) => void;
   onBlur?: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.fieldWrapper}>
       <Text style={styles.label}>{label}</Text>
@@ -352,8 +355,9 @@ function ProfileField({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   appBody: { flex: 1, flexDirection: 'row' },
   contentColumn: { flex: 1, flexDirection: 'column' },
   flexOne: { flex: 1 },
@@ -376,122 +380,123 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: 36, color: colors.paper },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: t.font(36), color: t.colors.paper },
   roleBadge: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12,
+    fontSize: t.font(12),
     letterSpacing: 0.5,
-    color: colors.ink,
+    color: t.colors.ink,
     textTransform: 'uppercase',
     marginBottom: 20,
   },
   fieldWrapper: { width: '100%' },
   label: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     marginTop: 12,
     marginBottom: 6,
   },
-  value: { fontFamily: fonts.body, fontSize: 14, color: colors.ink, minHeight: 20, width: '100%' },
-  helperText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 4 },
+  value: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.ink, minHeight: 20, width: '100%' },
+  helperText: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginTop: 4 },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   pickerWrapper: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
   },
   shoeRow: { width: '100%', flexDirection: 'row', gap: 8 },
-  segmented: { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: colors.ink },
+  segmented: { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: t.colors.ink },
   segment: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
   },
-  segmentBorderRight: { borderRightWidth: 1, borderRightColor: colors.ink },
-  segmentActive: { backgroundColor: colors.ink },
-  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
-  segmentTextActive: { color: colors.paper },
+  segmentBorderRight: { borderRightWidth: 1, borderRightColor: t.colors.ink },
+  segmentActive: { backgroundColor: t.colors.ink },
+  segmentText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12.5), color: t.colors.ink },
+  segmentTextActive: { color: t.colors.paper },
   shoeSizeInput: {
     width: 70,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
   heightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
   heightInput: {
     width: 56,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
-  heightUnit: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
+  heightUnit: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.ink },
   weightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
   weightInput: {
     width: 70,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
   actionButton: {
     width: '100%',
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 24,
   },
-  actionButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  actionButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
   logOutButton: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 10,
   },
-  logOutButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
+  logOutButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
 });
+}

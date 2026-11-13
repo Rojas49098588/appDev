@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
 
 // Two-option segmented control: bordered row, selected segment is ink with white text.
 export default function SegmentTabs({ options, value, onChange }: Props) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       {options.map((label, i) => {
@@ -30,10 +31,12 @@ export default function SegmentTabs({ options, value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', borderWidth: 1, borderColor: colors.ink },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  row: { flexDirection: 'row', borderWidth: 1, borderColor: t.colors.ink },
   segment: { flex: 1, alignItems: 'center', paddingVertical: 9 },
-  segmentOn: { backgroundColor: colors.ink },
-  label: { fontFamily: fonts.bodySemiBold, fontSize: 12, color: colors.ink },
-  labelOn: { color: colors.white },
+  segmentOn: { backgroundColor: t.colors.ink },
+  label: { fontFamily: fonts.bodySemiBold, fontSize: t.font(12), color: t.colors.ink },
+  labelOn: { color: t.colors.white },
 });
+}

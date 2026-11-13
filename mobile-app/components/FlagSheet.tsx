@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { Flag, FlagStatus } from '../constants/flagsData';
 import type { PhotoChange } from '../lib/flagHistory';
@@ -46,6 +46,7 @@ type Props = {
 export const STATUS_LABELS: Record<FlagStatus, string> = { dirty: 'Dirty', repair: 'Needs repair' };
 
 export default function FlagSheet({ target, openKey, onClose, onSubmit }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Keep showing the last piece while the modal fades out.
   const lastTarget = useRef(target);
   if (target) lastTarget.current = target;
@@ -94,6 +95,8 @@ function SheetBody({
   onClose: () => void;
   onSubmit: Props['onSubmit'];
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { isOnline } = useConnection();
   const [status, setStatus] = useState<FlagStatus | undefined>(
@@ -256,11 +259,12 @@ function SheetBody({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -271,59 +275,59 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 20,
   },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headerText: { flex: 1, paddingTop: 2 },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink },
-  subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.inkSoft, marginTop: 2 },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink },
+  subtitle: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.inkSoft, marginTop: 2 },
   closeButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  question: { fontFamily: fonts.bodySemiBold, fontSize: 17, color: colors.ink, marginTop: 28 },
+  question: { fontFamily: fonts.bodySemiBold, fontSize: t.font(17), color: t.colors.ink, marginTop: 28 },
   optionGrid: { flexDirection: 'row', gap: 12, marginTop: 12 },
   option: {
     flex: 1,
     minHeight: 100,
     justifyContent: 'space-between',
     borderWidth: 2,
-    borderColor: colors.lineSoft,
+    borderColor: t.colors.lineSoft,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     padding: 16,
   },
-  optionSelected: { borderColor: colors.teal, backgroundColor: colors.tealTint },
-  optionLabel: { fontFamily: fonts.bodySemiBold, fontSize: 14 },
+  optionSelected: { borderColor: t.colors.teal, backgroundColor: t.colors.tealTint },
+  optionLabel: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14) },
   dirtyOnlyNote: {
     fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.amber,
-    backgroundColor: colors.amberTint,
+    fontSize: t.font(13),
+    color: t.colors.amber,
+    backgroundColor: t.colors.amberTint,
     borderRadius: 14,
     padding: 14,
     marginTop: 24,
   },
-  noteLabel: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.ink, marginTop: 24 },
-  noteOptional: { fontFamily: fonts.body, color: colors.inkSoft },
+  noteLabel: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.ink, marginTop: 24 },
+  noteOptional: { fontFamily: fonts.body, color: t.colors.inkSoft },
   noteInput: {
     marginTop: 8,
     minHeight: 92,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
     textAlignVertical: 'top',
   },
   photoAdd: {
@@ -331,14 +335,14 @@ const styles = StyleSheet.create({
     height: 72,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  photoAddText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.inkSoft },
+  photoAddText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.inkSoft },
   photoWrap: { marginTop: 8, width: 96, height: 96 },
-  photoThumb: { width: 96, height: 96, borderRadius: 14, backgroundColor: colors.paper },
+  photoThumb: { width: 96, height: 96, borderRadius: 14, backgroundColor: t.colors.paper },
   photoRemove: {
     position: 'absolute',
     top: -8,
@@ -346,7 +350,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -354,11 +358,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.wash,
+    backgroundColor: t.colors.wash,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitDisabled: { backgroundColor: colors.lineSoft },
-  submitText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.white },
-  submitTextDisabled: { color: colors.inkFaint },
+  submitDisabled: { backgroundColor: t.colors.lineSoft },
+  submitText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.white },
+  submitTextDisabled: { color: t.colors.inkFaint },
 });
+}

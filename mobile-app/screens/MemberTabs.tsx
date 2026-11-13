@@ -2,13 +2,13 @@ import { BottomTabBar, createBottomTabNavigator } from '@react-navigation/bottom
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StyleSheet, Text, View } from 'react-native';
 import type { MemberTabParamList, RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import TabIcon, { type TabIconName } from '../components/TabIcon';
 import OfflineBanner from '../components/OfflineBanner';
 import GameDayScreen from './member/GameDayScreen';
 import MySizesScreen from './member/MySizesScreen';
 import MyInventoryScreen from './member/MyInventoryScreen';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MemberTabs'>;
 
@@ -27,6 +27,8 @@ const TAB_LABELS: Record<keyof MemberTabParamList, string> = {
 };
 
 export default function MemberTabs({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { firstName, lastName, instrument, role } = route.params;
   return (
     <Tab.Navigator
@@ -42,7 +44,7 @@ export default function MemberTabs({ navigation, route }: Props) {
         tabBarInactiveTintColor: colors.inkFaint,
         tabBarStyle: styles.tabBar,
         tabBarLabel: ({ color }) => (
-          <Text style={[styles.tabLabel, { color }]}>
+          <Text style={[styles.tabLabel, { color }]} maxFontSizeMultiplier={1.3}>
             {TAB_LABELS[tabRoute.name as keyof MemberTabParamList]}
           </Text>
         ),
@@ -69,13 +71,15 @@ export default function MemberTabs({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   tabBar: {
-    backgroundColor: colors.surface,
-    borderTopColor: colors.line,
+    backgroundColor: t.colors.surface,
+    borderTopColor: t.colors.line,
   },
   tabLabel: {
     fontFamily: fonts.body,
-    fontSize: 9.5,
+    fontSize: t.font(9.5),
   },
 });
+}

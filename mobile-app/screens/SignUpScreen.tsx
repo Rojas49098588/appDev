@@ -17,7 +17,6 @@ import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { INSTRUMENTS } from '../constants/instruments';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { ACCOUNT_CREATED_LOAD_FAILED, useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
@@ -26,6 +25,7 @@ import { useScrollToInput } from '../hooks/useScrollToInput';
 import TapeGutter from '../components/TapeGutter';
 import InstrumentWheel from '../components/InstrumentWheel';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
@@ -34,6 +34,8 @@ const isPlausibleEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(va
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 export default function SignUpScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -310,10 +312,11 @@ export default function SignUpScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
   },
   flexOne: {
     flex: 1,
@@ -347,13 +350,13 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   intro: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.inkSoft,
+    fontSize: t.font(12.5),
+    color: t.colors.inkSoft,
     marginTop: 2,
     marginBottom: 26,
   },
@@ -371,19 +374,19 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     marginBottom: 7,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   heightRow: {
     flexDirection: 'row',
@@ -393,19 +396,19 @@ const styles = StyleSheet.create({
   heightInput: {
     width: 56,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
   heightUnit: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   weightRow: {
     flexDirection: 'row',
@@ -415,25 +418,25 @@ const styles = StyleSheet.create({
   weightInput: {
     width: 70,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.surface,
+    borderTopColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 10,
   },
   submitButton: {
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -442,7 +445,8 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: colors.paper,
+    fontSize: t.font(14),
+    color: t.colors.paper,
   },
 });
+}

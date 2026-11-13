@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../lib/errors';
@@ -24,6 +24,8 @@ import TapeGutter from '../components/TapeGutter';
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { logIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -154,52 +156,54 @@ export default function LoginScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { padding: 18, paddingTop: 40, paddingBottom: 28 },
   header: { alignItems: 'center', marginBottom: 36 },
   bandImage: { width: 160, height: 133, marginBottom: 14 },
-  wordmark: { fontFamily: fonts.wordmark, fontSize: 26, color: colors.ink },
-  wordmarkSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, marginTop: 4 },
+  wordmark: { fontFamily: fonts.wordmark, fontSize: t.font(26), color: t.colors.ink },
+  wordmarkSub: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, marginTop: 4 },
   field: { marginBottom: 20 },
-  fieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+  fieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   passwordLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 7,
   },
-  passwordFieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft },
+  passwordFieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft },
   forgotRow: { alignSelf: 'flex-end', marginTop: 8 },
   showLink: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     textDecorationLine: 'underline',
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   submitButtonBusy: { opacity: 0.5 },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  dividerText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginHorizontal: 12 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: t.colors.line },
+  dividerText: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginHorizontal: 12 },
   createAccountRow: { alignItems: 'center' },
-  createAccountText: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft },
+  createAccountText: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft },
   createAccountLink: {
     fontFamily: fonts.bodyMedium,
-    color: colors.ink,
+    color: t.colors.ink,
     textDecorationLine: 'underline',
   },
 });
+}
