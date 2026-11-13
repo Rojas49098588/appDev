@@ -23,6 +23,8 @@ import { OFFLINE_DIM, useConnection } from '../hooks/useConnection';
 import { CloseIcon, DropIcon, WrenchIcon } from './icons';
 import Swatch from './Swatch';
 import PhotoPermissionNotice from './PhotoPermissionNotice';
+import { StatusIcon } from './StatusLabel';
+import { statusLook, submitLook } from '../lib/flagStatus';
 import { usePhotoPermission } from '../hooks/usePhotoPermission';
 
 export type FlagTarget = {
@@ -156,6 +158,7 @@ function SheetBody({
     ['repair', (color) => <WrenchIcon color={color} />],
   ];
 
+  const submitButton = submitLook(status ?? null);
   return (
     <Pressable
       style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}
@@ -188,11 +191,15 @@ function SheetBody({
           <View style={styles.optionGrid}>
             {options.map(([value, icon]) => {
               const selected = status === value;
-              const tint = selected ? colors.tealDark : colors.inkSoft;
+              const look = statusLook(value);
+              const tint = selected ? colors[look.colorKey] : colors.inkSoft;
               return (
                 <Pressable
                   key={value}
-                  style={[styles.option, selected && styles.optionSelected]}
+                  style={[
+                    styles.option,
+                    selected && { borderColor: colors[look.colorKey], backgroundColor: colors[look.tintKey!] },
+                  ]}
                   onPress={() => setStatus(value)}
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
@@ -247,13 +254,16 @@ function SheetBody({
       <Pressable
         style={[
           styles.submit,
-          !status && styles.submitDisabled,
+          submitButton.disabled ? styles.submitDisabled : { backgroundColor: colors[submitButton.colorKey] },
           (!isOnline || isSaving) && OFFLINE_DIM,
         ]}
-        disabled={!status || isSaving}
+        disabled={submitButton.disabled || isSaving}
         onPress={submit}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: submitButton.disabled || isSaving }}
       >
-        <Text style={[styles.submitText, !status && styles.submitTextDisabled]}>Submit flag</Text>
+        {status ? <StatusIcon icon={statusLook(status).icon} color={colors.white} size={18} /> : null}
+        <Text style={[styles.submitText, submitButton.disabled && styles.submitTextDisabled]}>{submitButton.label}</Text>
       </Pressable>
     </Pressable>
   );
@@ -302,7 +312,6 @@ function makeStyles(t: Theme) {
     backgroundColor: t.colors.white,
     padding: 16,
   },
-  optionSelected: { borderColor: t.colors.teal, backgroundColor: t.colors.tealTint },
   optionLabel: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14) },
   dirtyOnlyNote: {
     fontFamily: fonts.body,
@@ -358,7 +367,8 @@ function makeStyles(t: Theme) {
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: t.colors.wash,
+    flexDirection: 'row',
+    gap: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -19,6 +19,8 @@ import { pieceCount } from '../lib/inventory';
 import { shownFootball } from '../lib/games';
 import { formatGameDate } from '../lib/format';
 import TapeGutter from '../components/TapeGutter';
+import { StatusIcon } from '../components/StatusLabel';
+import { statusLook } from '../lib/flagStatus';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
   firstName: string;
@@ -144,7 +146,8 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           )}
           <View style={styles.invList}>
             {inventoryPreview.map((item) => {
-              const warnColor = item.kind === 'repair' ? colors.rust : colors.wash;
+              const look = statusLook(item.kind);
+              const warnColor = colors[look.colorKey];
               return (
                 <View key={item.piece} style={styles.invRow}>
                   <View>
@@ -154,19 +157,8 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
                   <View style={styles.invRight}>
                     <Text style={styles.invQty}>{item.qty}</Text>
                     <View style={styles.condRow}>
-                      <View
-                        style={[
-                          styles.dot,
-                          item.kind !== 'good' && styles.dotWarn,
-                          item.kind !== 'good' && { backgroundColor: warnColor },
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.condText,
-                          item.kind !== 'good' && { color: warnColor },
-                        ]}
-                      >
+                      <StatusIcon icon={look.icon} color={warnColor} size={12} />
+                      <Text style={[styles.condText, { color: warnColor }]}>
                         {item.condition}
                       </Text>
                     </View>
@@ -385,16 +377,6 @@ function makeStyles(t: Theme) {
     alignItems: 'center',
     gap: 5,
     marginTop: 3,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: t.colors.ink,
-  },
-  dotWarn: {
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
   },
   condText: {
     fontFamily: fonts.body,

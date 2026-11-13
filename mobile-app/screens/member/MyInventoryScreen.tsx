@@ -17,6 +17,7 @@ import { friendlyError } from '../../lib/errors';
 import { requireOnline, useConnection } from '../../hooks/useConnection';
 import TapeGutter from '../../components/TapeGutter';
 import Swatch from '../../components/Swatch';
+import StatusLabel from '../../components/StatusLabel';
 import FlagSheet, { STATUS_LABELS, type FlagTarget } from '../../components/FlagSheet';
 import { CheckIcon, FlagIcon } from '../../components/icons';
 import { successBuzz } from '../../lib/haptics';
@@ -276,7 +277,6 @@ function InventoryRow({ row, highlightN, onFlag }: { row: FlagTarget; highlightN
   }, [highlightN, glow]);
 
   const flag = row.flag;
-  const statusColor = !flag ? colors.good : flag.status === 'repair' ? colors.rust : colors.amber;
 
   return (
     <Animated.View
@@ -291,9 +291,9 @@ function InventoryRow({ row, highlightN, onFlag }: { row: FlagTarget; highlightN
       <Swatch color={row.color} />
       <View style={styles.flexOne}>
         <Text style={styles.rowLabel}>{row.color}</Text>
-        <Text style={[styles.rowStatus, { color: statusColor }]}>
-          {flag ? `Flagged · ${STATUS_LABELS[flag.status]}` : 'Good'}
-        </Text>
+        <View style={styles.rowStatus}>
+          <StatusLabel status={flag ? flag.status : 'good'} prefix={flag ? 'Flagged · ' : ''} />
+        </View>
       </View>
       <Pressable
         style={[styles.flagButton, flag ? styles.flagButtonEdit : styles.flagButtonIdle]}
@@ -343,7 +343,7 @@ function makeStyles(t: Theme) {
     paddingVertical: 12,
   },
   rowLabel: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.ink },
-  rowStatus: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13), marginTop: 2 },
+  rowStatus: { marginTop: 2 },
   flagButton: {
     minHeight: 44,
     minWidth: 76,

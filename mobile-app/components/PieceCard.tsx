@@ -6,7 +6,7 @@ import type { InventoryPiece, PieceType } from '../lib/models';
 import { pieceCount, type Assignment } from '../lib/inventory';
 import { cardSummary, lineStatuses } from '../lib/countedStock';
 import { formatShortDate } from '../lib/format';
-import { ChevronDownIcon, SmallChevronRightIcon } from './icons';
+import { ChevronDownIcon, DropIcon, SmallChevronRightIcon, WrenchIcon } from './icons';
 import OutlineButton from './OutlineButton';
 
 const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
@@ -103,12 +103,14 @@ export default function PieceCard({
                     style={styles.flagBtnRepair}
                     onPress={() => onFlagPress(piece, 'repair')}
                   >
+                    <WrenchIcon color={colors.rust} size={12} />
                     <Text style={styles.flagBtnTextRepair}>Repair · {repairCount}</Text>
                     <SmallChevronRightIcon color={colors.rust} />
                   </Pressable>
                 )}
                 {dirtyCount > 0 && (
                   <Pressable style={styles.flagBtnDirty} onPress={() => onFlagPress(piece, 'dirty')}>
+                    <DropIcon color={colors.wash} size={12} />
                     <Text style={styles.flagBtnTextDirty}>Dirty · {dirtyCount}</Text>
                     <SmallChevronRightIcon color={colors.wash} />
                   </Pressable>
@@ -162,6 +164,8 @@ export default function PieceCard({
                           >
                             {size}
                           </Text>
+                          {state === 'repair' && <WrenchIcon color={colors.rust} size={10} />}
+                          {state === 'dirty' && <DropIcon color={colors.wash} size={10} />}
                         </Pressable>
                       );
                     })}
@@ -338,6 +342,9 @@ function makeStyles(t: Theme) {
     paddingHorizontal: 14,
   },
   sizeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     borderWidth: 1,
     borderColor: t.colors.line,
     paddingVertical: 5,
