@@ -24,6 +24,7 @@ import { friendlyError } from '../lib/errors';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
+import SettingsRow from '../components/SettingsRow';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import ChangePasswordSection from '../components/ChangePasswordSection';
 import { BackChevronIcon } from '../components/icons';
@@ -152,6 +153,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
             </View>
 
             <Text style={styles.roleBadge}>{route.params.role}</Text>
+
+            <SettingsRow onPress={() => navigation.navigate('Settings')} />
 
             {TEXT_FIELDS.slice(0, 2).map((field) => (
               <ProfileField

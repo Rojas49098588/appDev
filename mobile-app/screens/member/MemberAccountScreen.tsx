@@ -24,6 +24,7 @@ import { friendlyError } from '../../lib/errors';
 import { useScrollToInput } from '../../hooks/useScrollToInput';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../../hooks/useConnection';
 import TapeGutter from '../../components/TapeGutter';
+import SettingsRow from '../../components/SettingsRow';
 import KeyboardDoneBar from '../../components/KeyboardDoneBar';
 import ChangePasswordSection from '../../components/ChangePasswordSection';
 import { BackChevronIcon } from '../../components/icons';
@@ -146,6 +147,8 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
           </View>
 
           <Text style={styles.roleBadge}>{role}</Text>
+
+            <SettingsRow onPress={() => navigation.navigate('Settings')} />
 
           {TEXT_FIELDS.slice(0, 2).map((field) => {
             const isNumericKeyboard = field.keyboardType === 'phone-pad';
