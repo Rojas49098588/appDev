@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import { sectionForInstrument } from '../constants/instrumentSections';
 import type { MemberArchive } from '../lib/models';
@@ -16,12 +15,15 @@ import { supabase } from '../lib/supabase';
 import { useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
 import { BackChevronIcon, SmallChevronRightIcon } from '../components/icons';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ArchivedMembers'>;
 
 // Snapshots are only read here, so they're fetched each time the screen is
 // shown rather than cached and kept live like the contexts' data.
 export default function ArchivedMembersScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { isOnline } = useConnection();
   const [archives, setArchives] = useState<MemberArchive[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,8 +103,9 @@ export default function ArchivedMembersScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
@@ -117,24 +120,25 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
-  message: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, textAlign: 'center', marginTop: 24 },
+  message: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, textAlign: 'center', marginTop: 24 },
   spinner: { marginTop: 24 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 14,
     marginBottom: 8,
   },
   rowInfo: { flex: 1 },
-  rowName: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
-  rowSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  rowMeta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkFaint, marginTop: 4 },
-  rowRestored: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.ink, marginTop: 2 },
+  rowName: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
+  rowSub: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 2 },
+  rowMeta: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkFaint, marginTop: 4 },
+  rowRestored: { fontFamily: fonts.bodyMedium, fontSize: t.font(11.5), color: t.colors.ink, marginTop: 2 },
 });
+}

@@ -3,7 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
+import type { Palette } from '../lib/theme';
 import { fonts } from '../constants/fonts';
 import { useGames } from '../context/GamesContext';
 import type { Game } from '../lib/models';
@@ -16,12 +17,13 @@ import { BackChevronIcon } from '../components/icons';
 type Props = NativeStackScreenProps<RootStackParamList, 'Games'>;
 type Pill = 'Posted' | 'Ready' | 'Draft' | 'Done';
 
-const PILL_STYLES: Record<Pill, { bg: string; fg: string; border: string; dashed?: boolean }> = {
+// Built from the current palette so High contrast applies.
+const pillStyles = (colors: Palette): Record<Pill, { bg: string; fg: string; border: string; dashed?: boolean }> => ({
   Posted: { bg: colors.tealTint, fg: colors.tealDark, border: colors.teal },
   Ready: { bg: colors.washTint, fg: colors.wash, border: colors.wash },
   Draft: { bg: colors.rustTint, fg: colors.rust, border: colors.rust, dashed: true },
   Done: { bg: colors.lineSoft, fg: colors.inkSoft, border: colors.line },
-};
+});
 
 // 'VB · W' / 'BB · M'
 function courtTag(g: Game): string {
@@ -47,12 +49,14 @@ function detailLine(g: Game): string {
 }
 
 export default function GamesScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { games, today } = useGames();
   const [tab, setTab] = useState<0 | 1>(0);
   const { upNext, queue, past } = staffSections(games, tab === 0 ? 'football' : 'court', today);
 
   const renderCard = (g: Game, pill: Pill, dim = false) => {
-    const ps = PILL_STYLES[pill];
+    const ps = pillStyles(colors)[pill];
     const missing = pill === 'Draft' ? missingFields(g) : [];
     return (
       <Pressable
@@ -134,8 +138,9 @@ export default function GamesScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 90 },
@@ -150,42 +155,43 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   sectionLabel: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
+    fontSize: t.font(11),
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: colors.inkSoft,
+    color: t.colors.inkSoft,
     marginTop: 20,
     marginBottom: 8,
   },
-  empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft },
+  empty: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft },
   card: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 14,
     marginBottom: 8,
   },
   cardDim: { opacity: 0.6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTitle: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
-  tag: { borderWidth: 1, borderColor: colors.line, paddingHorizontal: 6, paddingVertical: 1 },
-  tagText: { fontFamily: fonts.monoMedium, fontSize: 10, color: colors.inkSoft },
+  cardTitle: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
+  tag: { borderWidth: 1, borderColor: t.colors.line, paddingHorizontal: 6, paddingVertical: 1 },
+  tagText: { fontFamily: fonts.monoMedium, fontSize: t.font(10), color: t.colors.inkSoft },
   pill: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
-  pillText: { fontFamily: fonts.bodySemiBold, fontSize: 10.5 },
-  cardMeta: { fontFamily: fonts.mono, fontSize: 11.5, color: colors.inkSoft, marginTop: 6 },
-  missing: { fontFamily: fonts.body, fontSize: 12, color: colors.rust, marginTop: 6 },
+  pillText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(10.5) },
+  cardMeta: { fontFamily: fonts.mono, fontSize: t.font(11.5), color: t.colors.inkSoft, marginTop: 6 },
+  missing: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.rust, marginTop: 6 },
   fab: {
     position: 'absolute',
     right: 18,
     bottom: 18,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
-  fabText: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.white },
+  fabText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13), color: t.colors.white },
 });
+}

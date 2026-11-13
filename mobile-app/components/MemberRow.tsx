@@ -1,10 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { Member } from '../constants/membersData';
 import type { Flag } from '../constants/flagsData';
 import type { Role } from '../navigation/types';
 import { SmallChevronRightIcon } from './icons';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 export default function MemberRow({
   member,
@@ -17,6 +17,8 @@ export default function MemberRow({
   flags?: Flag[];
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const initials = member.name
     .split(' ')
     .map((part) => part.charAt(0))
@@ -55,14 +57,15 @@ export default function MemberRow({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 13,
     marginBottom: 8,
   },
@@ -70,14 +73,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontFamily: fonts.wordmark,
-    fontSize: 13,
-    color: colors.paper,
+    fontSize: t.font(13),
+    color: t.colors.paper,
   },
   info: {
     flex: 1,
@@ -89,27 +92,27 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: t.font(13.5),
+    color: t.colors.ink,
   },
   staffBadge: {
     borderWidth: 1,
-    borderColor: colors.ink,
-    backgroundColor: colors.ink,
+    borderColor: t.colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 1,
     paddingHorizontal: 6,
   },
   staffBadgeText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 9,
+    fontSize: t.font(9),
     letterSpacing: 0.4,
-    color: colors.paper,
+    color: t.colors.paper,
     textTransform: 'uppercase',
   },
   section: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 1,
   },
   itemRow: {
@@ -126,6 +129,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontFamily: fonts.body,
-    fontSize: 11,
+    fontSize: t.font(11),
   },
 });
+}

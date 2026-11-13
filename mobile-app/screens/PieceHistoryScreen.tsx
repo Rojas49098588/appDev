@@ -3,7 +3,7 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { Flag } from '../lib/models';
 import { useFlags } from '../context/FlagsContext';
@@ -24,6 +24,8 @@ import { BackChevronIcon, ImagePlaceholderIcon } from '../components/icons';
 type Props = NativeStackScreenProps<RootStackParamList, 'PieceHistory'>;
 
 export default function PieceHistoryScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { piece, color, size } = route.params;
   const { history, clearFlag, editFlag } = useFlags();
   const { isOnline } = useConnection();
@@ -171,8 +173,9 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { flexGrow: 1, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
@@ -187,60 +190,61 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   ownerRow: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 12,
     marginBottom: 14,
     gap: 6,
   },
-  ownerText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink },
+  ownerText: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.ink },
   repairToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   markGood: {
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 14,
   },
-  markGoodText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.paper },
-  empty: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
+  markGoodText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13.5), color: t.colors.paper },
+  empty: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkFaint },
   entry: {
     flexDirection: 'row',
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 12,
     marginBottom: 8,
   },
-  thumb: { width: 72, height: 72, backgroundColor: colors.paper },
+  thumb: { width: 72, height: 72, backgroundColor: t.colors.paper },
   noPhoto: {
     borderWidth: 1,
-    borderColor: colors.lineSoft,
+    borderColor: t.colors.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
   },
-  noPhotoText: { fontFamily: fonts.body, fontSize: 9.5, color: colors.inkFaint },
+  noPhotoText: { fontFamily: fonts.body, fontSize: t.font(9.5), color: t.colors.inkFaint },
   entryBody: { flex: 1 },
   tagRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
   tag: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 10.5,
+    fontSize: t.font(10.5),
     borderWidth: 1,
     paddingVertical: 2,
     paddingHorizontal: 6,
     overflow: 'hidden',
   },
-  tagRepair: { color: colors.rust, borderColor: colors.rust, backgroundColor: colors.rustTint },
-  tagDirty: { color: colors.wash, borderColor: colors.wash, backgroundColor: colors.washTint },
-  tagOpen: { color: colors.ink, borderColor: colors.ink },
-  tagCleared: { color: colors.inkSoft, borderColor: colors.line },
-  comment: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink, marginBottom: 2 },
-  meta: { fontFamily: fonts.body, fontSize: 11, color: colors.inkSoft, marginTop: 1 },
-  staffNote: { fontFamily: fonts.body, fontSize: 11.5, color: colors.ink, marginTop: 3, fontStyle: 'italic' },
+  tagRepair: { color: t.colors.rust, borderColor: t.colors.rust, backgroundColor: t.colors.rustTint },
+  tagDirty: { color: t.colors.wash, borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
+  tagOpen: { color: t.colors.ink, borderColor: t.colors.ink },
+  tagCleared: { color: t.colors.inkSoft, borderColor: t.colors.line },
+  comment: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.ink, marginBottom: 2 },
+  meta: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.inkSoft, marginTop: 1 },
+  staffNote: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.ink, marginTop: 3, fontStyle: 'italic' },
 });
+}

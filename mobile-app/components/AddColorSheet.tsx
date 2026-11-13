@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { PieceType } from '../lib/models';
 import { useInventory } from '../context/InventoryContext';
@@ -26,6 +26,7 @@ type Props = {
 };
 
 export default function AddColorSheet({ piece, numberCount, onClose }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Keep showing the last type while the modal fades out.
   const last = useRef(piece);
   if (piece) last.current = piece;
@@ -58,6 +59,8 @@ function Body({
   numberCount: number;
   onClose: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { isOnline } = useConnection();
   const { addPieceColor } = useInventory();
@@ -116,11 +119,12 @@ function Body({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -131,29 +135,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 16,
   },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink },
   input: {
     marginTop: 14,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
   },
-  preview: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginTop: 10 },
+  preview: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginTop: 10 },
   submit: {
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.wash,
+    backgroundColor: t.colors.wash,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.white },
+  submitText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.white },
 });
+}

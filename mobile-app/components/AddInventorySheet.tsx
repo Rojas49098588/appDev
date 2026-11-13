@@ -1,6 +1,6 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
 
 // The "+" menu on staff Inventory. Add color / Add number live on each piece card.
 export default function AddInventorySheet({ visible, onClose, onImport, onNewType }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   return (
     <Modal
@@ -42,11 +43,12 @@ export default function AddInventorySheet({ visible, onClose, onImport, onNewTyp
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -57,10 +59,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 12,
   },
-  option: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
-  optionTitle: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.ink },
-  optionSub: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginTop: 2 },
+  option: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: t.colors.lineSoft },
+  optionTitle: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.ink },
+  optionSub: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginTop: 2 },
 });
+}

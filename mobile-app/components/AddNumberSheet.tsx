@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { PieceType } from '../lib/models';
 import { normalizeNumber } from '../lib/import/rows';
@@ -23,6 +23,7 @@ import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnectio
 type Props = { piece: PieceType | null; onClose: () => void };
 
 export default function AddNumberSheet({ piece, onClose }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Keep showing the last type while the modal fades out.
   const last = useRef(piece);
   if (piece) last.current = piece;
@@ -47,6 +48,8 @@ export default function AddNumberSheet({ piece, onClose }: Props) {
 }
 
 function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { isOnline } = useConnection();
   const { addPieceNumber } = useInventory();
@@ -129,11 +132,12 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -144,41 +148,42 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 16,
   },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink },
   input: {
     marginTop: 14,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
   },
-  label: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.ink, marginTop: 18 },
+  label: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.ink, marginTop: 18 },
   choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   choice: {
     borderWidth: 2,
-    borderColor: colors.lineSoft,
+    borderColor: t.colors.lineSoft,
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
   },
-  choiceOn: { borderColor: colors.teal, backgroundColor: colors.tealTint },
-  choiceText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.inkSoft },
-  choiceTextOn: { color: colors.tealDark },
+  choiceOn: { borderColor: t.colors.teal, backgroundColor: t.colors.tealTint },
+  choiceText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.inkSoft },
+  choiceTextOn: { color: t.colors.tealDark },
   submit: {
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.wash,
+    backgroundColor: t.colors.wash,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.white },
+  submitText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.white },
 });
+}

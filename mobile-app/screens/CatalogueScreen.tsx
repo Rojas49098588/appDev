@@ -4,7 +4,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { Combo } from '../constants/combosData';
 import { useCombos } from '../context/CombosContext';
@@ -17,6 +17,8 @@ type Props = CompositeScreenProps<
 >;
 
 export default function CatalogueScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { combos } = useCombos();
 
   const handleComboPress = (combo: Combo) => {
@@ -67,10 +69,11 @@ export default function CatalogueScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
   },
   flexOne: {
     flex: 1,
@@ -98,8 +101,8 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   grid: {
     flexDirection: 'row',
@@ -113,8 +116,8 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 3 / 4,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
@@ -128,13 +131,14 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
-    color: colors.ink,
+    fontSize: t.font(11.5),
+    color: t.colors.ink,
   },
   tileSub: {
     fontFamily: fonts.body,
-    fontSize: 10,
-    color: colors.inkSoft,
+    fontSize: t.font(10),
+    color: t.colors.inkSoft,
     marginTop: 2,
   },
 });
+}

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useAuth } from '../context/AuthContext';
 import { useFlags } from '../context/FlagsContext';
@@ -39,6 +39,8 @@ const numbersKey = (numbers: MemberNumbers) =>
   JSON.stringify(Object.entries(numbers).filter(([, v]) => v.trim() !== '').sort(([a], [b]) => a.localeCompare(b)));
 
 export default function MemberProfileScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { id, name, section, email, phone, height, weight } = route.params;
   const { account, accounts, setAccountRole, setMemberNumbers, archiveMember } = useAuth();
   const { pieceTypes, pieces, syncedAt, error: inventoryError } = useInventory();
@@ -398,8 +400,9 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: {
@@ -421,31 +424,31 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: 36, color: colors.paper },
-  name: { fontFamily: fonts.bodySemiBold, fontSize: 18, color: colors.ink },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: t.font(36), color: t.colors.paper },
+  name: { fontFamily: fonts.bodySemiBold, fontSize: t.font(18), color: t.colors.ink },
   sectionBadge: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.inkSoft,
+    fontSize: t.font(12.5),
+    color: t.colors.inkSoft,
     marginTop: 4,
   },
   roleBadge: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 11,
+    fontSize: t.font(11),
     letterSpacing: 0.5,
-    color: colors.ink,
+    color: t.colors.ink,
     textTransform: 'uppercase',
     marginTop: 8,
     marginBottom: 22,
@@ -453,14 +456,14 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 16,
   },
   cardTitle: {
     fontFamily: fonts.blockTitle,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     marginBottom: 10,
   },
   infoRow: {
@@ -469,91 +472,92 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 9,
     borderTopWidth: 1,
-    borderTopColor: colors.lineSoft,
+    borderTopColor: t.colors.lineSoft,
   },
-  infoLabel: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
-  infoValue: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
-  infoValueMuted: { fontFamily: fonts.body, color: colors.inkFaint },
+  infoLabel: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
+  infoValue: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
+  infoValueMuted: { fontFamily: fonts.body, color: t.colors.inkFaint },
   flagsCard: { marginTop: 12 },
-  noFlags: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
+  noFlags: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkFaint },
   flagRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.lineSoft,
+    borderTopColor: t.colors.lineSoft,
   },
   flagInfo: { flex: 1 },
-  flagPiece: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
-  flagStatus: { fontFamily: fonts.body, fontSize: 11.5, marginTop: 2 },
-  flagComment: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 3 },
+  flagPiece: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
+  flagStatus: { fontFamily: fonts.body, fontSize: t.font(11.5), marginTop: 2 },
+  flagComment: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginTop: 3 },
   markGoodButton: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 7,
     paddingHorizontal: 12,
   },
-  markGoodButtonText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink },
+  markGoodButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12), color: t.colors.ink },
   sizesCard: { marginTop: 12 },
   sizesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   sizeField: { width: '47%' },
-  sizeLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 5 },
+  sizeLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 5 },
   sizeInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.paper,
     paddingVertical: 8,
     paddingHorizontal: 10,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
-  missingNumberText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.amber, marginTop: 4 },
+  missingNumberText: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.amber, marginTop: 4 },
   saveSizesButton: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 10,
     alignItems: 'center',
     marginTop: 14,
   },
-  saveSizesButtonDisabled: { borderColor: colors.line },
-  saveSizesButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  saveSizesButtonDisabled: { borderColor: t.colors.line },
+  saveSizesButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
   savedSizesText: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     textAlign: 'center',
     marginTop: 8,
   },
   archiveButton: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.rust,
+    borderColor: t.colors.rust,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 12,
   },
-  archiveButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.rust },
+  archiveButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.rust },
   roleButton: {
     width: '100%',
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 20,
   },
   roleButtonDisabled: {
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
   },
-  roleButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
-  roleButtonTextDisabled: { color: colors.inkFaint },
+  roleButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
+  roleButtonTextDisabled: { color: t.colors.inkFaint },
   roleButtonHint: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkFaint,
+    fontSize: t.font(11),
+    color: t.colors.inkFaint,
     marginTop: 8,
     textAlign: 'center',
   },
 });
+}

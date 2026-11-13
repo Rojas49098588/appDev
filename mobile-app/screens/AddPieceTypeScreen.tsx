@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { PieceKind } from '../lib/models';
 import { addNumbers as mergeNumbers, saveProblem } from '../lib/pieceTypeForm';
@@ -30,6 +30,8 @@ import { useScrollToInput } from '../hooks/useScrollToInput';
 type Props = NativeStackScreenProps<RootStackParamList, 'AddPieceType'>;
 
 export default function AddPieceTypeScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { createPieceType } = useInventory();
   const { isOnline } = useConnection();
   const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
@@ -315,8 +317,9 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   contentColumn: { flex: 1, flexDirection: 'column' },
@@ -332,49 +335,50 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   field: { marginBottom: 22 },
-  fieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+  fieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   inputRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   smallButton: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  smallButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  smallButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   numberChips: { marginTop: 10 },
-  chip: { borderWidth: 1, borderColor: colors.line, paddingVertical: 7, paddingHorizontal: 12 },
-  chipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
-  chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft },
-  chipTextActive: { color: colors.paper },
-  preview: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, marginTop: 10 },
+  chip: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 7, paddingHorizontal: 12 },
+  chipActive: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
+  chipText: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
+  chipTextActive: { color: t.colors.paper },
+  preview: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, marginTop: 10 },
   stockRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  stockName: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  stockName: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
   stockInput: { width: 90, textAlign: 'right' },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.surface,
+    borderTopColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 10,
   },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center' },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center' },
   submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
 });
+}

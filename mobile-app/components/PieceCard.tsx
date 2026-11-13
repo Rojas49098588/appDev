@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { InventoryPiece, PieceType } from '../lib/models';
 import { pieceCount, type Assignment } from '../lib/inventory';
@@ -46,6 +46,8 @@ export default function PieceCard({
   unanswered?: number;
   onRecount?: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [isOpen, setIsOpen] = useState(false);
   // Numbered types: a chip per piece number, grouped by color. Counted types: a stock row per color.
   const groups = piece.colors
@@ -241,11 +243,12 @@ export default function PieceCard({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   piece: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     marginBottom: 8,
   },
   pieceRow: {
@@ -256,13 +259,13 @@ const styles = StyleSheet.create({
   },
   pieceName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: t.font(13.5),
+    color: t.colors.ink,
   },
   pieceSub: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 2,
   },
   pieceRight: {
@@ -272,8 +275,8 @@ const styles = StyleSheet.create({
   },
   pieceQty: {
     fontFamily: fonts.mono,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: t.font(13.5),
+    color: t.colors.ink,
     textAlign: 'right',
   },
   statusTags: {
@@ -287,34 +290,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     borderWidth: 1,
-    borderColor: colors.rust,
-    backgroundColor: colors.rustTint,
+    borderColor: t.colors.rust,
+    backgroundColor: t.colors.rustTint,
     paddingVertical: 3,
     paddingHorizontal: 7,
   },
   flagBtnTextRepair: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.rust,
+    fontSize: t.font(10.5),
+    color: t.colors.rust,
   },
   flagBtnDirty: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     borderWidth: 1,
-    borderColor: colors.wash,
-    backgroundColor: colors.washTint,
+    borderColor: t.colors.wash,
+    backgroundColor: t.colors.washTint,
     paddingVertical: 3,
     paddingHorizontal: 7,
   },
   flagBtnTextDirty: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.wash,
+    fontSize: t.font(10.5),
+    color: t.colors.wash,
   },
   breakdown: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: t.colors.line,
     padding: 14,
     paddingTop: 12,
   },
@@ -329,13 +332,13 @@ const styles = StyleSheet.create({
   },
   colorName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12.5,
-    color: colors.ink,
+    fontSize: t.font(12.5),
+    color: t.colors.ink,
   },
   colorMeta: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.inkSoft,
+    fontSize: t.font(10.5),
+    color: t.colors.inkSoft,
   },
   chipStrip: {
     marginHorizontal: -14,
@@ -343,73 +346,74 @@ const styles = StyleSheet.create({
   },
   sizeChip: {
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     paddingVertical: 5,
     paddingHorizontal: 8,
     marginRight: 6,
   },
   sizeChipText: {
     fontFamily: fonts.mono,
-    fontSize: 10.5,
-    color: colors.inkSoft,
+    fontSize: t.font(10.5),
+    color: t.colors.inkSoft,
   },
-  chipAssigned: { borderColor: colors.ink, backgroundColor: '#FFFFFF' },
-  chipUnassigned: { borderColor: colors.inkFaint, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  chipOut: { borderColor: colors.amber, backgroundColor: colors.amberTint },
-  sizeChipRepair: { borderColor: colors.rust, backgroundColor: colors.rustTint },
-  sizeChipDirty: { borderColor: colors.wash, backgroundColor: colors.washTint },
-  sizeChipTextRepair: { color: colors.rust },
-  sizeChipTextDirty: { color: colors.wash },
+  chipAssigned: { borderColor: t.colors.ink, backgroundColor: '#FFFFFF' },
+  chipUnassigned: { borderColor: t.colors.inkFaint, borderStyle: 'dashed', backgroundColor: 'transparent' },
+  chipOut: { borderColor: t.colors.amber, backgroundColor: t.colors.amberTint },
+  sizeChipRepair: { borderColor: t.colors.rust, backgroundColor: t.colors.rustTint },
+  sizeChipDirty: { borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
+  sizeChipTextRepair: { color: t.colors.rust },
+  sizeChipTextDirty: { color: t.colors.wash },
   seeAll: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12,
-    color: colors.ink,
+    fontSize: t.font(12),
+    color: t.colors.ink,
     textDecorationLine: 'underline',
     marginBottom: 8,
   },
   addLinks: { flexDirection: 'row', gap: 18 },
-  legend: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft },
+  legend: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft },
   styleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
+    borderBottomColor: t.colors.lineSoft,
   },
   styleRowLast: {
     borderBottomWidth: 0,
   },
   styleName: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.ink,
+    fontSize: t.font(12.5),
+    color: t.colors.ink,
   },
   styleQty: {
     fontFamily: fonts.mono,
-    fontSize: 12,
-    color: colors.ink,
+    fontSize: t.font(12),
+    color: t.colors.ink,
   },
-  styleQtyMissing: { color: colors.amber },
-  keptNote: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft, marginTop: 1 },
+  styleQtyMissing: { color: t.colors.amber },
+  keptNote: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft, marginTop: 1 },
   countTag: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
+    fontSize: t.font(10.5),
     borderWidth: 1,
     paddingVertical: 2,
     paddingHorizontal: 7,
     overflow: 'hidden',
   },
-  countTagMissing: { color: colors.amber, borderColor: colors.amber, backgroundColor: colors.amberTint },
-  countTagOk: { color: colors.wash, borderColor: colors.wash, backgroundColor: colors.washTint },
+  countTagMissing: { color: t.colors.amber, borderColor: t.colors.amber, backgroundColor: t.colors.amberTint },
+  countTagOk: { color: t.colors.wash, borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
   countFooter: { marginTop: 10, gap: 4 },
-  countMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.inkSoft },
+  countMeta: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.inkSoft },
   recountBtn: {
     marginTop: 6,
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 8,
     alignItems: 'center',
   },
-  recountText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
+  recountText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12.5), color: t.colors.ink },
 });
+}

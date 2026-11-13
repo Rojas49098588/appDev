@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +31,8 @@ const whole = (text: string): number | null => (/^\d+$/.test(text.trim()) ? pars
 
 // Wash-day recount (mode 'count') or season totals (mode 'totals') for a counted piece type.
 export default function RecountScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { pieceTypeId, mode } = route.params;
   const { pieceTypes, recountPieceType, setSeasonTotals } = useInventory();
   const { accounts } = useAuth();
@@ -262,53 +264,54 @@ export default function RecountScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   contentColumn: { flex: 1, flexDirection: 'column' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8 },
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
-  hint: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginBottom: 14, textAlign: 'center' },
-  empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, padding: 24 },
+  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
+  hint: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginBottom: 14, textAlign: 'center' },
+  empty: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, padding: 24 },
   row: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 12,
     marginBottom: 8,
   },
   rowMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink, minWidth: 40 },
-  of: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint },
-  ofMissing: { color: colors.amber },
+  label: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink, minWidth: 40 },
+  of: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkFaint },
+  ofMissing: { color: t.colors.amber },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto' },
   stepBtn: {
     width: 32,
     height: 32,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepText: { fontFamily: fonts.body, fontSize: 17, color: colors.inkSoft },
+  stepText: { fontFamily: fonts.body, fontSize: t.font(17), color: t.colors.inkSoft },
   countInput: {
     width: 64,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     paddingVertical: 6,
     paddingHorizontal: 8,
     textAlign: 'right',
     fontFamily: fonts.mono,
-    fontSize: 15,
-    color: colors.ink,
+    fontSize: t.font(15),
+    color: t.colors.ink,
   },
   link: {
     fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.wash,
+    fontSize: t.font(12),
+    color: t.colors.wash,
     textDecorationLine: 'underline',
     marginTop: 8,
   },
@@ -321,47 +324,48 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.lineSoft,
+    borderTopColor: t.colors.lineSoft,
     borderStyle: 'dashed',
   },
-  batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft },
+  batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
   batchInput: { width: 48 },
   batchAction: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 7,
     paddingHorizontal: 9,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   smallButton: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  smallButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  smallButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingHorizontal: 4 },
-  totalLabel: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft },
-  totalValue: { fontFamily: fonts.mono, fontSize: 13, color: colors.ink },
+  totalLabel: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft },
+  totalValue: { fontFamily: fonts.mono, fontSize: t.font(13), color: t.colors.ink },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.surface,
+    borderTopColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 10,
   },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center' },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center' },
   submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
 });
+}

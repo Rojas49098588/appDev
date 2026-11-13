@@ -42,7 +42,8 @@ import { GamesProvider } from './context/GamesContext';
 import { CombosProvider } from './context/CombosContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { supabaseConfigError } from './lib/supabase';
-import { colors } from './constants/colors';
+// The setup-error screen shows before settings load, so it uses the default palette.
+import { DEFAULT_PALETTE as colors } from './lib/theme';
 import { fonts } from './constants/fonts';
 
 SplashScreen.preventAutoHideAsync();

@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { SECTIONS } from '../constants/homeData';
 import { sectionForInstrument } from '../constants/instrumentSections';
@@ -27,6 +27,8 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 };
 
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
   const { pieceTypes, pieces } = useInventory();
@@ -200,10 +202,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
   },
   flexOne: {
     flex: 1,
@@ -222,73 +225,73 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingBottom: 18,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: t.colors.line,
     marginBottom: 20,
   },
   wordmark: {
     fontFamily: fonts.wordmark,
-    fontSize: 21,
-    color: colors.ink,
+    fontSize: t.font(21),
+    color: t.colors.ink,
   },
   wordmarkSub: {
     fontFamily: fonts.body,
     marginTop: 3,
-    color: colors.inkSoft,
-    fontSize: 11.5,
+    color: t.colors.inkSoft,
+    fontSize: t.font(11.5),
   },
   seasonTag: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 3,
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontFamily: fonts.wordmark,
-    color: colors.paper,
-    fontSize: 14,
+    color: t.colors.paper,
+    fontSize: t.font(14),
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     marginBottom: 26,
   },
   statCell: {
     width: '50%',
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
     padding: 14,
     paddingBottom: 15,
   },
   statCellBorderRight: {
     borderRightWidth: 1,
-    borderRightColor: colors.line,
+    borderRightColor: t.colors.line,
   },
   statCellBorderBottom: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: t.colors.line,
   },
   statNum: {
     fontFamily: fonts.monoMedium,
-    fontSize: 24,
-    color: colors.ink,
+    fontSize: t.font(24),
+    color: t.colors.ink,
   },
   statNumFlag: {
-    color: colors.rust,
+    color: t.colors.rust,
   },
   statLabel: {
     fontFamily: fonts.body,
     marginTop: 2,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
   },
   block: {
     marginBottom: 28,
@@ -301,20 +304,20 @@ const styles = StyleSheet.create({
   },
   blockTitle: {
     fontFamily: fonts.blockTitle,
-    fontSize: 15.5,
-    color: colors.ink,
+    fontSize: t.font(15.5),
+    color: t.colors.ink,
   },
   blockNote: {
     fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.inkSoft,
+    fontSize: t.font(12),
+    color: t.colors.inkSoft,
   },
   // Solid dark button so the block links are easy to spot.
   blockLink: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: colors.white,
-    backgroundColor: colors.ink,
+    fontSize: t.font(12),
+    color: t.colors.white,
+    backgroundColor: t.colors.ink,
     paddingVertical: 6,
     paddingHorizontal: 11,
     overflow: 'hidden',
@@ -327,28 +330,28 @@ const styles = StyleSheet.create({
   sectionCard: {
     width: '31.5%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 9,
     paddingTop: 9,
     paddingBottom: 10,
   },
   sectionName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
-    lineHeight: 14,
+    fontSize: t.font(11.5),
+    lineHeight: t.font(14),
     minHeight: 28,
-    color: colors.ink,
+    color: t.colors.ink,
   },
   sectionCount: {
     fontFamily: fonts.mono,
-    fontSize: 10,
-    color: colors.inkSoft,
+    fontSize: t.font(10),
+    color: t.colors.inkSoft,
     marginTop: 5,
   },
   invList: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: t.colors.line,
   },
   invRow: {
     flexDirection: 'row',
@@ -356,17 +359,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
+    borderBottomColor: t.colors.lineSoft,
   },
   invPiece: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: colors.ink,
+    fontSize: t.font(13),
+    color: t.colors.ink,
   },
   invSizes: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 2,
   },
   invRight: {
@@ -374,8 +377,8 @@ const styles = StyleSheet.create({
   },
   invQty: {
     fontFamily: fonts.mono,
-    fontSize: 13,
-    color: colors.ink,
+    fontSize: t.font(13),
+    color: t.colors.ink,
   },
   condRow: {
     flexDirection: 'row',
@@ -387,7 +390,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
   },
   dotWarn: {
     borderRadius: 1,
@@ -395,7 +398,8 @@ const styles = StyleSheet.create({
   },
   condText: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.ink,
+    fontSize: t.font(10.5),
+    color: t.colors.ink,
   },
 });
+}
