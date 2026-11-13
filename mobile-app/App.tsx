@@ -40,6 +40,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
 import { GamesProvider } from './context/GamesContext';
 import { CombosProvider } from './context/CombosContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { supabaseConfigError } from './lib/supabase';
 import { colors } from './constants/colors';
 import { fonts } from './constants/fonts';
@@ -227,17 +228,20 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <FlagsProvider>
-          <GamesProvider>
-            <CombosProvider>
-              <InventoryProvider>
-                <AppNavigator onReady={onLayoutRootView} />
-              </InventoryProvider>
-            </CombosProvider>
-          </GamesProvider>
-        </FlagsProvider>
-      </AuthProvider>
+      {/* Renders nothing until settings load, so the splash stays up until then. */}
+      <SettingsProvider>
+        <AuthProvider>
+          <FlagsProvider>
+            <GamesProvider>
+              <CombosProvider>
+                <InventoryProvider>
+                  <AppNavigator onReady={onLayoutRootView} />
+                </InventoryProvider>
+              </CombosProvider>
+            </GamesProvider>
+          </FlagsProvider>
+        </AuthProvider>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }
