@@ -61,7 +61,7 @@ export default function ArchivedMembersScreen({ navigation }: Props) {
       return <Text style={styles.message}>No one has been archived yet.</Text>;
     }
     return archives.map((archive) => (
-      <Pressable
+      <Pressable accessibilityRole="button"
         key={archive.id}
         style={styles.row}
         onPress={() => navigation.navigate('ArchivedMember', { archiveId: archive.id })}
@@ -90,10 +90,10 @@ export default function ArchivedMembersScreen({ navigation }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Archived members</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Archived members</Text>
             <View style={styles.headerSideButton} />
           </View>
           {renderBody()}

@@ -70,7 +70,7 @@ export default function ChangePasswordSection({
 
   if (!isOpen) {
     return (
-      <Pressable style={styles.toggleButton} onPress={() => setIsOpen(true)}>
+      <Pressable accessibilityRole="button" style={styles.toggleButton} onPress={() => setIsOpen(true)}>
         <Text style={styles.toggleButtonText}>Change password</Text>
       </Pressable>
     );
@@ -79,7 +79,7 @@ export default function ChangePasswordSection({
   return (
     <View style={styles.section}>
       <Text style={styles.label}>Current password</Text>
-      <TextInput
+      <TextInput accessibilityLabel="Current password"
         style={styles.input}
         value={currentPassword}
         onChangeText={setCurrentPassword}
@@ -88,7 +88,7 @@ export default function ChangePasswordSection({
         secureTextEntry
       />
       <Text style={styles.label}>New password</Text>
-      <TextInput
+      <TextInput accessibilityLabel="New password"
         style={styles.input}
         value={newPassword}
         onChangeText={setNewPassword}
@@ -97,7 +97,7 @@ export default function ChangePasswordSection({
         secureTextEntry
       />
       <Text style={styles.label}>Confirm new password</Text>
-      <TextInput
+      <TextInput accessibilityLabel="Confirm new password"
         style={styles.input}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
@@ -105,10 +105,10 @@ export default function ChangePasswordSection({
         autoCapitalize="none"
         secureTextEntry
       />
-      <Pressable style={[styles.saveButton, !isOnline && OFFLINE_DIM]} onPress={handleSave}>
+      <Pressable accessibilityRole="button" style={[styles.saveButton, !isOnline && OFFLINE_DIM]} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save password</Text>
       </Pressable>
-      <Pressable style={styles.cancelButton} onPress={handleCancel}>
+      <Pressable accessibilityRole="button" style={styles.cancelButton} onPress={handleCancel}>
         <Text style={styles.cancelButtonText}>Cancel</Text>
       </Pressable>
     </View>

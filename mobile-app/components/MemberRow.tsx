@@ -26,7 +26,7 @@ export default function MemberRow({
     .toUpperCase();
 
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <Pressable accessibilityRole="button" style={styles.row} onPress={onPress}>
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>{initials}</Text>
       </View>

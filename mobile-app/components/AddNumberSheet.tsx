@@ -38,7 +38,7 @@ export default function AddNumberSheet({ piece, onClose }: Props) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && <Body key={shown.id} piece={shown} onClose={onClose} />}
@@ -91,8 +91,8 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
   return (
     <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       <View style={styles.handle} />
-      <Text style={styles.title}>Add number to {piece.name}</Text>
-      <TextInput
+      <Text style={styles.title} accessibilityRole="header">Add number to {piece.name}</Text>
+      <TextInput accessibilityLabel="Number"
         style={styles.input}
         value={text}
         onChangeText={setText}
@@ -121,7 +121,7 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
         })}
       </View>
       <KeyboardDoneBar visible={numericFocused} />
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
         disabled={saving}
         onPress={save}

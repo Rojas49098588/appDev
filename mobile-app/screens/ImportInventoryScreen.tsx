@@ -172,7 +172,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
         <Text style={styles.line}>{plural(summary.notesAdded, 'repair note')} added</Text>
       </View>
       {renderProblems(p.problems)}
-      <Pressable style={styles.primary} onPress={() => navigation.goBack()}>
+      <Pressable accessibilityRole="button" style={styles.primary} onPress={() => navigation.goBack()}>
         <Text style={styles.primaryText}>Done</Text>
       </Pressable>
     </>
@@ -256,7 +256,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
         )}
         {renderProblems(p.problems)}
         {!nothing && (
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.primary, (saving || !isOnline) && OFFLINE_DIM]}
             onPress={handleImport}
             disabled={saving || !isOnline}
@@ -274,10 +274,10 @@ export default function ImportInventoryScreen({ navigation }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()} accessibilityLabel="Back">
+            <Pressable accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()} accessibilityLabel="Back">
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Import spreadsheet</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Import spreadsheet</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -285,7 +285,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
             renderResult(result, plan)
           ) : (
             <>
-              <Pressable style={[styles.pick, loading && OFFLINE_DIM]} onPress={handlePick} disabled={loading || saving}>
+              <Pressable accessibilityRole="button" style={[styles.pick, loading && OFFLINE_DIM]} onPress={handlePick} disabled={loading || saving}>
                 {loading ? (
                   <ActivityIndicator color={colors.ink} />
                 ) : (

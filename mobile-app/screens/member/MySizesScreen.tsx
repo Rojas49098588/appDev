@@ -32,7 +32,7 @@ export default function MySizesScreen() {
       <View style={styles.appBody}>
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
-          <Text style={styles.title}>My sizes</Text>
+          <Text style={styles.title} accessibilityRole="header">My sizes</Text>
           <Text style={styles.subtitle}>Assigned sizes</Text>
           {asList ? (
             <View style={styles.list}>

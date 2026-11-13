@@ -161,16 +161,16 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.header}>
-                <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
-                <Text style={styles.pageTitle}>New piece type</Text>
+                <Text style={styles.pageTitle} accessibilityRole="header">New piece type</Text>
                 <View style={styles.headerSideButton} />
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Name</Text>
-                <TextInput
+                <TextInput accessibilityLabel="e.g. Hats"
                   style={styles.textInput}
                   value={name}
                   onChangeText={setName}
@@ -210,7 +210,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                 <Text style={styles.fieldLabel}>{kind === 'counted' ? 'Sizes or colors' : 'Colors'}</Text>
                 <View style={styles.chipRow}>
                   {pieceColors.map((c) => (
-                    <Pressable
+                    <Pressable accessibilityRole="button"
                       key={c}
                       style={[styles.chip, styles.chipActive]}
                       onPress={() => removeColor(c)}
@@ -221,7 +221,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                   ))}
                 </View>
                 <View style={styles.inputRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="New color"
                     style={[styles.textInput, styles.flexOne]}
                     value={colorText}
                     onChangeText={setColorText}
@@ -231,7 +231,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                     onSubmitEditing={addColor}
                     onFocus={scrollToFocusedInput}
                   />
-                  <Pressable style={styles.smallButton} onPress={addColor}>
+                  <Pressable accessibilityRole="button" style={styles.smallButton} onPress={addColor}>
                     <Text style={styles.smallButtonText}>Add</Text>
                   </Pressable>
                 </View>
@@ -241,7 +241,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Numbers</Text>
                   <View style={styles.inputRow}>
-                    <TextInput
+                    <TextInput accessibilityLabel="104, 112, 120  or  104 to 232 every 4"
                       style={[styles.textInput, styles.flexOne]}
                       value={numberText}
                       onChangeText={setNumberText}
@@ -251,13 +251,13 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                       onSubmitEditing={addNumbers}
                       onFocus={scrollToFocusedInput}
                     />
-                    <Pressable style={styles.smallButton} onPress={addNumbers}>
+                    <Pressable accessibilityRole="button" style={styles.smallButton} onPress={addNumbers}>
                       <Text style={styles.smallButtonText}>Add</Text>
                     </Pressable>
                   </View>
                   <View style={[styles.chipRow, styles.numberChips]}>
                     {numbers.map((n) => (
-                      <Pressable
+                      <Pressable accessibilityRole="button"
                         key={n}
                         style={styles.chip}
                         onPress={() => removeNumber(n)}
@@ -279,7 +279,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
                   {pieceColors.map((c) => (
                     <View key={c} style={styles.stockRow}>
                       <Text style={styles.stockName}>{c}</Text>
-                      <TextInput
+                      <TextInput accessibilityLabel="0"
                         style={[styles.textInput, styles.stockInput]}
                         value={stock[c] ?? ''}
                         onChangeText={(t) => setStock((cur) => ({ ...cur, [c]: t }))}
@@ -301,7 +301,7 @@ export default function AddPieceTypeScreen({ navigation }: Props) {
             <View onLayout={registerBottomInset}>
             <KeyboardDoneBar visible={numericFocused} />
             <View style={styles.footer}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={[styles.submitButton, saving && styles.submitButtonDisabled, !isOnline && OFFLINE_DIM]}
                 onPress={handleSave}
                 disabled={saving}

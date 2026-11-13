@@ -84,13 +84,13 @@ export default function LoginScreen({ navigation }: Props) {
                 style={styles.bandImage}
                 resizeMode="contain"
               />
-              <Text style={styles.wordmark}>Mustang Closet</Text>
+              <Text style={styles.wordmark} accessibilityRole="header">Mustang Closet</Text>
               <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
             </View>
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Email</Text>
-              <TextInput
+              <TextInput accessibilityLabel="Email"
                 style={styles.textInput}
                 placeholder="Email"
                 placeholderTextColor={colors.inkFaint}
@@ -111,7 +111,7 @@ export default function LoginScreen({ navigation }: Props) {
                   onPress={() => setShowPassword((prev) => !prev)}
                 />
               </View>
-              <TextInput
+              <TextInput accessibilityLabel="Password"
                 style={styles.textInput}
                 placeholder="Password"
                 placeholderTextColor={colors.inkFaint}
@@ -128,7 +128,7 @@ export default function LoginScreen({ navigation }: Props) {
               />
             </View>
 
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[styles.submitButton, isSubmitting && styles.submitButtonBusy]}
               onPress={handleLogin}
               disabled={isSubmitting}

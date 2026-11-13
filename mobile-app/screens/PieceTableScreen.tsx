@@ -40,14 +40,14 @@ export default function PieceTableScreen({ navigation, route }: Props) {
 
   const header = (
     <View style={styles.header}>
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={styles.headerSideButton}
         onPress={() => navigation.goBack()}
         accessibilityLabel="Back"
       >
         <BackChevronIcon color={colors.ink} />
       </Pressable>
-      <Text style={styles.pageTitle}>{type ? `Every ${type.name}` : 'Every piece'}</Text>
+      <Text style={styles.pageTitle} accessibilityRole="header">{type ? `Every ${type.name}` : 'Every piece'}</Text>
       <View style={styles.headerSideButton} />
     </View>
   );
@@ -96,7 +96,7 @@ export default function PieceTableScreen({ navigation, route }: Props) {
               {header}
               <View style={styles.tabs}>
                 {tabs.map((t) => (
-                  <Pressable
+                  <Pressable accessibilityState={{ selected: !!(tab === t.key) }} accessibilityRole="button"
                     key={t.key}
                     style={[styles.tab, tab === t.key && styles.tabActive]}
                     onPress={() => setTab(t.key)}
@@ -136,7 +136,7 @@ export default function PieceTableScreen({ navigation, route }: Props) {
                 const letter = state === 'repair' ? 'R' : state === 'dirty' ? 'D' : p.outForRepair ? 'O' : '';
                 return (
                   <View key={color} style={styles.pieceCell}>
-                    <Pressable
+                    <Pressable accessibilityRole="button"
                       style={[
                         styles.box,
                         p.outForRepair && styles.boxOut,

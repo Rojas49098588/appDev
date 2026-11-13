@@ -33,7 +33,14 @@ export default function Swatch({ color, large = false }: { color: string; large?
   if (stripes) {
     return <StripedSwatch size={size} style={shape} stripes={stripes} />;
   }
-  return <View style={[styles.swatch, shape, { backgroundColor: SWATCHES[color] ?? colors.inkFaint }]} />;
+  return (
+    <View
+      style={[styles.swatch, shape, { backgroundColor: SWATCHES[color] ?? colors.inkFaint }]}
+      // Every swatch sits next to its color name, so screen readers skip it.
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    />
+  );
 }
 
 // Plain rotated bands clipped to a circle. An SVG <Pattern> with
@@ -47,7 +54,11 @@ function StripedSwatch({ size, style, stripes }: { size: number; style: object; 
   // Bands span past the circle on every side so the rotation leaves no gaps.
   const bands = Array.from({ length: 12 }, (_, i) => -size + i * stripe);
   return (
-    <View style={[styles.swatch, style, styles.clip]}>
+    <View
+      style={[styles.swatch, style, styles.clip]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <Svg width={size} height={size}>
         <Defs>
           <ClipPath id={clipId}>

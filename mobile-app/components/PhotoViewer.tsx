@@ -11,7 +11,7 @@ export default function PhotoViewer({ uri, onClose }: { uri: string | null; onCl
     <Modal visible={uri !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.root}>
         {uri && <Image source={{ uri }} style={styles.image} resizeMode="contain" accessibilityLabel="Flag photo" />}
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={[styles.close, { top: insets.top + 12 }]}
           onPress={onClose}
           accessibilityLabel="Close photo"

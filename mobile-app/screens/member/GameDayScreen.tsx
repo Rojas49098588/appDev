@@ -37,11 +37,11 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
           <TitleRow
             style={styles.header}
             title={
-                <Text style={styles.title}>Game day</Text>
+                <Text style={styles.title} accessibilityRole="header">Game day</Text>
             }
             action={
                 <>
-                    <Pressable style={styles.avatar} onPress={onAvatarPress}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Your profile and settings" style={styles.avatar} onPress={onAvatarPress}>
                       <Text style={styles.avatarText}>{initials}</Text>
                     </Pressable>
                 </>

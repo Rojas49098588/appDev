@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -106,6 +106,8 @@ export default function MyInventoryScreen(_props: Props) {
 
   useEffect(() => {
     if (!toast) return;
+    // Screen readers don't notice a toast appearing, so say it out loud.
+    AccessibilityInfo.announceForAccessibility(toast.message);
     const timer = setTimeout(() => setToast(null), 5000);
     return () => clearTimeout(timer);
   }, [toast]);
@@ -177,7 +179,7 @@ export default function MyInventoryScreen(_props: Props) {
         <TapeGutter />
         <View style={styles.flexOne}>
           <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>My inventory</Text>
+            <Text style={styles.title} accessibilityRole="header">My inventory</Text>
             <Text style={styles.subtitle}>Tap Flag on any piece to report it.</Text>
 
             <View style={styles.filters} accessibilityRole="radiogroup">
@@ -230,7 +232,7 @@ export default function MyInventoryScreen(_props: Props) {
               </View>
               <Text style={styles.toastText}>{toast.message}</Text>
               {toast.undo && (
-                <Pressable style={styles.toastUndo} onPress={undo}>
+                <Pressable accessibilityRole="button" style={styles.toastUndo} onPress={undo}>
                   <Text style={styles.toastUndoText}>Undo</Text>
                 </Pressable>
               )}
@@ -295,7 +297,7 @@ function InventoryRow({ row, highlightN, onFlag }: { row: FlagTarget; highlightN
           <StatusLabel status={flag ? flag.status : 'good'} prefix={flag ? 'Flagged · ' : ''} />
         </View>
       </View>
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[styles.flagButton, flag ? styles.flagButtonEdit : styles.flagButtonIdle]}
         onPress={onFlag}
         accessibilityLabel={`${flag ? 'Edit flag for' : 'Flag'} ${row.color} ${row.piece.toLowerCase()}`}

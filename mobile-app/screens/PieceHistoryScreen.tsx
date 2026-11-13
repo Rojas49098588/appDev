@@ -84,10 +84,10 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>
+            <Text style={styles.pageTitle} accessibilityRole="header">
               {color} {piece} {size}
             </Text>
             <View style={styles.headerSideButton} />
@@ -111,7 +111,7 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
           )}
 
           {openEntry && (
-            <Pressable style={[styles.markGood, !isOnline && OFFLINE_DIM]} onPress={handleMarkGood}>
+            <Pressable accessibilityRole="button" style={[styles.markGood, !isOnline && OFFLINE_DIM]} onPress={handleMarkGood}>
               <Text style={styles.markGoodText}>Mark piece good</Text>
             </Pressable>
           )}
@@ -123,9 +123,9 @@ export default function PieceHistoryScreen({ navigation, route }: Props) {
               const isOpen = entry.clearedAt === null;
               const isRepair = entry.status === 'repair';
               return (
-                <Pressable key={entry.id} style={styles.entry} onPress={() => setEditing(entry)}>
+                <Pressable accessibilityRole="button" key={entry.id} style={styles.entry} onPress={() => setEditing(entry)}>
                   {entry.photoUrl ? (
-                    <Pressable onPress={() => setViewerUri(entry.photoUrl ?? null)} accessibilityLabel="View photo">
+                    <Pressable accessibilityRole="button" onPress={() => setViewerUri(entry.photoUrl ?? null)} accessibilityLabel="View photo">
                       <Image source={{ uri: entry.photoUrl }} style={styles.thumb} />
                     </Pressable>
                   ) : (

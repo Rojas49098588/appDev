@@ -55,7 +55,7 @@ export default function EditFlagSheet({ flag, colorOptions, onClose, onSave }: P
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close edit sheet">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close edit sheet">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && (
@@ -116,7 +116,7 @@ function SheetBody({
   };
 
   return (
-    <Pressable
+    <Pressable accessibilityRole="none"
       style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}
       onPress={Keyboard.dismiss}
       accessible={false}
@@ -124,12 +124,12 @@ function SheetBody({
       <View style={styles.handle} />
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Edit flag</Text>
+          <Text style={styles.title} accessibilityRole="header">Edit flag</Text>
           <Text style={styles.subtitle}>
             {flag.piece} · Size {flag.size}
           </Text>
         </View>
-        <Pressable style={styles.closeButton} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={styles.closeButton} onPress={onClose} accessibilityLabel="Close">
           <CloseIcon color={colors.inkSoft} />
         </Pressable>
       </View>
@@ -174,7 +174,7 @@ function SheetBody({
         </View>
 
         <Text style={styles.label}>Comment</Text>
-        <TextInput
+        <TextInput accessibilityLabel="Comment"
           style={styles.input}
           value={comment}
           onChangeText={setComment}
@@ -183,7 +183,7 @@ function SheetBody({
           multiline
         />
         <Text style={styles.label}>Staff note</Text>
-        <TextInput
+        <TextInput accessibilityLabel="Staff note"
           style={styles.input}
           value={staffNote}
           onChangeText={setStaffNote}
@@ -193,7 +193,7 @@ function SheetBody({
         />
       </ScrollView>
 
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[styles.submit, (!isOnline || isSaving) && OFFLINE_DIM]}
         disabled={isSaving}
         onPress={save}

@@ -41,7 +41,7 @@ export default function AddColorSheet({ piece, numberCount, onClose }: Props) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && <Body key={shown.id} piece={shown} numberCount={numberCount} onClose={onClose} />}
@@ -93,8 +93,8 @@ function Body({
   return (
     <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       <View style={styles.handle} />
-      <Text style={styles.title}>Add color to {piece.name}</Text>
-      <TextInput
+      <Text style={styles.title} accessibilityRole="header">Add color to {piece.name}</Text>
+      <TextInput accessibilityLabel="Color (e.g. Gold)"
         style={styles.input}
         value={color}
         onChangeText={setColor}
@@ -108,7 +108,7 @@ function Body({
           Adds {name} {piece.name} in all {numberCount} {numberCount === 1 ? 'number' : 'numbers'}
         </Text>
       )}
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
         disabled={saving}
         onPress={save}

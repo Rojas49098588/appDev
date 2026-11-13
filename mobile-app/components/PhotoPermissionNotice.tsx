@@ -32,7 +32,7 @@ export default function PhotoPermissionNotice({ block, onTryAgain, onDismiss, ph
     <View style={styles.card} accessibilityRole="alert">
       <View style={styles.headRow}>
         <ImagePlaceholderIcon color={colors.rust} />
-        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.title} accessibilityRole="header">{copy.title}</Text>
       </View>
       <Text style={styles.body}>{copy.body}</Text>
 

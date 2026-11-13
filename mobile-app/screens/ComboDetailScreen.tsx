@@ -33,10 +33,10 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
           <TapeGutter />
           <View style={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
-              <Text style={styles.pageTitle}>Combo not found</Text>
+              <Text style={styles.pageTitle} accessibilityRole="header">Combo not found</Text>
               <View style={styles.headerSideButton} />
             </View>
           </View>
@@ -98,7 +98,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
 
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
             <View style={styles.titleBlock}>
@@ -133,7 +133,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
             <>
             <Text style={styles.slotCaption}>For {targetName}</Text>
             <View style={styles.slotButtonRow}>
-              <Pressable
+              <Pressable accessibilityState={{ selected: !!(isPreGame) }} accessibilityRole="button"
                 style={[styles.slotButton, isPreGame && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
                 onPress={() => handleSetCombo('preGame')}
               >
@@ -141,7 +141,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
                   {`Set for pregame${isPreGame ? ' ✓' : ''}`}
                 </Text>
               </Pressable>
-              <Pressable
+              <Pressable accessibilityState={{ selected: !!(isHalftime) }} accessibilityRole="button"
                 style={[styles.slotButton, isHalftime && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
                 onPress={() => handleSetCombo('halftime')}
               >
@@ -155,7 +155,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
             <Text style={styles.noGameNote}>No upcoming football game. Plan one in Games.</Text>
           )}
 
-          <Pressable style={[styles.deleteButton, !isOnline && OFFLINE_DIM]} onPress={handleDelete}>
+          <Pressable accessibilityRole="button" style={[styles.deleteButton, !isOnline && OFFLINE_DIM]} onPress={handleDelete}>
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
         </ScrollView>

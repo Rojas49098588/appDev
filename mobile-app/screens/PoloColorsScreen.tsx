@@ -87,10 +87,10 @@ export default function PoloColorsScreen({ navigation }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Pressable style={styles.side} onPress={() => navigation.goBack()} accessibilityLabel="Back">
+            <Pressable accessibilityRole="button" style={styles.side} onPress={() => navigation.goBack()} accessibilityLabel="Back">
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.title}>Polo colors</Text>
+            <Text style={styles.title} accessibilityRole="header">Polo colors</Text>
             <View style={styles.side} />
           </View>
 
@@ -99,7 +99,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
               <View key={c.id} style={styles.row}>
                 <View style={[styles.dot, { backgroundColor: c.swatch }]} />
                 <Text style={styles.rowName}>{c.name}</Text>
-                <Pressable
+                <Pressable accessibilityRole="button"
                   style={styles.removeButton}
                   onPress={() => confirmRemove(c.id, c.name)}
                   accessibilityLabel={`Remove ${c.name}`}
@@ -112,7 +112,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
 
           <View style={styles.field}>
             <Text style={styles.label}>Add a color</Text>
-            <TextInput
+            <TextInput accessibilityLabel="e.g. Navy"
               style={styles.textInput}
               value={name}
               onChangeText={setName}
@@ -137,7 +137,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
                 );
               })}
             </View>
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[styles.submitButton, isSaving && styles.submitDisabled, !isOnline && OFFLINE_DIM]}
               onPress={handleAdd}
               disabled={isSaving}

@@ -13,7 +13,8 @@ const TICKS: { label: string; top: `${number}%`; major: boolean }[] = [
 export default function TapeGutter() {
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.tape}>
+    // Decoration only: hidden from screen readers.
+    <View style={styles.tape} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {TICKS.map((tick) => (
         <View key={tick.label} style={[styles.tick, { top: tick.top }]}>
           <Text style={[styles.tickLabel, tick.major && styles.tickLabelMajor]}>{tick.label}</Text>

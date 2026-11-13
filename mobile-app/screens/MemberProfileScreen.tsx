@@ -230,10 +230,10 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>{isStaff ? 'Staff Profile' : 'Member Profile'}</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">{isStaff ? 'Staff Profile' : 'Member Profile'}</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -276,7 +276,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
                   return (
                     <View key={typeName} style={styles.sizeField}>
                       <Text style={styles.sizeLabel}>{typeName}</Text>
-                      <TextInput
+                      <TextInput accessibilityLabel="—"
                         style={styles.sizeInput}
                         value={value}
                         onChangeText={(text) => {
@@ -300,7 +300,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
                 })}
               </View>
               {numberFields.length > 0 && (
-                <Pressable
+                <Pressable accessibilityRole="button"
                   style={[
                     styles.saveSizesButton,
                     (!sizesChanged || isSavingSizes) && styles.saveSizesButtonDisabled,
@@ -339,7 +339,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
                         </Text>
                         {flag.comment !== '' && <Text style={styles.flagComment}>{flag.comment}</Text>}
                       </View>
-                      <Pressable
+                      <Pressable accessibilityRole="button"
                         style={[styles.markGoodButton, (!isOnline || isClearing) && OFFLINE_DIM]}
                         onPress={() => handleMarkGoodPress(flag)}
                         disabled={isClearing}
@@ -353,7 +353,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
             </View>
           )}
 
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[
               styles.roleButton,
               !canChangeRole && styles.roleButtonDisabled,
@@ -378,7 +378,7 @@ export default function MemberProfileScreen({ navigation, route }: Props) {
           )}
 
           {canArchive && (
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[styles.archiveButton, (!isOnline || isArchiving) && OFFLINE_DIM]}
               onPress={handleArchivePress}
               disabled={isArchiving}

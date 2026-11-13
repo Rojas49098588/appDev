@@ -149,12 +149,12 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
               scrollEventThrottle={16}
             >
               <View style={styles.header}>
-                <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
               </View>
 
-              <Text style={styles.title}>Reset your password</Text>
+              <Text style={styles.title} accessibilityRole="header">Reset your password</Text>
 
               {step === 'email' ? (
                 <>
@@ -164,7 +164,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Email</Text>
-                    <TextInput
+                    <TextInput accessibilityLabel="Email"
                       style={styles.textInput}
                       placeholder="Email"
                       placeholderTextColor={colors.inkFaint}
@@ -177,7 +177,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                     />
                   </View>
 
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={[styles.submitButton, isBusy && styles.submitButtonBusy]}
                     onPress={sendCode}
                     disabled={isBusy}
@@ -194,7 +194,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Code</Text>
-                    <TextInput
+                    <TextInput accessibilityLabel="Code"
                       style={[styles.textInput, styles.codeInput]}
                       placeholder="Code"
                       placeholderTextColor={colors.inkFaint}
@@ -221,7 +221,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                         onPress={() => setShowPassword((prev) => !prev)}
                       />
                     </View>
-                    <TextInput
+                    <TextInput accessibilityLabel="New password"
                       style={styles.textInput}
                       placeholder="New password"
                       placeholderTextColor={colors.inkFaint}
@@ -237,7 +237,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Confirm new password</Text>
-                    <TextInput
+                    <TextInput accessibilityLabel="Confirm new password"
                       style={styles.textInput}
                       placeholder="Confirm new password"
                       placeholderTextColor={colors.inkFaint}
@@ -251,7 +251,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                     />
                   </View>
 
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={[styles.submitButton, isBusy && styles.submitButtonBusy]}
                     onPress={savePassword}
                     disabled={isBusy}

@@ -169,7 +169,7 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
         </View>
 
         {canRestore && (
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.restoreButton, (!isOnline || isRestoring) && OFFLINE_DIM]}
             onPress={handleRestorePress}
             disabled={isRestoring}
@@ -187,10 +187,10 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Archived Member</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Archived Member</Text>
             <View style={styles.headerSideButton} />
           </View>
           {error ? (

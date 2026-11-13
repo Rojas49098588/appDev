@@ -10,7 +10,7 @@ export default function KeyboardDoneBar({ visible }: { visible: boolean }) {
 
   return (
     <View style={styles.bar}>
-      <Pressable style={styles.button} onPress={() => Keyboard.dismiss()}>
+      <Pressable accessibilityRole="button" style={styles.button} onPress={() => Keyboard.dismiss()}>
         <Text style={styles.buttonText}>Done</Text>
       </Pressable>
     </View>

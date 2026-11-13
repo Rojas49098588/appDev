@@ -68,17 +68,17 @@ export default function InviteCodeScreen({ navigation }: Props) {
             scrollEventThrottle={16}
           >
             <View style={styles.header}>
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
             </View>
 
-            <Text style={styles.title}>Join Mustang Closet</Text>
+            <Text style={styles.title} accessibilityRole="header">Join Mustang Closet</Text>
             <Text style={styles.subtitle}>Enter the invite code from your band director.</Text>
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Invite code</Text>
-              <TextInput
+              <TextInput accessibilityLabel="Invite code"
                 style={styles.textInput}
                 placeholder="Invite code"
                 placeholderTextColor={colors.inkFaint}
@@ -89,7 +89,7 @@ export default function InviteCodeScreen({ navigation }: Props) {
               />
             </View>
 
-            <Pressable style={styles.submitButton} onPress={handleContinue} disabled={isChecking}>
+            <Pressable accessibilityRole="button" style={styles.submitButton} onPress={handleContinue} disabled={isChecking}>
               <Text style={styles.submitButtonText}>Continue</Text>
             </Pressable>
 

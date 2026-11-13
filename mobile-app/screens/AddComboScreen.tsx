@@ -123,10 +123,10 @@ export default function AddComboScreen({ navigation }: Props) {
               scrollEventThrottle={16}
             >
               <View style={styles.header}>
-                <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
-                <Text style={styles.pageTitle}>Add combo</Text>
+                <Text style={styles.pageTitle} accessibilityRole="header">Add combo</Text>
                 <View style={styles.headerSideButton} />
               </View>
 
@@ -140,10 +140,10 @@ export default function AddComboScreen({ navigation }: Props) {
                   </View>
                 )}
                 <View style={styles.photoButtonRow}>
-                  <Pressable style={styles.photoButton} onPress={pickFromLibrary}>
+                  <Pressable accessibilityRole="button" style={styles.photoButton} onPress={pickFromLibrary}>
                     <Text style={styles.photoButtonText}>Choose from library</Text>
                   </Pressable>
-                  <Pressable style={styles.photoButton} onPress={takePhoto}>
+                  <Pressable accessibilityRole="button" style={styles.photoButton} onPress={takePhoto}>
                     <Text style={styles.photoButtonText}>Take photo</Text>
                   </Pressable>
                 </View>
@@ -158,7 +158,7 @@ export default function AddComboScreen({ navigation }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Name</Text>
-                <TextInput
+                <TextInput accessibilityLabel="e.g. Combo 15"
                   style={styles.textInput}
                   placeholder="e.g. Combo 15"
                   placeholderTextColor={colors.inkFaint}
@@ -170,7 +170,7 @@ export default function AddComboScreen({ navigation }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Description (optional)</Text>
-                <TextInput
+                <TextInput accessibilityLabel="e.g. Field — away"
                   style={styles.textInput}
                   placeholder="e.g. Field — away"
                   placeholderTextColor={colors.inkFaint}
@@ -192,7 +192,7 @@ export default function AddComboScreen({ navigation }: Props) {
                       {piece.colors.map((color) => {
                         const active = selectedColors[piece.name] === color;
                         return (
-                          <Pressable
+                          <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                             key={color}
                             style={[styles.chip, active && styles.chipActive]}
                             onPress={() => toggleColor(piece.name, color)}
@@ -210,7 +210,7 @@ export default function AddComboScreen({ navigation }: Props) {
             </ScrollView>
 
             <View style={styles.footer}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={[styles.submitButton, isSaving && styles.submitButtonDisabled, !isOnline && OFFLINE_DIM]}
                 onPress={handleSubmit}
                 disabled={isSaving}

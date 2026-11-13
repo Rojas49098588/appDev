@@ -237,7 +237,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
   const errText = (field: string) => (bad(field) ? <Text style={styles.errText}>Required</Text> : null);
 
   const valueBox = (key: PickerKind, text: string | null, placeholder: string, err: boolean, disabled = false) => (
-    <Pressable
+    <Pressable accessibilityRole="button"
       style={[styles.input, err && styles.inputErr, disabled && styles.inputDisabled]}
       disabled={disabled}
       onPress={() => setPicker(picker === key ? null : key)}
@@ -289,7 +289,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.header}>
-                <Pressable style={styles.headerSide} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSide} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
                 <Text style={styles.pageTitle} numberOfLines={1}>
@@ -312,7 +312,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                 {label('Type')}
                 <View style={styles.chipRow}>
                   {SPORTS.map((s) => (
-                    <Pressable
+                    <Pressable accessibilityState={{ selected: !!(draft.sport === s.value) }} accessibilityRole="button"
                       key={s.value}
                       style={[styles.chip, draft.sport === s.value && styles.chipOn]}
                       onPress={() => setSport(s.value)}
@@ -324,7 +324,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                 {court && (
                   <View style={[styles.chipRow, styles.chipRowGap]}>
                     {([['mens', "Men's"], ['womens', "Women's"]] as [Division, string][]).map(([value, text]) => (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(draft.division === value) }} accessibilityRole="button"
                         key={value}
                         style={[styles.chip, draft.division === value && styles.chipOn, bad("Men's / Women's") && styles.inputErr]}
                         onPress={() => set({ division: value })}
@@ -339,7 +339,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 {label('Opposing university')}
-                <TextInput
+                <TextInput accessibilityLabel="e.g. Tulane"
                   style={[styles.input, styles.inputText, bad('Opposing university') && styles.inputErr]}
                   value={draft.opponent}
                   onChangeText={(opponent) => set({ opponent })}
@@ -374,7 +374,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                   {errText('Call time')}
                 </View>
               </View>
-              <Pressable
+              <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: draft.noCallTime }}
                 style={styles.checkRow}
                 onPress={() => {
                   if (!draft.noCallTime && picker === 'call') setPicker(null);
@@ -411,7 +411,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                   {poloOptions.map((opt) => {
                     const on = draft.polo.some((s) => s.name === opt.name);
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ checked: !!(on) }} accessibilityRole="checkbox"
                         key={opt.name}
                         style={[styles.chip, styles.chipWithDot, on && styles.chipOn, bad('Polo') && styles.inputErr]}
                         onPress={() => togglePolo(opt)}
@@ -429,7 +429,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 {label('Polo note (optional)', false)}
-                <TextInput
+                <TextInput accessibilityLabel="e.g. Bring the long-sleeve"
                   style={[styles.input, styles.inputText]}
                   value={draft.poloNote}
                   onChangeText={(poloNote) => set({ poloNote })}
@@ -447,7 +447,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                   {label('Group')}
                   <View style={styles.chipRow}>
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(draft.groupNumber === n) }} accessibilityRole="button"
                         key={n}
                         style={[styles.groupBtn, draft.groupNumber === n && styles.chipOn, bad('Group') && styles.inputErr]}
                         onPress={() => set({ groupNumber: n })}
@@ -463,7 +463,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               {!court && (
                 <View style={styles.field}>
                   {label('After-game instructions (optional)', false)}
-                  <TextInput
+                  <TextInput accessibilityLabel="What members should do after the game"
                     style={[styles.input, styles.inputText, styles.multiline]}
                     value={draft.afterGameInstructions}
                     onChangeText={(afterGameInstructions) => set({ afterGameInstructions })}
@@ -481,7 +481,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               )}
 
               {isExisting && (
-                <Pressable style={styles.deleteBtn} onPress={confirmDelete} disabled={isSaving}>
+                <Pressable accessibilityRole="button" style={styles.deleteBtn} onPress={confirmDelete} disabled={isSaving}>
                   <Text style={styles.deleteText}>Delete game</Text>
                 </Pressable>
               )}
@@ -492,19 +492,19 @@ export default function GameEditScreen({ navigation, route }: Props) {
               <View style={styles.footer}>
                 {status === 'ready' ? (
                   <>
-                    <Pressable style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={moveToDraft}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={moveToDraft}>
                       <Text style={styles.btnText}>Move back to draft</Text>
                     </Pressable>
-                    <Pressable style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
                       <Text style={[styles.btnText, styles.btnTextDark]}>{isSaving ? 'Saving…' : 'Save'}</Text>
                     </Pressable>
                   </>
                 ) : (
                   <>
-                    <Pressable style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('draft')}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('draft')}>
                       <Text style={styles.btnText}>{isSaving ? 'Saving…' : 'Save draft'}</Text>
                     </Pressable>
-                    <Pressable style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
                       <Text style={[styles.btnText, styles.btnTextDark]}>Mark ready</Text>
                     </Pressable>
                   </>

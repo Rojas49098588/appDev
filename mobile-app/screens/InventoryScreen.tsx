@@ -177,21 +177,21 @@ export default function InventoryScreen({ navigation }: Props) {
         >
           <View style={styles.header}>
             {navigation.canGoBack() ? (
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
             ) : (
               <View style={styles.headerSideButton} />
             )}
-            <Text style={styles.pageTitle}>Inventory</Text>
-            <Pressable style={styles.addButton} onPress={handleAddPress}>
+            <Text style={styles.pageTitle} accessibilityRole="header">Inventory</Text>
+            <Pressable accessibilityLabel="Add inventory" accessibilityRole="button" style={styles.addButton} onPress={handleAddPress}>
               <PlusIcon color={colors.paper} />
             </Pressable>
           </View>
 
           <View style={styles.search}>
             <SearchIcon color={colors.inkFaint} />
-            <TextInput
+            <TextInput accessibilityLabel="Search pieces"
               style={styles.searchInput}
               placeholder="Search pieces"
               placeholderTextColor={colors.inkFaint}
@@ -208,7 +208,7 @@ export default function InventoryScreen({ navigation }: Props) {
             style={styles.chipsScroll}
             contentContainerStyle={styles.chipsContent}
           >
-            <Pressable
+            <Pressable accessibilityState={{ selected: !!(activeFilters.size === 0) }} accessibilityRole="button"
               style={[styles.chip, activeFilters.size === 0 && styles.chipActive]}
               onPress={() => setActiveFilters(new Set())}
             >
@@ -223,7 +223,7 @@ export default function InventoryScreen({ navigation }: Props) {
               const isRepair = key === 'repair';
               const isDirty = key === 'dirty';
               return (
-                <Pressable
+                <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                   key={key}
                   style={[
                     styles.chip,
@@ -260,7 +260,7 @@ export default function InventoryScreen({ navigation }: Props) {
             {ASSIGN_CHIPS.map(({ key, label }) => {
               const active = assignFilter === key;
               return (
-                <Pressable
+                <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                   key={key}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setAssignFilter(key)}
@@ -279,7 +279,7 @@ export default function InventoryScreen({ navigation }: Props) {
           </Text>
 
           {pieces.length > 0 && unknown.length > 0 && (
-            <Pressable onPress={showUnknown}>
+            <Pressable accessibilityRole="button" onPress={showUnknown}>
               <Text style={styles.unknownWarning}>
                 {unknown.length} member {unknown.length === 1 ? 'number isn\u2019t' : 'numbers aren\u2019t'} in inventory
               </Text>
@@ -287,7 +287,7 @@ export default function InventoryScreen({ navigation }: Props) {
           )}
 
           {duplicates.length > 0 && (
-            <Pressable onPress={showUnknown}>
+            <Pressable accessibilityRole="button" onPress={showUnknown}>
               <Text style={styles.unknownWarning}>
                 {duplicates.map((d) => `${d.pieceType} ${d.number} is assigned to ${d.members.length} people`).join(' · ')}
               </Text>

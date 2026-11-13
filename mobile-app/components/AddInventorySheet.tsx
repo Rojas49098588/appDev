@@ -24,16 +24,16 @@ export default function AddInventorySheet({ visible, onClose, onImport, onNewTyp
       onRequestClose={onClose}
     >
       <View style={styles.root}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close menu">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close menu">
           <View style={styles.backdrop} />
         </Pressable>
         <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
           <View style={styles.handle} />
-          <Pressable style={styles.option} onPress={onImport}>
+          <Pressable accessibilityRole="button" style={styles.option} onPress={onImport}>
             <Text style={styles.optionTitle}>Import spreadsheet</Text>
             <Text style={styles.optionSub}>Add pieces, numbers and repairs from a CSV</Text>
           </Pressable>
-          <Pressable style={styles.option} onPress={onNewType}>
+          <Pressable accessibilityRole="button" style={styles.option} onPress={onNewType}>
             <Text style={styles.optionTitle}>New piece type</Text>
             <Text style={styles.optionSub}>Coats, ties, hats, anything new</Text>
           </Pressable>

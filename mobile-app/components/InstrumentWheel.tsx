@@ -68,7 +68,7 @@ export default function InstrumentWheel({
         {options.map((option, index) => {
           const distance = Math.abs(index - activeIndex);
           return (
-            <Pressable key={option} style={styles.row} onPress={() => scrollToIndex(index)}>
+            <Pressable accessibilityRole="button" key={option} style={styles.row} onPress={() => scrollToIndex(index)}>
               <Text
                 style={[
                   styles.rowText,

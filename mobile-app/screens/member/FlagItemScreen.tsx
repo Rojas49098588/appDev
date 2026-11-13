@@ -72,10 +72,10 @@ export default function FlagItemScreen({ navigation, route }: Props) {
           scrollEventThrottle={16}
         >
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <Text style={styles.closeIcon}>✕</Text>
             </Pressable>
-            <Text style={styles.pageTitle}>Flag item</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Flag item</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -97,7 +97,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
                 {(['dirty', 'repair'] as FlagStatus[]).map((option, index) => {
                   const active = status === option;
                   return (
-                    <Pressable
+                    <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                       key={option}
                       style={[
                         styles.segment,
@@ -117,7 +117,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
           )}
 
           <Text style={styles.fieldLabel}>Comment</Text>
-          <TextInput
+          <TextInput accessibilityLabel="Describe what's wrong — a staff member will see this."
             style={styles.commentInput}
             placeholder="Describe what's wrong — a staff member will see this."
             placeholderTextColor={colors.inkFaint}
@@ -130,7 +130,7 @@ export default function FlagItemScreen({ navigation, route }: Props) {
         </ScrollView>
 
         <View style={styles.footer} onLayout={registerBottomInset}>
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.submitButton, (!isOnline || isSaving) && OFFLINE_DIM]}
             onPress={handleSubmit}
             disabled={isSaving}

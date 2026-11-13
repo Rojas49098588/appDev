@@ -59,7 +59,7 @@ export default function GamesScreen({ navigation }: Props) {
     const ps = pillStyles(colors)[pill];
     const missing = pill === 'Draft' ? missingFields(g) : [];
     return (
-      <Pressable
+      <Pressable accessibilityRole="button"
         key={g.id}
         style={[styles.card, dim && styles.cardDim]}
         onPress={() => navigation.navigate('GameEdit', { gameId: g.id })}
@@ -95,10 +95,10 @@ export default function GamesScreen({ navigation }: Props) {
         <View style={styles.flexOne}>
           <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
-              <Text style={styles.pageTitle}>Games</Text>
+              <Text style={styles.pageTitle} accessibilityRole="header">Games</Text>
               <View style={styles.headerSideButton} />
             </View>
             <SegmentTabs options={['Football', 'BB / VB']} value={tab} onChange={setTab} />
@@ -124,7 +124,7 @@ export default function GamesScreen({ navigation }: Props) {
               </>
             )}
           </ScrollView>
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={styles.fab}
             onPress={() =>
               navigation.navigate('GameEdit', { sport: tab === 0 ? 'football' : 'basketball' })

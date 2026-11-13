@@ -149,10 +149,10 @@ export default function RecountScreen({ navigation, route }: Props) {
           <View style={styles.contentColumn}>
             <ScrollView style={styles.flexOne} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
               <View style={styles.header}>
-                <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
-                <Text style={styles.pageTitle}>
+                <Text style={styles.pageTitle} accessibilityRole="header">
                   {counting ? `Recount ${piece.name}` : `Season totals: ${piece.name}`}
                 </Text>
                 <View style={styles.headerSideButton} />
@@ -175,7 +175,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                         </Text>
                       )}
                       <View style={styles.stepper}>
-                        <Pressable style={styles.stepBtn} onPress={() => step(label, -1)} accessibilityLabel={`One fewer ${label}`}>
+                        <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => step(label, -1)} accessibilityLabel={`One fewer ${label}`}>
                           <Text style={styles.stepText}>−</Text>
                         </Pressable>
                         <TextInput
@@ -185,14 +185,14 @@ export default function RecountScreen({ navigation, route }: Props) {
                           keyboardType="number-pad"
                           accessibilityLabel={`${label} ${counting ? 'count' : 'season total'}`}
                         />
-                        <Pressable style={styles.stepBtn} onPress={() => step(label, 1)} accessibilityLabel={`One more ${label}`}>
+                        <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => step(label, 1)} accessibilityLabel={`One more ${label}`}>
                           <Text style={styles.stepText}>+</Text>
                         </Pressable>
                       </View>
                     </View>
                     <View style={styles.batchLine}>
                       <Text style={styles.batchLabel}>Batch</Text>
-                      <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, -1)} accessibilityLabel={`Smaller ${label} batch`}>
+                      <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => stepBatch(label, -1)} accessibilityLabel={`Smaller ${label} batch`}>
                         <Text style={styles.stepText}>−</Text>
                       </Pressable>
                       <TextInput
@@ -203,15 +203,15 @@ export default function RecountScreen({ navigation, route }: Props) {
                         selectTextOnFocus
                         accessibilityLabel={`${label} batch`}
                       />
-                      <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, 1)} accessibilityLabel={`Bigger ${label} batch`}>
+                      <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => stepBatch(label, 1)} accessibilityLabel={`Bigger ${label} batch`}>
                         <Text style={styles.stepText}>+</Text>
                       </Pressable>
                       {!expanded && (
                         <>
-                          <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                          <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
                             <Text style={styles.smallButtonText}>{expanded ? `Add ${batchOf(label)}` : 'Add'}</Text>
                           </Pressable>
-                          <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                          <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
                             <Text style={styles.smallButtonText}>{expanded ? `Remove ${batchOf(label)}` : 'Remove'}</Text>
                           </Pressable>
                         </>
@@ -219,10 +219,10 @@ export default function RecountScreen({ navigation, route }: Props) {
                     </View>
                     {expanded && (
                       <View style={styles.batchButtons}>
-                        <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                        <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
                           <Text style={styles.smallButtonText}>{expanded ? `Add ${batchOf(label)}` : 'Add'}</Text>
                         </Pressable>
-                        <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                        <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
                           <Text style={styles.smallButtonText}>{expanded ? `Remove ${batchOf(label)}` : 'Remove'}</Text>
                         </Pressable>
                       </View>
@@ -248,7 +248,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                 </>
               ) : (
                 <View style={styles.batchRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="+ Add size or color"
                     style={[styles.textInput, styles.flexOne]}
                     value={newLabel}
                     onChangeText={setNewLabel}
@@ -256,7 +256,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                     placeholderTextColor={colors.inkFaint}
                     onSubmitEditing={addLine}
                   />
-                  <Pressable style={styles.smallButton} onPress={addLine}>
+                  <Pressable accessibilityRole="button" style={styles.smallButton} onPress={addLine}>
                     <Text style={styles.smallButtonText}>Add</Text>
                   </Pressable>
                 </View>
@@ -264,7 +264,7 @@ export default function RecountScreen({ navigation, route }: Props) {
             </ScrollView>
 
             <View style={styles.footer}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={[styles.submitButton, saving && styles.submitButtonDisabled, !isOnline && OFFLINE_DIM]}
                 onPress={handleSave}
                 disabled={saving}

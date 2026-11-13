@@ -37,13 +37,13 @@ export default function CatalogueScreen({ navigation }: Props) {
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <View style={styles.headerSideButton} />
-            <Text style={styles.pageTitle}>Catalogue</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Catalogue</Text>
             <View style={styles.headerSideButton} />
           </View>
 
           <View style={styles.grid}>
             {combos.map((combo) => (
-              <Pressable key={combo.id} style={styles.tile} onPress={() => handleComboPress(combo)}>
+              <Pressable accessibilityRole="button" key={combo.id} style={styles.tile} onPress={() => handleComboPress(combo)}>
                 <View style={styles.tileImage}>
                   {combo.image ? (
                     <Image source={{ uri: combo.image }} style={styles.tileImageFill} />
@@ -56,7 +56,7 @@ export default function CatalogueScreen({ navigation }: Props) {
               </Pressable>
             ))}
 
-            <Pressable style={styles.tile} onPress={handleAddPress}>
+            <Pressable accessibilityLabel="Add combo" accessibilityRole="button" style={styles.tile} onPress={handleAddPress}>
               <View style={[styles.tileImage, styles.addTileImage]}>
                 <PlusIcon color={colors.inkFaint} size={22} />
               </View>

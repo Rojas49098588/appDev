@@ -9,6 +9,7 @@ import { formatShortDate } from '../lib/format';
 import { ChevronDownIcon, DropIcon, SmallChevronRightIcon, WrenchIcon } from './icons';
 import OutlineButton from './OutlineButton';
 import { bandNumbers } from '../lib/numberBands';
+import { chipLabel } from '../lib/a11y';
 
 const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 
@@ -74,7 +75,23 @@ export default function PieceCard({
 
   return (
     <View style={styles.piece}>
-      <Pressable style={styles.pieceRow} onPress={() => setIsOpen((prev) => !prev)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
+        accessibilityHint={isOpen ? 'Hides the details' : 'Shows every color and number'}
+        // The Repair / Dirty buttons sit inside this row, which screen readers read as one
+        // item, so they are offered as actions on the row instead.
+        accessibilityActions={[
+          ...(repairCount > 0 ? [{ name: 'repair', label: `Show ${repairCount} needing repair` }] : []),
+          ...(dirtyCount > 0 ? [{ name: 'dirty', label: `Show ${dirtyCount} dirty` }] : []),
+        ]}
+        onAccessibilityAction={(event) => {
+          const name = event.nativeEvent.actionName;
+          if (name === 'repair' || name === 'dirty') onFlagPress(piece, name);
+        }}
+        style={styles.pieceRow}
+        onPress={() => setIsOpen((prev) => !prev)}
+      >
         <View>
           <Text style={styles.pieceName}>{piece.name}</Text>
           <Text style={styles.pieceSub}>
@@ -100,7 +117,7 @@ export default function PieceCard({
             {(repairCount > 0 || dirtyCount > 0) && (
               <View style={styles.statusTags}>
                 {repairCount > 0 && (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={styles.flagBtnRepair}
                     onPress={() => onFlagPress(piece, 'repair')}
                   >
@@ -110,7 +127,7 @@ export default function PieceCard({
                   </Pressable>
                 )}
                 {dirtyCount > 0 && (
-                  <Pressable style={styles.flagBtnDirty} onPress={() => onFlagPress(piece, 'dirty')}>
+                  <Pressable accessibilityRole="button" style={styles.flagBtnDirty} onPress={() => onFlagPress(piece, 'dirty')}>
                     <DropIcon color={colors.wash} size={12} />
                     <Text style={styles.flagBtnTextDirty}>Dirty · {dirtyCount}</Text>
                     <SmallChevronRightIcon color={colors.wash} />
@@ -150,7 +167,7 @@ export default function PieceCard({
                           const assign = group.shown.find((s) => s.number === size)!.state;
                           const state = chipStateFor(group.color, size);
                           return (
-                            <Pressable
+                            <Pressable accessibilityRole="button"
                               key={size}
                               style={[
                                 styles.sizeChip,
@@ -161,7 +178,8 @@ export default function PieceCard({
                                 state === 'dirty' && styles.sizeChipDirty,
                               ]}
                               onPress={() => onSizePress(group.color, size)}
-                              accessibilityLabel={`${group.color} ${size} history`}
+                              accessibilityLabel={chipLabel(group.color, size, assign, state)}
+                          accessibilityHint="Opens this number's history"
                             >
                               <Text
                                 style={[

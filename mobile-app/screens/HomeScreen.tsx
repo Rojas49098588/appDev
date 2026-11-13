@@ -82,14 +82,14 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           style={styles.header}
           title={
               <View>
-                <Text style={styles.wordmark}>Mustang Closet</Text>
+                <Text style={styles.wordmark} accessibilityRole="header">Mustang Closet</Text>
                 <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
                 <Text style={styles.seasonTag}>Fall 2026 season</Text>
               </View>
           }
           action={
               <>
-                  <Pressable style={styles.avatar} onPress={onAvatarPress}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Your profile and settings" style={styles.avatar} onPress={onAvatarPress}>
                     <Text style={styles.avatarText}>{initials}</Text>
                   </Pressable>
               </>
@@ -116,11 +116,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <TitleRow
             style={styles.blockHead}
             title={
-                <Text style={styles.blockTitle}>Members by section</Text>
+                <Text style={styles.blockTitle} accessibilityRole="header">Members by section</Text>
             }
             action={
                 <>
-                    <Pressable
+                    <Pressable accessibilityRole="button"
                       onPress={() =>
                         navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
                       }
@@ -132,7 +132,7 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           />
           <View style={styles.sectionGrid}>
             {sections.map((section) => (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={section.name}
                 style={styles.sectionCard}
                 onPress={() =>
@@ -154,11 +154,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <TitleRow
             style={styles.blockHead}
             title={
-                <Text style={styles.blockTitle}>Inventory</Text>
+                <Text style={styles.blockTitle} accessibilityRole="header">Inventory</Text>
             }
             action={
                 <>
-                    <Pressable onPress={() => navigation.navigate('Inventory')}>
+                    <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Inventory')}>
                       <Text style={styles.blockLink}>View full ›</Text>
                     </Pressable>
                 </>
@@ -196,11 +196,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <TitleRow
             style={styles.blockHead}
             title={
-                <Text style={styles.blockTitle}>Games</Text>
+                <Text style={styles.blockTitle} accessibilityRole="header">Games</Text>
             }
             action={
                 <>
-                    <Pressable onPress={() => rootNavigation.navigate('Games')}>
+                    <Pressable accessibilityRole="button" onPress={() => rootNavigation.navigate('Games')}>
                       <Text style={styles.blockLink}>View ›</Text>
                     </Pressable>
                 </>
@@ -213,11 +213,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
           <TitleRow
             style={styles.blockHead}
             title={
-                <Text style={styles.blockTitle}>Archived members</Text>
+                <Text style={styles.blockTitle} accessibilityRole="header">Archived members</Text>
             }
             action={
                 <>
-                    <Pressable onPress={() => rootNavigation.navigate('ArchivedMembers')}>
+                    <Pressable accessibilityRole="button" onPress={() => rootNavigation.navigate('ArchivedMembers')}>
                       <Text style={styles.blockLink}>View ›</Text>
                     </Pressable>
                 </>

@@ -211,13 +211,13 @@ export default function SectionsScreen({ navigation, route }: Props) {
         >
           <View style={styles.header}>
             {isFiltered ? (
-              <Pressable style={styles.headerSideButton} onPress={clearInventoryFilter}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Clear filter" style={styles.headerSideButton} onPress={clearInventoryFilter}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
             ) : (
               <View style={styles.headerSideButton} />
             )}
-            <Text style={styles.pageTitle}>Members</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Members</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -229,7 +229,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   {filterStatus === 'repair' ? 'Needs repair' : 'Dirty'}
                 </Text>
               </Text>
-              <Pressable onPress={clearInventoryFilter}>
+              <Pressable accessibilityLabel="Clear filter" accessibilityRole="button" onPress={clearInventoryFilter}>
                 <Text style={[styles.bannerClear, { color: bannerColor }]}>✕</Text>
               </Pressable>
             </View>
@@ -237,7 +237,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
             <>
               <View style={styles.search}>
                 <SearchIcon color={colors.inkFaint} />
-                <TextInput
+                <TextInput accessibilityLabel="Search members"
                   style={styles.searchInput}
                   placeholder="Search members"
                   placeholderTextColor={colors.inkFaint}
@@ -254,7 +254,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.chipsContent}
                 >
-                  <Pressable
+                  <Pressable accessibilityState={{ selected: !!(!sectionFilter) }} accessibilityRole="button"
                     style={[styles.chip, !sectionFilter && styles.chipActive]}
                     onPress={() => setSectionFilter(null)}
                   >
@@ -265,7 +265,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   {SECTIONS.map((section) => {
                     const active = sectionFilter === section.name;
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                         key={section.name}
                         style={[styles.chip, active && styles.chipActive]}
                         onPress={() => setSectionFilter(section.name)}
@@ -286,7 +286,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.chipsContent}
                 >
-                  <Pressable
+                  <Pressable accessibilityState={{ selected: !!(statusFilters.size === 0) }} accessibilityRole="button"
                     style={[styles.chip, statusFilters.size === 0 && styles.chipActive]}
                     onPress={() => setStatusFilters(new Set())}
                   >
@@ -301,7 +301,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                     const isRepair = key === 'repair';
                     const isDirty = key === 'dirty';
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                         key={key}
                         style={[
                           styles.chip,
@@ -339,7 +339,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   {numberedTypes.map(({ name: piece }) => {
                     const active = sizePiece === piece;
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                         key={piece}
                         style={[styles.chip, active && styles.chipActive]}
                         onPress={() => setSizePiece(active ? null : piece)}
@@ -350,7 +350,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                   })}
                 </ScrollView>
                 <View style={styles.sizeRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="Number"
                     style={[styles.sizeInput, !sizePiece && styles.sizeInputDisabled]}
                     placeholder={
                       sizePiece
@@ -369,7 +369,7 @@ export default function SectionsScreen({ navigation, route }: Props) {
                     editable={!!sizePiece}
                   />
                   {(sizePiece || sizeQuery !== '') && (
-                    <Pressable
+                    <Pressable accessibilityRole="button"
                       style={styles.sizeClear}
                       onPress={() => {
                         setSizePiece(null);

@@ -27,18 +27,18 @@ export default function ComboPickerSheet({ visible, combos, selectedId, onPick, 
       onRequestClose={onClose}
     >
       <View style={styles.root}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
           <View style={styles.backdrop} />
         </Pressable>
         <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Choose a combo</Text>
+          <Text style={styles.title} accessibilityRole="header">Choose a combo</Text>
           <ScrollView style={styles.list}>
             {combos.length === 0 && <Text style={styles.empty}>No combos yet.</Text>}
             {combos.map((c) => {
               const active = c.id === selectedId;
               return (
-                <Pressable
+                <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                   key={c.id}
                   style={[styles.row, active && styles.rowActive]}
                   onPress={() => onPick(c.id)}

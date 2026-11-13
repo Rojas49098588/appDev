@@ -135,10 +135,10 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
           scrollEventThrottle={16}
         >
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Account</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Account</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -213,7 +213,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   {(["Men's", "Women's"] as const).map((option, index) => {
                     const active = shoeGender === option;
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                         key={option}
                         style={[
                           styles.segment,
@@ -229,7 +229,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                     );
                   })}
                 </View>
-                <TextInput
+                <TextInput accessibilityLabel="Size"
                   style={styles.shoeSizeInput}
                   value={shoeSizeValue}
                   onChangeText={setShoeSizeValue}
@@ -251,7 +251,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             <Text style={styles.label}>Height</Text>
             {isEditing ? (
               <View style={styles.heightRow}>
-                <TextInput
+                <TextInput accessibilityLabel="Height, feet"
                   style={styles.heightInput}
                   value={heightFeet}
                   onChangeText={(text) => setHeightFeet(digitsOnly(text).slice(0, 1))}
@@ -261,7 +261,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   maxLength={1}
                 />
                 <Text style={styles.heightUnit}>'</Text>
-                <TextInput
+                <TextInput accessibilityLabel="Height, inches"
                   style={styles.heightInput}
                   value={heightInches}
                   onChangeText={(text) => setHeightInches(digitsOnly(text).slice(0, 2))}
@@ -281,7 +281,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             <Text style={styles.label}>Weight</Text>
             {isEditing ? (
               <View style={styles.weightRow}>
-                <TextInput
+                <TextInput accessibilityLabel="Weight"
                   style={styles.weightInput}
                   value={weight}
                   onChangeText={(text) => setWeight(digitsOnly(text).slice(0, 3))}
@@ -297,7 +297,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             )}
           </View>
 
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.actionButton, isEditing && !isOnline && OFFLINE_DIM]}
             onPress={handleToggleEdit}
           >
@@ -306,7 +306,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
           <ChangePasswordSection onFocusField={scrollToFocusedInput} />
 
-          <Pressable style={styles.logOutButton} onPress={handleLogOut}>
+          <Pressable accessibilityRole="button" style={styles.logOutButton} onPress={handleLogOut}>
             <Text style={styles.logOutButtonText}>Log Out</Text>
           </Pressable>
         </ScrollView>
@@ -342,7 +342,7 @@ function ProfileField({
     <View style={styles.fieldWrapper}>
       <Text style={styles.label}>{label}</Text>
       {editing ? (
-        <TextInput
+        <TextInput accessibilityLabel={label}
           style={styles.input}
           value={value}
           onChangeText={onChangeText}

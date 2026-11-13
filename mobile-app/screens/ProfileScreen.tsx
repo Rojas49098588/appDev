@@ -141,10 +141,10 @@ export default function ProfileScreen({ navigation, route }: Props) {
             scrollEventThrottle={16}
           >
             <View style={styles.header}>
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
-              <Text style={styles.pageTitle}>User Profile</Text>
+              <Text style={styles.pageTitle} accessibilityRole="header">User Profile</Text>
               <View style={styles.headerSideButton} />
             </View>
 
@@ -211,7 +211,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
               <Text style={styles.label}>Height</Text>
               {isEditing ? (
                 <View style={styles.heightRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="Height, feet"
                     style={styles.heightInput}
                     value={profile.heightFeet}
                     onChangeText={(text) =>
@@ -223,7 +223,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                     maxLength={1}
                   />
                   <Text style={styles.heightUnit}>'</Text>
-                  <TextInput
+                  <TextInput accessibilityLabel="Height, inches"
                     style={styles.heightInput}
                     value={profile.heightInches}
                     onChangeText={(text) =>
@@ -254,7 +254,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
               onBlur={blurNumericField}
             />
 
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[styles.actionButton, isEditing && !isOnline && OFFLINE_DIM]}
               onPress={handleToggleEdit}
             >
@@ -263,7 +263,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
 
             <ChangePasswordSection onFocusField={scrollToFocusedInput} />
 
-            <Pressable style={styles.logOutButton} onPress={handleLogOut}>
+            <Pressable accessibilityRole="button" style={styles.logOutButton} onPress={handleLogOut}>
               <Text style={styles.logOutButtonText}>Log Out</Text>
             </Pressable>
           </ScrollView>
@@ -301,7 +301,7 @@ function ProfileField({
     <View style={styles.fieldWrapper}>
       <Text style={styles.label}>{label}</Text>
       {editing ? (
-        <TextInput
+        <TextInput accessibilityLabel={label}
           style={styles.input}
           value={value}
           onChangeText={onChangeText}

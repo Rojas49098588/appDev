@@ -150,7 +150,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
             >
               <View style={styles.header}>
                 {navigation.canGoBack() ? (
-                  <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                  <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                     <Svg width={19} height={19} viewBox="0 0 24 24">
                       <Path
                         d="M15 5l-7 7 7 7"
@@ -163,7 +163,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                 ) : (
                   <View style={styles.headerSideButton} />
                 )}
-                <Text style={styles.pageTitle}>Create account</Text>
+                <Text style={styles.pageTitle} accessibilityRole="header">Create account</Text>
                 <View style={styles.headerSideButton} />
               </View>
 
@@ -171,7 +171,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Email</Text>
-                <TextInput
+                <TextInput accessibilityLabel="Email"
                   style={styles.textInput}
                   placeholder="Email"
                   placeholderTextColor={colors.inkFaint}
@@ -186,7 +186,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Height</Text>
                 <View style={styles.heightRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="0"
                     style={styles.heightInput}
                     placeholder="0"
                     placeholderTextColor={colors.inkFaint}
@@ -198,7 +198,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                     maxLength={1}
                   />
                   <Text style={styles.heightUnit}>'</Text>
-                  <TextInput
+                  <TextInput accessibilityLabel="0"
                     style={styles.heightInput}
                     placeholder="0"
                     placeholderTextColor={colors.inkFaint}
@@ -216,7 +216,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Weight</Text>
                 <View style={styles.weightRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="0"
                     style={styles.weightInput}
                     placeholder="0"
                     placeholderTextColor={colors.inkFaint}
@@ -233,7 +233,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Password</Text>
-                <TextInput
+                <TextInput accessibilityLabel="Password"
                   style={styles.textInput}
                   placeholder="Password"
                   placeholderTextColor={colors.inkFaint}
@@ -247,7 +247,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Confirm password</Text>
-                <TextInput
+                <TextInput accessibilityLabel="Confirm password"
                   style={styles.textInput}
                   placeholder="Confirm password"
                   placeholderTextColor={colors.inkFaint}
@@ -262,7 +262,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <View style={styles.nameRow}>
                 <View style={[styles.field, styles.nameField]}>
                   <Text style={styles.fieldLabel}>First name</Text>
-                  <TextInput
+                  <TextInput accessibilityLabel="First name"
                     style={styles.textInput}
                     placeholder="First name"
                     placeholderTextColor={colors.inkFaint}
@@ -273,7 +273,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
                 </View>
                 <View style={[styles.field, styles.nameField]}>
                   <Text style={styles.fieldLabel}>Last name</Text>
-                  <TextInput
+                  <TextInput accessibilityLabel="Last name"
                     style={styles.textInput}
                     placeholder="Last name"
                     placeholderTextColor={colors.inkFaint}
@@ -294,7 +294,7 @@ export default function SignUpScreen({ navigation, route }: Props) {
               <KeyboardDoneBar visible={numericFocused} />
 
               <View style={styles.footer}>
-                <Pressable
+                <Pressable accessibilityRole="button"
                   style={[styles.submitButton, isSubmitting && styles.submitButtonBusy]}
                   onPress={handleSubmit}
                   disabled={isSubmitting}

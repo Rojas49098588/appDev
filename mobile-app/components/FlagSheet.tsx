@@ -71,7 +71,7 @@ export default function FlagSheet({ target, openKey, onClose, onSubmit }: Props)
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close flag sheet">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close flag sheet">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && (
@@ -160,7 +160,7 @@ function SheetBody({
 
   const submitButton = submitLook(status ?? null);
   return (
-    <Pressable
+    <Pressable accessibilityRole="none"
       style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}
       onPress={Keyboard.dismiss}
       accessible={false}
@@ -169,14 +169,14 @@ function SheetBody({
       <View style={styles.headerRow}>
         <Swatch color={target.color} large />
         <View style={styles.headerText}>
-          <Text style={styles.title}>
+          <Text style={styles.title} accessibilityRole="header">
             Flag {target.color} {target.itemName}
           </Text>
           <Text style={styles.subtitle}>
             {target.piece} · {target.size ? `Size ${target.size}` : 'No size assigned'}
           </Text>
         </View>
-        <Pressable style={styles.closeButton} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={styles.closeButton} onPress={onClose} accessibilityLabel="Close">
           <CloseIcon color={colors.inkSoft} />
         </Pressable>
       </View>
@@ -216,7 +216,7 @@ function SheetBody({
       <Text style={styles.noteLabel}>
         Add a note <Text style={styles.noteOptional}>(optional)</Text>
       </Text>
-      <TextInput
+      <TextInput accessibilityLabel="e.g. mud stain on left sleeve"
         style={styles.noteInput}
         value={comment}
         onChangeText={setComment}
@@ -230,7 +230,7 @@ function SheetBody({
       {displayUri ? (
         <View style={styles.photoWrap}>
           <Image source={{ uri: displayUri }} style={styles.photoThumb} accessibilityLabel="Flag photo" />
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={styles.photoRemove}
             onPress={() => setPickedUri(null)}
             accessibilityLabel="Remove photo"
