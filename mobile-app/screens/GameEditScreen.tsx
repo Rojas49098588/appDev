@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useGames } from '../context/GamesContext';
 import { useCombos } from '../context/CombosContext';
@@ -27,6 +27,7 @@ import { isCourt, missingFields } from '../lib/games';
 import { successBuzz } from '../lib/haptics';
 import type { Division, GameDraft, GameStatus, Sport } from '../lib/models';
 import TapeGutter from '../components/TapeGutter';
+import OutlineButton from '../components/OutlineButton';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
 import ComboPickerSheet from '../components/ComboPickerSheet';
 import { BackChevronIcon, CheckIcon } from '../components/icons';
@@ -75,6 +76,8 @@ const blankDraft = (sport: Sport): GameDraft => ({
 });
 
 export default function GameEditScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { gameId, sport: sportParam } = route.params ?? {};
   const { games, poloColors, createGame, updateGame, setStatus, deleteGame } = useGames();
   const { combos } = useCombos();
@@ -234,7 +237,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
   const errText = (field: string) => (bad(field) ? <Text style={styles.errText}>Required</Text> : null);
 
   const valueBox = (key: PickerKind, text: string | null, placeholder: string, err: boolean, disabled = false) => (
-    <Pressable
+    <Pressable accessibilityRole="button"
       style={[styles.input, err && styles.inputErr, disabled && styles.inputDisabled]}
       disabled={disabled}
       onPress={() => setPicker(picker === key ? null : key)}
@@ -258,9 +261,11 @@ export default function GameEditScreen({ navigation, route }: Props) {
             <Text style={combo ? styles.inputText : styles.placeholder}>{combo ? combo.label : 'No combo chosen'}</Text>
             {combo && combo.sub !== '' && <Text style={styles.comboSub}>{combo.sub}</Text>}
           </View>
-          <Pressable onPress={() => setComboSlot(slot)} hitSlop={8}>
-            <Text style={styles.link}>{combo ? 'Change' : 'Choose'}</Text>
-          </Pressable>
+          <OutlineButton
+            label={combo ? 'Change' : 'Choose'}
+            accessibilityLabel={`${combo ? 'Change' : 'Choose'} ${heading} combo`}
+            onPress={() => setComboSlot(slot)}
+          />
         </View>
         {errText(heading)}
       </View>
@@ -284,7 +289,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.header}>
-                <Pressable style={styles.headerSide} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSide} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
                 <Text style={styles.pageTitle} numberOfLines={1}>
@@ -307,7 +312,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                 {label('Type')}
                 <View style={styles.chipRow}>
                   {SPORTS.map((s) => (
-                    <Pressable
+                    <Pressable accessibilityState={{ selected: !!(draft.sport === s.value) }} accessibilityRole="button"
                       key={s.value}
                       style={[styles.chip, draft.sport === s.value && styles.chipOn]}
                       onPress={() => setSport(s.value)}
@@ -319,7 +324,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                 {court && (
                   <View style={[styles.chipRow, styles.chipRowGap]}>
                     {([['mens', "Men's"], ['womens', "Women's"]] as [Division, string][]).map(([value, text]) => (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(draft.division === value) }} accessibilityRole="button"
                         key={value}
                         style={[styles.chip, draft.division === value && styles.chipOn, bad("Men's / Women's") && styles.inputErr]}
                         onPress={() => set({ division: value })}
@@ -334,7 +339,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 {label('Opposing university')}
-                <TextInput
+                <TextInput accessibilityLabel="Opponent"
                   style={[styles.input, styles.inputText, bad('Opposing university') && styles.inputErr]}
                   value={draft.opponent}
                   onChangeText={(opponent) => set({ opponent })}
@@ -369,7 +374,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                   {errText('Call time')}
                 </View>
               </View>
-              <Pressable
+              <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: draft.noCallTime }}
                 style={styles.checkRow}
                 onPress={() => {
                   if (!draft.noCallTime && picker === 'call') setPicker(null);
@@ -392,9 +397,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                     onChange={onPicked(picker)}
                   />
                   {Platform.OS === 'ios' && (
-                    <Pressable style={styles.pickerDone} onPress={closePicker}>
-                      <Text style={styles.link}>Done</Text>
-                    </Pressable>
+                    <OutlineButton label="Done" style={styles.pickerDone} onPress={closePicker} />
                   )}
                 </View>
               )}
@@ -402,15 +405,13 @@ export default function GameEditScreen({ navigation, route }: Props) {
               <View style={styles.field}>
                 <View style={styles.labelRow}>
                   {label('Polo')}
-                  <Pressable onPress={() => navigation.navigate('PoloColors')} hitSlop={8}>
-                    <Text style={styles.link}>Edit colors</Text>
-                  </Pressable>
+                  <OutlineButton label="Edit colors" onPress={() => navigation.navigate('PoloColors')} />
                 </View>
                 <View style={styles.chipRow}>
                   {poloOptions.map((opt) => {
                     const on = draft.polo.some((s) => s.name === opt.name);
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ checked: !!(on) }} accessibilityRole="checkbox"
                         key={opt.name}
                         style={[styles.chip, styles.chipWithDot, on && styles.chipOn, bad('Polo') && styles.inputErr]}
                         onPress={() => togglePolo(opt)}
@@ -428,7 +429,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
 
               <View style={styles.field}>
                 {label('Polo note (optional)', false)}
-                <TextInput
+                <TextInput accessibilityLabel="Polo note"
                   style={[styles.input, styles.inputText]}
                   value={draft.poloNote}
                   onChangeText={(poloNote) => set({ poloNote })}
@@ -446,7 +447,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
                   {label('Group')}
                   <View style={styles.chipRow}>
                     {[1, 2, 3, 4, 5].map((n) => (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(draft.groupNumber === n) }} accessibilityRole="button"
                         key={n}
                         style={[styles.groupBtn, draft.groupNumber === n && styles.chipOn, bad('Group') && styles.inputErr]}
                         onPress={() => set({ groupNumber: n })}
@@ -462,7 +463,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               {!court && (
                 <View style={styles.field}>
                   {label('After-game instructions (optional)', false)}
-                  <TextInput
+                  <TextInput accessibilityLabel="What members should do after the game"
                     style={[styles.input, styles.inputText, styles.multiline]}
                     value={draft.afterGameInstructions}
                     onChangeText={(afterGameInstructions) => set({ afterGameInstructions })}
@@ -480,7 +481,7 @@ export default function GameEditScreen({ navigation, route }: Props) {
               )}
 
               {isExisting && (
-                <Pressable style={styles.deleteBtn} onPress={confirmDelete} disabled={isSaving}>
+                <Pressable accessibilityRole="button" style={styles.deleteBtn} onPress={confirmDelete} disabled={isSaving}>
                   <Text style={styles.deleteText}>Delete game</Text>
                 </Pressable>
               )}
@@ -491,19 +492,19 @@ export default function GameEditScreen({ navigation, route }: Props) {
               <View style={styles.footer}>
                 {status === 'ready' ? (
                   <>
-                    <Pressable style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={moveToDraft}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={moveToDraft}>
                       <Text style={styles.btnText}>Move back to draft</Text>
                     </Pressable>
-                    <Pressable style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
                       <Text style={[styles.btnText, styles.btnTextDark]}>{isSaving ? 'Saving…' : 'Save'}</Text>
                     </Pressable>
                   </>
                 ) : (
                   <>
-                    <Pressable style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('draft')}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('draft')}>
                       <Text style={styles.btnText}>{isSaving ? 'Saving…' : 'Save draft'}</Text>
                     </Pressable>
-                    <Pressable style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
+                    <Pressable accessibilityRole="button" style={[styles.btn, styles.btnDark, busy && OFFLINE_DIM]} disabled={isSaving} onPress={() => save('ready')}>
                       <Text style={[styles.btnText, styles.btnTextDark]}>Mark ready</Text>
                     </Pressable>
                   </>
@@ -528,85 +529,86 @@ export default function GameEditScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   contentColumn: { flex: 1, flexDirection: 'column' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 14, gap: 8 },
   headerSide: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
+  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
   pill: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
-  pillText: { fontFamily: fonts.bodySemiBold, fontSize: 10.5 },
-  banner: { backgroundColor: colors.rustTint, borderWidth: 1, borderColor: colors.rust, padding: 10, marginBottom: 14 },
-  bannerText: { fontFamily: fonts.body, fontSize: 12, color: colors.rust },
+  pillText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(10.5) },
+  banner: { backgroundColor: t.colors.rustTint, borderWidth: 1, borderColor: t.colors.rust, padding: 10, marginBottom: 14 },
+  bannerText: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.rust },
   field: { marginBottom: 20 },
-  fieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
-  req: { color: colors.rust },
+  fieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
+  req: { color: t.colors.rust },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  link: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.wash },
   input: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
   },
-  inputText: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
-  placeholder: { fontFamily: fonts.body, fontSize: 14, color: colors.inkFaint },
-  inputErr: { borderColor: colors.rust, backgroundColor: colors.rustTint },
+  inputText: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.ink },
+  placeholder: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.inkFaint },
+  inputErr: { borderColor: t.colors.rust, backgroundColor: t.colors.rustTint },
   inputDisabled: { opacity: 0.5 },
-  errText: { fontFamily: fonts.body, fontSize: 11, color: colors.rust, marginTop: 4 },
+  errText: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.rust, marginTop: 4 },
   multiline: { minHeight: 90 },
   timeRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
-  checkbox: { width: 18, height: 18, borderWidth: 1, borderColor: colors.inkSoft, alignItems: 'center', justifyContent: 'center' },
-  checkboxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
-  checkText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink },
-  pickerWrap: { marginBottom: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  checkbox: { width: 18, height: 18, borderWidth: 1, borderColor: t.colors.inkSoft, alignItems: 'center', justifyContent: 'center' },
+  checkboxOn: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
+  checkText: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.ink },
+  pickerWrap: { marginBottom: 20, backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.line },
   pickerDone: { alignSelf: 'flex-end', padding: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   chipRowGap: { marginTop: 8 },
-  chip: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingVertical: 7, paddingHorizontal: 12 },
+  chip: { borderWidth: 1, borderColor: t.colors.line, backgroundColor: t.colors.surface, paddingVertical: 7, paddingHorizontal: 12 },
   chipWithDot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
-  chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft },
-  chipTextOn: { color: colors.paper },
-  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: colors.line },
+  chipOn: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
+  chipText: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
+  chipTextOn: { color: t.colors.paper },
+  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: t.colors.line },
   groupBtn: {
-    width: 48,
+    minWidth: 48,
     paddingVertical: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
   },
   comboCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 10,
   },
-  comboThumb: { width: 40, height: 52, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.line },
-  comboSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
-  deleteBtn: { borderWidth: 1, borderColor: colors.rust, paddingVertical: 13, alignItems: 'center', marginTop: 4 },
-  deleteText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.rust },
+  comboThumb: { width: 40, height: 52, backgroundColor: t.colors.paper, borderWidth: 1, borderColor: t.colors.line },
+  comboSub: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 2 },
+  deleteBtn: { borderWidth: 1, borderColor: t.colors.rust, paddingVertical: 13, alignItems: 'center', marginTop: 4 },
+  deleteText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.rust },
   footer: {
     flexDirection: 'row',
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.surface,
+    borderTopColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 10,
   },
-  btn: { flex: 1, borderWidth: 1, borderColor: colors.ink, paddingVertical: 14, alignItems: 'center' },
-  btnDark: { backgroundColor: colors.ink },
-  btnText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
-  btnTextDark: { color: colors.paper },
+  btn: { flex: 1, borderWidth: 1, borderColor: t.colors.ink, paddingVertical: 14, alignItems: 'center' },
+  btnDark: { backgroundColor: t.colors.ink },
+  btnText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
+  btnTextDark: { color: t.colors.paper },
 });
+}

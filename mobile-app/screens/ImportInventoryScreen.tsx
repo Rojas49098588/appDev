@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { ImportSummary } from '../lib/models';
 import { parseCsv } from '../lib/import/csv';
@@ -37,6 +37,8 @@ function plural(n: number, one: string, many = `${one}s`) {
 }
 
 export default function ImportInventoryScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { pieceTypes, pieces, importInventory } = useInventory();
   const { accounts, refreshAccount } = useAuth();
   const { isOnline } = useConnection();
@@ -170,7 +172,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
         <Text style={styles.line}>{plural(summary.notesAdded, 'repair note')} added</Text>
       </View>
       {renderProblems(p.problems)}
-      <Pressable style={styles.primary} onPress={() => navigation.goBack()}>
+      <Pressable accessibilityRole="button" style={styles.primary} onPress={() => navigation.goBack()}>
         <Text style={styles.primaryText}>Done</Text>
       </Pressable>
     </>
@@ -254,7 +256,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
         )}
         {renderProblems(p.problems)}
         {!nothing && (
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.primary, (saving || !isOnline) && OFFLINE_DIM]}
             onPress={handleImport}
             disabled={saving || !isOnline}
@@ -272,10 +274,10 @@ export default function ImportInventoryScreen({ navigation }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()} accessibilityLabel="Back">
+            <Pressable accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()} accessibilityLabel="Back">
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Import spreadsheet</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Import spreadsheet</Text>
             <View style={styles.headerSideButton} />
           </View>
 
@@ -283,7 +285,7 @@ export default function ImportInventoryScreen({ navigation }: Props) {
             renderResult(result, plan)
           ) : (
             <>
-              <Pressable style={[styles.pick, loading && OFFLINE_DIM]} onPress={handlePick} disabled={loading || saving}>
+              <Pressable accessibilityRole="button" style={[styles.pick, loading && OFFLINE_DIM]} onPress={handlePick} disabled={loading || saving}>
                 {loading ? (
                   <ActivityIndicator color={colors.ink} />
                 ) : (
@@ -302,56 +304,58 @@ export default function ImportInventoryScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { flexGrow: 1, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14 },
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
+  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
   pick: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
   },
-  pickText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.ink },
-  help: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 8, marginBottom: 14 },
-  heading: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink, marginBottom: 10 },
-  empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginBottom: 12 },
-  section: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, marginBottom: 8 },
+  pickText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13.5), color: t.colors.ink },
+  help: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginTop: 8, marginBottom: 14 },
+  heading: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink, marginBottom: 10 },
+  empty: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginBottom: 12 },
+  section: { borderWidth: 1, borderColor: t.colors.line, backgroundColor: t.colors.surface, marginBottom: 8 },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', padding: 12 },
-  sectionTitle: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.ink },
-  sectionCount: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft },
+  sectionTitle: { fontFamily: fonts.bodyMedium, fontSize: t.font(13.5), color: t.colors.ink },
+  sectionCount: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft },
   sectionBody: { paddingHorizontal: 12, paddingBottom: 12, gap: 6 },
   card: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 12,
     gap: 6,
     marginBottom: 10,
   },
-  line: { fontFamily: fonts.body, fontSize: 13, color: colors.ink },
-  lineSoft: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft },
+  line: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.ink },
+  lineSoft: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
   numberRow: { gap: 6 },
   choiceRow: { flexDirection: 'row', gap: 8 },
-  choice: { borderWidth: 1, borderColor: colors.line, paddingVertical: 5, paddingHorizontal: 10 },
-  choiceOn: { backgroundColor: colors.ink, borderColor: colors.ink },
-  choiceText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.ink },
-  choiceTextOn: { color: colors.paper },
+  choice: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 5, paddingHorizontal: 10 },
+  choiceOn: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
+  choiceText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12), color: t.colors.ink },
+  choiceTextOn: { color: t.colors.paper },
   problemBox: {
     borderWidth: 1,
-    borderColor: colors.amber,
-    backgroundColor: colors.amberTint,
+    borderColor: t.colors.amber,
+    backgroundColor: t.colors.amberTint,
     padding: 12,
     gap: 4,
     marginBottom: 10,
   },
-  problemTitle: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.amber },
-  problemText: { fontFamily: fonts.body, fontSize: 12, color: colors.amber },
-  primary: { backgroundColor: colors.ink, paddingVertical: 13, alignItems: 'center', marginTop: 6 },
-  primaryText: { fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.paper },
+  problemTitle: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.amber },
+  problemText: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.amber },
+  primary: { backgroundColor: t.colors.ink, paddingVertical: 13, alignItems: 'center', marginTop: 6 },
+  primaryText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13.5), color: t.colors.paper },
 });
+}

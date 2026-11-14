@@ -3,7 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useFlags } from '../context/FlagsContext';
 import { useInventory } from '../context/InventoryContext';
@@ -18,6 +18,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PieceTable'>;
 type TabKey = 'all' | 'assigned' | 'unassigned' | 'flagged';
 
 export default function PieceTableScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { pieceTypeId } = route.params;
   const { pieceTypes, pieces } = useInventory();
   const { flags } = useFlags();
@@ -38,14 +40,14 @@ export default function PieceTableScreen({ navigation, route }: Props) {
 
   const header = (
     <View style={styles.header}>
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={styles.headerSideButton}
         onPress={() => navigation.goBack()}
         accessibilityLabel="Back"
       >
         <BackChevronIcon color={colors.ink} />
       </Pressable>
-      <Text style={styles.pageTitle}>{type ? `Every ${type.name}` : 'Every piece'}</Text>
+      <Text style={styles.pageTitle} accessibilityRole="header">{type ? `Every ${type.name}` : 'Every piece'}</Text>
       <View style={styles.headerSideButton} />
     </View>
   );
@@ -94,7 +96,7 @@ export default function PieceTableScreen({ navigation, route }: Props) {
               {header}
               <View style={styles.tabs}>
                 {tabs.map((t) => (
-                  <Pressable
+                  <Pressable accessibilityState={{ selected: !!(tab === t.key) }} accessibilityRole="button"
                     key={t.key}
                     style={[styles.tab, tab === t.key && styles.tabActive]}
                     onPress={() => setTab(t.key)}
@@ -134,7 +136,7 @@ export default function PieceTableScreen({ navigation, route }: Props) {
                 const letter = state === 'repair' ? 'R' : state === 'dirty' ? 'D' : p.outForRepair ? 'O' : '';
                 return (
                   <View key={color} style={styles.pieceCell}>
-                    <Pressable
+                    <Pressable accessibilityRole="button"
                       style={[
                         styles.box,
                         p.outForRepair && styles.boxOut,
@@ -174,45 +176,47 @@ export default function PieceTableScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { flexGrow: 1, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14 },
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
-  empty: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint, paddingVertical: 12 },
+  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
+  empty: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkFaint, paddingVertical: 12 },
   tabs: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
-  tab: { borderWidth: 1, borderColor: colors.line, paddingVertical: 6, paddingHorizontal: 10 },
-  tabActive: { backgroundColor: colors.ink, borderColor: colors.ink },
-  tabText: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.inkSoft },
-  tabTextActive: { color: colors.paper },
+  tab: { borderWidth: 1, borderColor: t.colors.line, paddingVertical: 6, paddingHorizontal: 10 },
+  tabActive: { backgroundColor: t.colors.ink, borderColor: t.colors.ink },
+  tabText: { fontFamily: fonts.bodyMedium, fontSize: t.font(11.5), color: t.colors.inkSoft },
+  tabTextActive: { color: t.colors.paper },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 7,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
+    borderBottomColor: t.colors.lineSoft,
   },
-  colHead: { fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.inkSoft },
-  numberCell: { width: 44, fontFamily: fonts.mono, fontSize: 13, fontWeight: '700', color: colors.ink },
-  ownerCell: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
-  unassigned: { color: colors.inkFaint, fontStyle: 'italic' },
+  colHead: { fontFamily: fonts.bodyMedium, fontSize: t.font(10.5), color: t.colors.inkSoft },
+  numberCell: { width: 44, fontFamily: fonts.mono, fontSize: t.font(13), fontWeight: '700', color: t.colors.ink },
+  ownerCell: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.ink },
+  unassigned: { color: t.colors.inkFaint, fontStyle: 'italic' },
   pieceCell: { width: 40, alignItems: 'center', textAlign: 'center' },
-  missing: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkFaint },
+  missing: { fontFamily: fonts.mono, fontSize: t.font(12), color: t.colors.inkFaint },
   box: {
     width: 26,
     height: 26,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxOut: { borderColor: colors.amber, backgroundColor: colors.amberTint },
-  boxRepair: { borderColor: colors.rust, backgroundColor: colors.rustTint },
-  boxDirty: { borderColor: colors.wash, backgroundColor: colors.washTint },
-  boxText: { fontFamily: fonts.bodyMedium, fontSize: 11 },
-  legend: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft, marginTop: 12 },
+  boxOut: { borderColor: t.colors.amber, backgroundColor: t.colors.amberTint },
+  boxRepair: { borderColor: t.colors.rust, backgroundColor: t.colors.rustTint },
+  boxDirty: { borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
+  boxText: { fontFamily: fonts.bodyMedium, fontSize: t.font(11) },
+  legend: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft, marginTop: 12 },
 });
+}

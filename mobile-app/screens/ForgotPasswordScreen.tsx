@@ -13,10 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import TapeGutter from '../components/TapeGutter';
 import KeyboardDoneBar from '../components/KeyboardDoneBar';
+import OutlineButton from '../components/OutlineButton';
 import { BackChevronIcon } from '../components/icons';
 import { useScrollToInput } from '../hooks/useScrollToInput';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +29,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 // Step 1 asks for the email and sends a code. Step 2 takes the code and the
 // new password, then signs them in.
 export default function ForgotPasswordScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { sendPasswordResetCode, verifyPasswordResetCode, finishPasswordReset, cancelPasswordReset } = useAuth();
   const { scrollRef, handleScroll, registerBottomInset, scrollToFocusedInput } = useScrollToInput();
 
@@ -146,12 +149,12 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
               scrollEventThrottle={16}
             >
               <View style={styles.header}>
-                <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
               </View>
 
-              <Text style={styles.title}>Reset your password</Text>
+              <Text style={styles.title} accessibilityRole="header">Reset your password</Text>
 
               {step === 'email' ? (
                 <>
@@ -161,7 +164,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Email</Text>
-                    <TextInput
+                    <TextInput accessibilityLabel="Email"
                       style={styles.textInput}
                       placeholder="Email"
                       placeholderTextColor={colors.inkFaint}
@@ -174,7 +177,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                     />
                   </View>
 
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={[styles.submitButton, isBusy && styles.submitButtonBusy]}
                     onPress={sendCode}
                     disabled={isBusy}
@@ -191,7 +194,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Code</Text>
-                    <TextInput
+                    <TextInput accessibilityLabel="Code"
                       style={[styles.textInput, styles.codeInput]}
                       placeholder="Code"
                       placeholderTextColor={colors.inkFaint}
@@ -212,11 +215,13 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   <View style={styles.field}>
                     <View style={styles.passwordLabelRow}>
                       <Text style={styles.passwordFieldLabel}>New password</Text>
-                      <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-                        <Text style={styles.smallLink}>{showPassword ? 'Hide' : 'Show'}</Text>
-                      </Pressable>
+                      <OutlineButton
+                        label={showPassword ? 'Hide' : 'Show'}
+                        accessibilityLabel={showPassword ? 'Hide passwords' : 'Show passwords'}
+                        onPress={() => setShowPassword((prev) => !prev)}
+                      />
                     </View>
-                    <TextInput
+                    <TextInput accessibilityLabel="New password"
                       style={styles.textInput}
                       placeholder="New password"
                       placeholderTextColor={colors.inkFaint}
@@ -232,7 +237,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
 
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Confirm new password</Text>
-                    <TextInput
+                    <TextInput accessibilityLabel="Confirm new password"
                       style={styles.textInput}
                       placeholder="Confirm new password"
                       placeholderTextColor={colors.inkFaint}
@@ -246,7 +251,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                     />
                   </View>
 
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={[styles.submitButton, isBusy && styles.submitButtonBusy]}
                     onPress={savePassword}
                     disabled={isBusy}
@@ -255,12 +260,8 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   </Pressable>
 
                   <View style={styles.linkRow}>
-                    <Pressable onPress={resendCode} disabled={isBusy}>
-                      <Text style={styles.smallLink}>Send a new code</Text>
-                    </Pressable>
-                    <Pressable onPress={switchEmail} disabled={isBusy}>
-                      <Text style={styles.smallLink}>Use a different email</Text>
-                    </Pressable>
+                    <OutlineButton label="Send a new code" onPress={resendCode} disabled={isBusy} />
+                    <OutlineButton label="Use a different email" onPress={switchEmail} disabled={isBusy} />
                   </View>
                 </>
               )}
@@ -275,8 +276,9 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { padding: 18, paddingBottom: 28 },
@@ -284,46 +286,41 @@ const styles = StyleSheet.create({
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   title: {
     fontFamily: fonts.wordmark,
-    fontSize: 22,
-    color: colors.ink,
+    fontSize: t.font(22),
+    color: t.colors.ink,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.inkSoft,
+    fontSize: t.font(12.5),
+    color: t.colors.inkSoft,
     textAlign: 'center',
     marginBottom: 28,
   },
   field: { marginBottom: 20 },
-  fieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+  fieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   passwordLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 7,
   },
-  passwordFieldLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft },
-  smallLink: {
-    fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
-    textDecorationLine: 'underline',
-  },
+  passwordFieldLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
-  codeInput: { fontFamily: fonts.mono, fontSize: 16, textAlign: 'center', letterSpacing: 4 },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  codeInput: { fontFamily: fonts.mono, fontSize: t.font(16), textAlign: 'center', letterSpacing: 4 },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
   submitButtonBusy: { opacity: 0.5 },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
-  linkRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
+  linkRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginTop: 18 },
 });
+}

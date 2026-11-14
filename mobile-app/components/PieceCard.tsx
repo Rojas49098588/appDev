@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { InventoryPiece, PieceType } from '../lib/models';
 import { pieceCount, type Assignment } from '../lib/inventory';
 import { cardSummary, lineStatuses } from '../lib/countedStock';
 import { formatShortDate } from '../lib/format';
-import { ChevronDownIcon, SmallChevronRightIcon } from './icons';
+import { ChevronDownIcon, DropIcon, SmallChevronRightIcon, WrenchIcon } from './icons';
+import OutlineButton from './OutlineButton';
+import { bandNumbers } from '../lib/numberBands';
+import { chipLabel } from '../lib/a11y';
 
 const byNumber = (a: string, b: string) => parseInt(a, 10) - parseInt(b, 10);
 
@@ -46,6 +49,8 @@ export default function PieceCard({
   unanswered?: number;
   onRecount?: () => void;
 }) {
+  const { colors, expanded } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [isOpen, setIsOpen] = useState(false);
   // Numbered types: a chip per piece number, grouped by color. Counted types: a stock row per color.
   const groups = piece.colors
@@ -70,8 +75,24 @@ export default function PieceCard({
 
   return (
     <View style={styles.piece}>
-      <Pressable style={styles.pieceRow} onPress={() => setIsOpen((prev) => !prev)}>
-        <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isOpen }}
+        accessibilityHint={isOpen ? 'Hides the details' : 'Shows every color and number'}
+        // The Repair / Dirty buttons sit inside this row, which screen readers read as one
+        // item, so they are offered as actions on the row instead.
+        accessibilityActions={[
+          ...(repairCount > 0 ? [{ name: 'repair', label: `Show ${repairCount} needing repair` }] : []),
+          ...(dirtyCount > 0 ? [{ name: 'dirty', label: `Show ${dirtyCount} dirty` }] : []),
+        ]}
+        onAccessibilityAction={(event) => {
+          const name = event.nativeEvent.actionName;
+          if (name === 'repair' || name === 'dirty') onFlagPress(piece, name);
+        }}
+        style={styles.pieceRow}
+        onPress={() => setIsOpen((prev) => !prev)}
+      >
+        <View style={styles.pieceLeft}>
           <Text style={styles.pieceName}>{piece.name}</Text>
           <Text style={styles.pieceSub}>
             {piece.kind === 'numbered' ? piece.colors.join(', ') : piece.lines.map((l) => l.label).join(', ')}
@@ -96,16 +117,18 @@ export default function PieceCard({
             {(repairCount > 0 || dirtyCount > 0) && (
               <View style={styles.statusTags}>
                 {repairCount > 0 && (
-                  <Pressable
+                  <Pressable accessibilityRole="button"
                     style={styles.flagBtnRepair}
                     onPress={() => onFlagPress(piece, 'repair')}
                   >
+                    <WrenchIcon color={colors.rust} size={12} />
                     <Text style={styles.flagBtnTextRepair}>Repair · {repairCount}</Text>
                     <SmallChevronRightIcon color={colors.rust} />
                   </Pressable>
                 )}
                 {dirtyCount > 0 && (
-                  <Pressable style={styles.flagBtnDirty} onPress={() => onFlagPress(piece, 'dirty')}>
+                  <Pressable accessibilityRole="button" style={styles.flagBtnDirty} onPress={() => onFlagPress(piece, 'dirty')}>
+                    <DropIcon color={colors.wash} size={12} />
                     <Text style={styles.flagBtnTextDirty}>Dirty · {dirtyCount}</Text>
                     <SmallChevronRightIcon color={colors.wash} />
                   </Pressable>
@@ -129,40 +152,52 @@ export default function PieceCard({
                       {group.assigned} of {group.total} assigned
                     </Text>
                   </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.chipStrip}
-                  >
-                    {group.shown.map(({ number: size, state: assign }) => {
-                      const state = chipStateFor(group.color, size);
-                      return (
-                        <Pressable
-                          key={size}
-                          style={[
-                            styles.sizeChip,
-                            assign === 'assigned' && styles.chipAssigned,
-                            assign === 'unassigned' && styles.chipUnassigned,
-                            assign === 'out_for_repair' && styles.chipOut,
-                            state === 'repair' && styles.sizeChipRepair,
-                            state === 'dirty' && styles.sizeChipDirty,
-                          ]}
-                          onPress={() => onSizePress(group.color, size)}
-                          accessibilityLabel={`${group.color} ${size} history`}
-                        >
-                          <Text
-                            style={[
-                              styles.sizeChipText,
-                              state === 'repair' && styles.sizeChipTextRepair,
-                              state === 'dirty' && styles.sizeChipTextDirty,
-                            ]}
-                          >
-                            {size}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
+                  {(expanded
+                    ? bandNumbers(group.shown.map((s) => s.number))
+                    : [{ label: '', numbers: group.shown.map((s) => s.number) }]
+                  ).map((band) => (
+                    <View key={band.label || 'all'}>
+                      {band.label !== '' && <Text style={styles.bandLabel}>{band.label}</Text>}
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.chipStrip}
+                      >
+                        {band.numbers.map((size) => {
+                          const assign = group.shown.find((s) => s.number === size)!.state;
+                          const state = chipStateFor(group.color, size);
+                          return (
+                            <Pressable accessibilityRole="button"
+                              key={size}
+                              style={[
+                                styles.sizeChip,
+                                assign === 'assigned' && styles.chipAssigned,
+                                assign === 'unassigned' && styles.chipUnassigned,
+                                assign === 'out_for_repair' && styles.chipOut,
+                                state === 'repair' && styles.sizeChipRepair,
+                                state === 'dirty' && styles.sizeChipDirty,
+                              ]}
+                              onPress={() => onSizePress(group.color, size)}
+                              accessibilityLabel={chipLabel(group.color, size, assign, state)}
+                          accessibilityHint="Opens this number's history"
+                            >
+                              <Text
+                                style={[
+                                  styles.sizeChipText,
+                                  state === 'repair' && styles.sizeChipTextRepair,
+                                  state === 'dirty' && styles.sizeChipTextDirty,
+                                ]}
+                              >
+                                {size}
+                              </Text>
+                              {state === 'repair' && <WrenchIcon color={colors.rust} size={10} />}
+                              {state === 'dirty' && <DropIcon color={colors.wash} size={10} />}
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  ))}
                 </View>
               ))
               : statuses.map((line, index) => (
@@ -192,33 +227,25 @@ export default function PieceCard({
                 {piece.countedAt ? `Last counted ${formatShortDate(piece.countedAt)}` : 'Not counted yet'}
               </Text>
               {onRecount && (
-                <Pressable
-                  style={styles.recountBtn}
+                <OutlineButton
+                  label="Recount"
+                  onSurface
                   onPress={onRecount}
-                  accessibilityRole="button"
                   accessibilityLabel={`Recount ${piece.name}`}
-                >
-                  <Text style={styles.recountText}>Recount</Text>
-                </Pressable>
+                />
               )}
             </View>
           )}
           {piece.kind === 'numbered' && onSeeAll && (
-            <Pressable onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`}>
-              <Text style={styles.seeAll}>See every {piece.name} {'›'}</Text>
-            </Pressable>
+            <OutlineButton label={`See every ${piece.name} ›`} onSurface onPress={onSeeAll} accessibilityLabel={`See every ${piece.name}`} />
           )}
           {piece.kind === 'numbered' && (onAddColor || onAddNumber) && (
             <View style={styles.addLinks}>
               {onAddColor && (
-                <Pressable onPress={onAddColor} accessibilityLabel={`Add color to ${piece.name}`}>
-                  <Text style={styles.seeAll}>Add color</Text>
-                </Pressable>
+                <OutlineButton label="+ Add color" onSurface onPress={onAddColor} accessibilityLabel={`Add color to ${piece.name}`} />
               )}
               {onAddNumber && (
-                <Pressable onPress={onAddNumber} accessibilityLabel={`Add number to ${piece.name}`}>
-                  <Text style={styles.seeAll}>Add number</Text>
-                </Pressable>
+                <OutlineButton label="+ Add number" onSurface onPress={onAddNumber} accessibilityLabel={`Add number to ${piece.name}`} />
               )}
             </View>
           )}
@@ -241,30 +268,33 @@ export default function PieceCard({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   piece: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     marginBottom: 8,
   },
   pieceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: t.isLarge ? 'column' : 'row',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
+    gap: 8,
     justifyContent: 'space-between',
     padding: 14,
   },
   pieceName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: t.font(13.5),
+    color: t.colors.ink,
   },
   pieceSub: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 2,
   },
+  pieceLeft: { flexShrink: 1 },
   pieceRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -272,8 +302,8 @@ const styles = StyleSheet.create({
   },
   pieceQty: {
     fontFamily: fonts.mono,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: t.font(13.5),
+    color: t.colors.ink,
     textAlign: 'right',
   },
   statusTags: {
@@ -287,129 +317,133 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     borderWidth: 1,
-    borderColor: colors.rust,
-    backgroundColor: colors.rustTint,
+    borderColor: t.colors.rust,
+    backgroundColor: t.colors.rustTint,
     paddingVertical: 3,
     paddingHorizontal: 7,
   },
   flagBtnTextRepair: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.rust,
+    fontSize: t.font(10.5),
+    color: t.colors.rust,
   },
   flagBtnDirty: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     borderWidth: 1,
-    borderColor: colors.wash,
-    backgroundColor: colors.washTint,
+    borderColor: t.colors.wash,
+    backgroundColor: t.colors.washTint,
     paddingVertical: 3,
     paddingHorizontal: 7,
   },
   flagBtnTextDirty: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.wash,
+    fontSize: t.font(10.5),
+    color: t.colors.wash,
   },
   breakdown: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: t.colors.line,
     padding: 14,
     paddingTop: 12,
   },
   colorGroup: {
     marginBottom: 14,
+    // Expanded: each color is its own box with room to breathe.
+    ...(t.expanded
+      ? { borderWidth: 1, borderColor: t.colors.lineSoft, backgroundColor: t.colors.white, borderRadius: 10, paddingVertical: 12 }
+      : {}),
   },
   colorHead: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: t.expanded ? 12 : 0,
     justifyContent: 'space-between',
     alignItems: 'baseline',
     marginBottom: 7,
   },
   colorName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12.5,
-    color: colors.ink,
+    fontSize: t.font(12.5),
+    color: t.colors.ink,
   },
   colorMeta: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.inkSoft,
+    fontSize: t.font(10.5),
+    color: t.colors.inkSoft,
   },
-  chipStrip: {
-    marginHorizontal: -14,
-    paddingHorizontal: 14,
+  chipStrip: t.expanded ? { paddingHorizontal: 12, marginBottom: 8 } : { marginHorizontal: -14, paddingHorizontal: 14 },
+  bandLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: t.font(11),
+    letterSpacing: 0.4,
+    color: t.colors.inkSoft,
+    paddingHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 5,
   },
   sizeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     borderWidth: 1,
-    borderColor: colors.line,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginRight: 6,
+    borderColor: t.colors.line,
+    paddingVertical: t.expanded ? 8 : 5,
+    paddingHorizontal: t.expanded ? 10 : 8,
+    marginRight: t.expanded ? 8 : 6,
   },
   sizeChipText: {
     fontFamily: fonts.mono,
-    fontSize: 10.5,
-    color: colors.inkSoft,
+    fontSize: t.font(t.expanded ? 13 : 10.5),
+    color: t.colors.inkSoft,
   },
-  chipAssigned: { borderColor: colors.ink, backgroundColor: '#FFFFFF' },
-  chipUnassigned: { borderColor: colors.inkFaint, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  chipOut: { borderColor: colors.amber, backgroundColor: colors.amberTint },
-  sizeChipRepair: { borderColor: colors.rust, backgroundColor: colors.rustTint },
-  sizeChipDirty: { borderColor: colors.wash, backgroundColor: colors.washTint },
-  sizeChipTextRepair: { color: colors.rust },
-  sizeChipTextDirty: { color: colors.wash },
-  seeAll: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 12,
-    color: colors.ink,
-    textDecorationLine: 'underline',
-    marginBottom: 8,
-  },
-  addLinks: { flexDirection: 'row', gap: 18 },
-  legend: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft },
+  chipAssigned: { borderColor: t.colors.ink, backgroundColor: '#FFFFFF' },
+  chipUnassigned: { borderColor: t.colors.inkFaint, borderStyle: 'dashed', backgroundColor: 'transparent' },
+  chipOut: { borderColor: t.colors.amber, backgroundColor: t.colors.amberTint },
+  sizeChipRepair: { borderColor: t.colors.rust, backgroundColor: t.colors.rustTint },
+  sizeChipDirty: { borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
+  sizeChipTextRepair: { color: t.colors.rust },
+  sizeChipTextDirty: { color: t.colors.wash },
+  addLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  legend: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft },
   styleRow: {
-    flexDirection: 'row',
+    // Large text: the count drops under the name instead of being pushed off.
+    flexDirection: t.isLarge ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
+    gap: 4,
     paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
+    borderBottomColor: t.colors.lineSoft,
   },
   styleRowLast: {
     borderBottomWidth: 0,
   },
   styleName: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.ink,
+    fontSize: t.font(12.5),
+    color: t.colors.ink,
   },
   styleQty: {
     fontFamily: fonts.mono,
-    fontSize: 12,
-    color: colors.ink,
+    fontSize: t.font(12),
+    color: t.colors.ink,
   },
-  styleQtyMissing: { color: colors.amber },
-  keptNote: { fontFamily: fonts.body, fontSize: 10.5, color: colors.inkSoft, marginTop: 1 },
+  styleQtyMissing: { color: t.colors.amber },
+  keptNote: { fontFamily: fonts.body, fontSize: t.font(10.5), color: t.colors.inkSoft, marginTop: 1 },
   countTag: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
+    fontSize: t.font(10.5),
     borderWidth: 1,
     paddingVertical: 2,
     paddingHorizontal: 7,
     overflow: 'hidden',
   },
-  countTagMissing: { color: colors.amber, borderColor: colors.amber, backgroundColor: colors.amberTint },
-  countTagOk: { color: colors.wash, borderColor: colors.wash, backgroundColor: colors.washTint },
+  countTagMissing: { color: t.colors.amber, borderColor: t.colors.amber, backgroundColor: t.colors.amberTint },
+  countTagOk: { color: t.colors.wash, borderColor: t.colors.wash, backgroundColor: t.colors.washTint },
   countFooter: { marginTop: 10, gap: 4 },
-  countMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.inkSoft },
-  recountBtn: {
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: colors.ink,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  recountText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
+  countMeta: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.inkSoft },
 });
+}

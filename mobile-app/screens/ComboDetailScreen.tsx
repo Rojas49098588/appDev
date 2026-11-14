@@ -2,7 +2,7 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useCombos } from '../context/CombosContext';
 import { useGames, type ComboSlot } from '../context/GamesContext';
@@ -17,6 +17,8 @@ import { successBuzz } from '../lib/haptics';
 type Props = NativeStackScreenProps<RootStackParamList, 'ComboDetail'>;
 
 export default function ComboDetailScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { combos, deleteCombo } = useCombos();
   const { games, today, setGameCombo } = useGames();
   const game = comboShortcutTarget(games, today);
@@ -31,10 +33,10 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
           <TapeGutter />
           <View style={styles.content}>
             <View style={styles.header}>
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
-              <Text style={styles.pageTitle}>Combo not found</Text>
+              <Text style={styles.pageTitle} accessibilityRole="header">Combo not found</Text>
               <View style={styles.headerSideButton} />
             </View>
           </View>
@@ -96,7 +98,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
 
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
             <View style={styles.titleBlock}>
@@ -131,7 +133,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
             <>
             <Text style={styles.slotCaption}>For {targetName}</Text>
             <View style={styles.slotButtonRow}>
-              <Pressable
+              <Pressable accessibilityState={{ selected: !!(isPreGame) }} accessibilityRole="button"
                 style={[styles.slotButton, isPreGame && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
                 onPress={() => handleSetCombo('preGame')}
               >
@@ -139,7 +141,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
                   {`Set for pregame${isPreGame ? ' ✓' : ''}`}
                 </Text>
               </Pressable>
-              <Pressable
+              <Pressable accessibilityState={{ selected: !!(isHalftime) }} accessibilityRole="button"
                 style={[styles.slotButton, isHalftime && styles.slotButtonActive, !isOnline && OFFLINE_DIM]}
                 onPress={() => handleSetCombo('halftime')}
               >
@@ -153,7 +155,7 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
             <Text style={styles.noGameNote}>No upcoming football game. Plan one in Games.</Text>
           )}
 
-          <Pressable style={[styles.deleteButton, !isOnline && OFFLINE_DIM]} onPress={handleDelete}>
+          <Pressable accessibilityRole="button" style={[styles.deleteButton, !isOnline && OFFLINE_DIM]} onPress={handleDelete}>
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
         </ScrollView>
@@ -162,8 +164,9 @@ export default function ComboDetailScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { flexGrow: 1, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
@@ -179,58 +182,59 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
-  comboTitle: { textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
-  pageSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
+  comboTitle: { textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
+  pageSub: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 2 },
   image: {
     width: '100%',
     aspectRatio: 3 / 4,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 18,
   },
   imageFill: { width: '100%', height: '100%' },
-  sectionLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 8 },
+  sectionLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
-  chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
-  emptyText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
-  slotCaption: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, marginTop: 24 },
+  chipText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.ink },
+  emptyText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkFaint },
+  slotCaption: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, marginTop: 24 },
   slotButtonRow: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 28 },
   noGameNote: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.inkFaint,
+    fontSize: t.font(12.5),
+    color: t.colors.inkFaint,
     marginTop: 24,
     marginBottom: 28,
   },
   slotButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  slotButtonActive: { backgroundColor: colors.ink },
-  slotButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink, textAlign: 'center' },
-  slotButtonTextActive: { color: colors.paper },
+  slotButtonActive: { backgroundColor: t.colors.ink },
+  slotButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink, textAlign: 'center' },
+  slotButtonTextActive: { color: t.colors.paper },
   deleteButton: {
     marginTop: 'auto',
     borderWidth: 1,
-    borderColor: colors.rust,
+    borderColor: t.colors.rust,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  deleteButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.rust },
+  deleteButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.rust },
 });
+}

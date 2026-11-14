@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 
 const TICKS: { label: string; top: `${number}%`; major: boolean }[] = [
   { label: '40', top: '2%', major: true },
@@ -11,8 +11,10 @@ const TICKS: { label: string; top: `${number}%`; major: boolean }[] = [
 ];
 
 export default function TapeGutter() {
+  const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.tape}>
+    // Decoration only: hidden from screen readers.
+    <View style={styles.tape} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {TICKS.map((tick) => (
         <View key={tick.label} style={[styles.tick, { top: tick.top }]}>
           <Text style={[styles.tickLabel, tick.major && styles.tickLabelMajor]}>{tick.label}</Text>
@@ -23,11 +25,12 @@ export default function TapeGutter() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   tape: {
     width: 26,
     borderRightWidth: 1,
-    borderRightColor: colors.line,
+    borderRightColor: t.colors.line,
   },
   tick: {
     position: 'absolute',
@@ -40,19 +43,20 @@ const styles = StyleSheet.create({
   },
   tickLabel: {
     fontFamily: fonts.mono,
-    fontSize: 8.5,
-    color: colors.inkFaint,
+    fontSize: t.font(8.5),
+    color: t.colors.inkFaint,
   },
   tickLabelMajor: {
-    color: colors.inkSoft,
+    color: t.colors.inkSoft,
   },
   mark: {
     width: 6,
     height: 1,
-    backgroundColor: colors.inkFaint,
+    backgroundColor: t.colors.inkFaint,
   },
   markMajor: {
     width: 10,
-    backgroundColor: colors.inkSoft,
+    backgroundColor: t.colors.inkSoft,
   },
 });
+}

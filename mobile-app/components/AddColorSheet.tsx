@@ -4,13 +4,13 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
-  StyleSheet,
+  ScrollView, StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { PieceType } from '../lib/models';
 import { useInventory } from '../context/InventoryContext';
@@ -26,6 +26,7 @@ type Props = {
 };
 
 export default function AddColorSheet({ piece, numberCount, onClose }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Keep showing the last type while the modal fades out.
   const last = useRef(piece);
   if (piece) last.current = piece;
@@ -40,7 +41,7 @@ export default function AddColorSheet({ piece, numberCount, onClose }: Props) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && <Body key={shown.id} piece={shown} numberCount={numberCount} onClose={onClose} />}
@@ -58,6 +59,8 @@ function Body({
   numberCount: number;
   onClose: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { isOnline } = useConnection();
   const { addPieceColor } = useInventory();
@@ -90,37 +93,43 @@ function Body({
   return (
     <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       <View style={styles.handle} />
-      <Text style={styles.title}>Add color to {piece.name}</Text>
-      <TextInput
-        style={styles.input}
-        value={color}
-        onChangeText={setColor}
-        placeholder="Color (e.g. Gold)"
-        placeholderTextColor={colors.inkFaint}
-        autoCapitalize="words"
-        autoFocus
-      />
-      {name !== '' && (
-        <Text style={styles.preview}>
-          Adds {name} {piece.name} in all {numberCount} {numberCount === 1 ? 'number' : 'numbers'}
-        </Text>
-      )}
-      <Pressable
-        style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
-        disabled={saving}
-        onPress={save}
-      >
-        <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add color'}</Text>
-      </Pressable>
+      <Text style={styles.title} accessibilityRole="header">Add color to {piece.name}</Text>
+      {/* Scrolls so large text never pushes the controls off the screen. */}
+      <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
+        <TextInput accessibilityLabel="Color"
+          style={styles.input}
+          value={color}
+          onChangeText={setColor}
+          placeholder="Color (e.g. Gold)"
+          placeholderTextColor={colors.inkFaint}
+          autoCapitalize="words"
+          autoFocus
+        />
+        {name !== '' && (
+          <Text style={styles.preview}>
+            Adds {name} {piece.name} in all {numberCount} {numberCount === 1 ? 'number' : 'numbers'}
+          </Text>
+        )}
+        <Pressable accessibilityRole="button"
+          style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
+          disabled={saving}
+          onPress={save}
+        >
+          <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add color'}</Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
+  scroll: { flexGrow: 0 },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
+    maxHeight: '90%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -131,29 +140,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 16,
   },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink },
   input: {
     marginTop: 14,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
   },
-  preview: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginTop: 10 },
+  preview: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginTop: 10 },
   submit: {
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.wash,
+    backgroundColor: t.colors.wash,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.white },
+  submitText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.white },
 });
+}

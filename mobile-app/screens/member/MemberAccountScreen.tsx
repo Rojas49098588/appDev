@@ -17,13 +17,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { INSTRUMENTS } from '../../constants/instruments';
-import { colors } from '../../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import { isPlausiblePhone, isValidPassword } from '../../constants/validation';
 import { friendlyError } from '../../lib/errors';
 import { useScrollToInput } from '../../hooks/useScrollToInput';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../../hooks/useConnection';
 import TapeGutter from '../../components/TapeGutter';
+import SettingsRow from '../../components/SettingsRow';
 import KeyboardDoneBar from '../../components/KeyboardDoneBar';
 import ChangePasswordSection from '../../components/ChangePasswordSection';
 import { BackChevronIcon } from '../../components/icons';
@@ -44,6 +45,8 @@ const TEXT_FIELDS: {
 const digitsOnly = (text: string) => text.replace(/[^0-9]/g, '');
 
 export default function MemberAccountScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { account, updateAccount, logOut } = useAuth();
   const { isOnline } = useConnection();
   const role = account?.role ?? route.params.role;
@@ -132,18 +135,20 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
           scrollEventThrottle={16}
         >
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Account</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Account</Text>
             <View style={styles.headerSideButton} />
           </View>
 
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
           </View>
 
           <Text style={styles.roleBadge}>{role}</Text>
+
+            <SettingsRow onPress={() => navigation.navigate('Settings')} />
 
           {TEXT_FIELDS.slice(0, 2).map((field) => {
             const isNumericKeyboard = field.keyboardType === 'phone-pad';
@@ -208,7 +213,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   {(["Men's", "Women's"] as const).map((option, index) => {
                     const active = shoeGender === option;
                     return (
-                      <Pressable
+                      <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                         key={option}
                         style={[
                           styles.segment,
@@ -224,7 +229,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                     );
                   })}
                 </View>
-                <TextInput
+                <TextInput accessibilityLabel="Size"
                   style={styles.shoeSizeInput}
                   value={shoeSizeValue}
                   onChangeText={setShoeSizeValue}
@@ -246,7 +251,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             <Text style={styles.label}>Height</Text>
             {isEditing ? (
               <View style={styles.heightRow}>
-                <TextInput
+                <TextInput accessibilityLabel="Height, feet"
                   style={styles.heightInput}
                   value={heightFeet}
                   onChangeText={(text) => setHeightFeet(digitsOnly(text).slice(0, 1))}
@@ -256,7 +261,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
                   maxLength={1}
                 />
                 <Text style={styles.heightUnit}>'</Text>
-                <TextInput
+                <TextInput accessibilityLabel="Height, inches"
                   style={styles.heightInput}
                   value={heightInches}
                   onChangeText={(text) => setHeightInches(digitsOnly(text).slice(0, 2))}
@@ -276,7 +281,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             <Text style={styles.label}>Weight</Text>
             {isEditing ? (
               <View style={styles.weightRow}>
-                <TextInput
+                <TextInput accessibilityLabel="Weight"
                   style={styles.weightInput}
                   value={weight}
                   onChangeText={(text) => setWeight(digitsOnly(text).slice(0, 3))}
@@ -292,7 +297,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
             )}
           </View>
 
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.actionButton, isEditing && !isOnline && OFFLINE_DIM]}
             onPress={handleToggleEdit}
           >
@@ -301,7 +306,7 @@ export default function MemberAccountScreen({ navigation, route }: Props) {
 
           <ChangePasswordSection onFocusField={scrollToFocusedInput} />
 
-          <Pressable style={styles.logOutButton} onPress={handleLogOut}>
+          <Pressable accessibilityRole="button" style={styles.logOutButton} onPress={handleLogOut}>
             <Text style={styles.logOutButtonText}>Log Out</Text>
           </Pressable>
         </ScrollView>
@@ -332,11 +337,12 @@ function ProfileField({
   onFocus?: (event: FocusEvent) => void;
   onBlur?: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.fieldWrapper}>
       <Text style={styles.label}>{label}</Text>
       {editing ? (
-        <TextInput
+        <TextInput accessibilityLabel={label}
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
@@ -352,8 +358,9 @@ function ProfileField({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   appBody: { flex: 1, flexDirection: 'row' },
   contentColumn: { flex: 1, flexDirection: 'column' },
   flexOne: { flex: 1 },
@@ -376,122 +383,123 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: 36, color: colors.paper },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: 36, color: t.colors.paper },
   roleBadge: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12,
+    fontSize: t.font(12),
     letterSpacing: 0.5,
-    color: colors.ink,
+    color: t.colors.ink,
     textTransform: 'uppercase',
     marginBottom: 20,
   },
   fieldWrapper: { width: '100%' },
   label: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     marginTop: 12,
     marginBottom: 6,
   },
-  value: { fontFamily: fonts.body, fontSize: 14, color: colors.ink, minHeight: 20, width: '100%' },
-  helperText: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 4 },
+  value: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.ink, minHeight: 20, width: '100%' },
+  helperText: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginTop: 4 },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   pickerWrapper: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
   },
   shoeRow: { width: '100%', flexDirection: 'row', gap: 8 },
-  segmented: { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: colors.ink },
+  segmented: { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: t.colors.ink },
   segment: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    backgroundColor: colors.surface,
+    backgroundColor: t.colors.surface,
   },
-  segmentBorderRight: { borderRightWidth: 1, borderRightColor: colors.ink },
-  segmentActive: { backgroundColor: colors.ink },
-  segmentText: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.ink },
-  segmentTextActive: { color: colors.paper },
+  segmentBorderRight: { borderRightWidth: 1, borderRightColor: t.colors.ink },
+  segmentActive: { backgroundColor: t.colors.ink },
+  segmentText: { fontFamily: fonts.bodyMedium, fontSize: t.font(12.5), color: t.colors.ink },
+  segmentTextActive: { color: t.colors.paper },
   shoeSizeInput: {
-    width: 70,
+    minWidth: 70,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
   heightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
   heightInput: {
-    width: 56,
+    minWidth: 56,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
-  heightUnit: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
+  heightUnit: { fontFamily: fonts.body, fontSize: t.font(14), color: t.colors.ink },
   weightRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8 },
   weightInput: {
-    width: 70,
+    minWidth: 70,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     textAlign: 'center',
   },
   actionButton: {
     width: '100%',
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 24,
   },
-  actionButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  actionButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
   logOutButton: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 10,
   },
-  logOutButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
+  logOutButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
 });
+}

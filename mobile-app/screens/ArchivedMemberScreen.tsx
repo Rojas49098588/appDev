@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { sectionForInstrument } from '../constants/instrumentSections';
 import { NO_SIZE } from '../constants/myUniformData';
@@ -26,6 +26,8 @@ const NOT_PROVIDED = 'Not provided';
 
 // Read-only view of one snapshot, as it was when the member was archived.
 export default function ArchivedMemberScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { archiveId } = route.params;
   const { restoreMember } = useAuth();
   const { isOnline } = useConnection();
@@ -167,7 +169,7 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
         </View>
 
         {canRestore && (
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[styles.restoreButton, (!isOnline || isRestoring) && OFFLINE_DIM]}
             onPress={handleRestorePress}
             disabled={isRestoring}
@@ -185,10 +187,10 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+            <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.pageTitle}>Archived Member</Text>
+            <Text style={styles.pageTitle} accessibilityRole="header">Archived Member</Text>
             <View style={styles.headerSideButton} />
           </View>
           {error ? (
@@ -204,8 +206,9 @@ export default function ArchivedMemberScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
@@ -221,41 +224,42 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
-  message: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, textAlign: 'center', marginTop: 24 },
+  message: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, textAlign: 'center', marginTop: 24 },
   spinner: { marginTop: 24 },
-  name: { fontFamily: fonts.bodySemiBold, fontSize: 18, color: colors.ink, textAlign: 'center' },
-  sectionBadge: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, marginTop: 4, textAlign: 'center' },
-  meta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkFaint, marginTop: 6, textAlign: 'center' },
+  name: { fontFamily: fonts.bodySemiBold, fontSize: t.font(18), color: t.colors.ink, textAlign: 'center' },
+  sectionBadge: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, marginTop: 4, textAlign: 'center' },
+  meta: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkFaint, marginTop: 6, textAlign: 'center' },
   card: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 16,
     marginTop: 14,
   },
-  cardTitle: { fontFamily: fonts.blockTitle, fontSize: 14, color: colors.ink, marginBottom: 10 },
+  cardTitle: { fontFamily: fonts.blockTitle, fontSize: t.font(14), color: t.colors.ink, marginBottom: 10 },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 9,
     borderTopWidth: 1,
-    borderTopColor: colors.lineSoft,
+    borderTopColor: t.colors.lineSoft,
   },
-  infoLabel: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
-  infoValue: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
-  infoValueMuted: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkFaint },
-  flagRow: { paddingVertical: 9, borderTopWidth: 1, borderTopColor: colors.lineSoft },
-  flagStatus: { fontFamily: fonts.body, fontSize: 11.5, marginTop: 2 },
-  flagComment: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginTop: 3 },
+  infoLabel: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
+  infoValue: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
+  infoValueMuted: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkFaint },
+  flagRow: { paddingVertical: 9, borderTopWidth: 1, borderTopColor: t.colors.lineSoft },
+  flagStatus: { fontFamily: fonts.body, fontSize: t.font(11.5), marginTop: 2 },
+  flagComment: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginTop: 3 },
   restoreButton: {
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 20,
   },
-  restoreButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  restoreButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
 });
+}

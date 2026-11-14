@@ -15,6 +15,7 @@ import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-font
 import LoginScreen from './screens/LoginScreen';
 import InviteCodeScreen from './screens/InviteCodeScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import MainTabs from './screens/MainTabs';
 import MemberTabs from './screens/MemberTabs';
@@ -40,8 +41,10 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { InventoryProvider } from './context/InventoryContext';
 import { GamesProvider } from './context/GamesContext';
 import { CombosProvider } from './context/CombosContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { supabaseConfigError } from './lib/supabase';
-import { colors } from './constants/colors';
+// The setup-error screen shows before settings load, so it uses the default palette.
+import { DEFAULT_PALETTE as colors } from './lib/theme';
 import { fonts } from './constants/fonts';
 
 SplashScreen.preventAutoHideAsync();
@@ -87,6 +90,7 @@ function AppNavigator({ onReady }: { onReady: () => void }) {
       <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName={initialRouteName}>
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
           <Stack.Screen
             name="ForgotPassword"
             component={ForgotPasswordScreen}
@@ -227,17 +231,20 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <FlagsProvider>
-          <GamesProvider>
-            <CombosProvider>
-              <InventoryProvider>
-                <AppNavigator onReady={onLayoutRootView} />
-              </InventoryProvider>
-            </CombosProvider>
-          </GamesProvider>
-        </FlagsProvider>
-      </AuthProvider>
+      {/* Renders nothing until settings load, so the splash stays up until then. */}
+      <SettingsProvider>
+        <AuthProvider>
+          <FlagsProvider>
+            <GamesProvider>
+              <CombosProvider>
+                <InventoryProvider>
+                  <AppNavigator onReady={onLayoutRootView} />
+                </InventoryProvider>
+              </CombosProvider>
+            </GamesProvider>
+          </FlagsProvider>
+        </AuthProvider>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }

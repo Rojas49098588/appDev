@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { SECTIONS } from '../constants/homeData';
 import { sectionForInstrument } from '../constants/instrumentSections';
@@ -19,6 +19,9 @@ import { pieceCount } from '../lib/inventory';
 import { shownFootball } from '../lib/games';
 import { formatGameDate } from '../lib/format';
 import TapeGutter from '../components/TapeGutter';
+import TitleRow from '../components/TitleRow';
+import { StatusIcon } from '../components/StatusLabel';
+import { statusLook } from '../lib/flagStatus';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
   firstName: string;
@@ -27,6 +30,9 @@ type Props = BottomTabScreenProps<MainTabParamList, 'Home'> & {
 };
 
 export default function HomeScreen({ navigation, firstName, lastName, onAvatarPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { isLarge } = useTheme();
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { flags } = useFlags();
   const { pieceTypes, pieces } = useInventory();
@@ -72,16 +78,23 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
       <View style={styles.appBody}>
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.wordmark}>Mustang Closet</Text>
-            <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
-            <Text style={styles.seasonTag}>Fall 2026 season</Text>
-          </View>
-          <Pressable style={styles.avatar} onPress={onAvatarPress}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </Pressable>
-        </View>
+        <TitleRow
+          style={styles.header}
+          title={
+              <View>
+                <Text style={styles.wordmark} accessibilityRole="header">Mustang Closet</Text>
+                <Text style={styles.wordmarkSub}>SMU Mustang Band</Text>
+                <Text style={styles.seasonTag}>Fall 2026 season</Text>
+              </View>
+          }
+          action={
+              <>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Your profile and settings" style={styles.avatar} onPress={onAvatarPress}>
+                    <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
+                  </Pressable>
+              </>
+          }
+        />
 
         <View style={styles.statsGrid}>
           {stats.map((stat, index) => (
@@ -89,8 +102,8 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
               key={stat.label}
               style={[
                 styles.statCell,
-                index % 2 === 0 && styles.statCellBorderRight,
-                index < 2 && styles.statCellBorderBottom,
+                !isLarge && index % 2 === 0 && styles.statCellBorderRight,
+                (isLarge ? index < stats.length - 1 : index < 2) && styles.statCellBorderBottom,
               ]}
             >
               <Text style={[styles.statNum, stat.flag && styles.statNumFlag]}>{stat.value}</Text>
@@ -100,19 +113,26 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Members by section</Text>
-            <Pressable
-              onPress={() =>
-                navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
-              }
-            >
-              <Text style={styles.blockLink}>See all ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle} accessibilityRole="header">Members by section</Text>
+            }
+            action={
+                <>
+                    <Pressable accessibilityRole="button"
+                      onPress={() =>
+                        navigation.navigate('Sections', { section: undefined, piece: undefined, status: undefined })
+                      }
+                    >
+                      <Text style={styles.blockLink}>See all ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <View style={styles.sectionGrid}>
             {sections.map((section) => (
-              <Pressable
+              <Pressable accessibilityRole="button"
                 key={section.name}
                 style={styles.sectionCard}
                 onPress={() =>
@@ -131,40 +151,37 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Inventory</Text>
-            <Pressable onPress={() => navigation.navigate('Inventory')}>
-              <Text style={styles.blockLink}>View full ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle} accessibilityRole="header">Inventory</Text>
+            }
+            action={
+                <>
+                    <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Inventory')}>
+                      <Text style={styles.blockLink}>View full ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           {inventoryPreview.length === 0 && (
             <Text style={styles.blockNote}>No inventory yet. Import your spreadsheet to get started.</Text>
           )}
           <View style={styles.invList}>
             {inventoryPreview.map((item) => {
-              const warnColor = item.kind === 'repair' ? colors.rust : colors.wash;
+              const look = statusLook(item.kind);
+              const warnColor = colors[look.colorKey];
               return (
                 <View key={item.piece} style={styles.invRow}>
-                  <View>
+                  <View style={styles.invLeft}>
                     <Text style={styles.invPiece}>{item.piece}</Text>
                     <Text style={styles.invSizes}>{item.sizes}</Text>
                   </View>
                   <View style={styles.invRight}>
                     <Text style={styles.invQty}>{item.qty}</Text>
                     <View style={styles.condRow}>
-                      <View
-                        style={[
-                          styles.dot,
-                          item.kind !== 'good' && styles.dotWarn,
-                          item.kind !== 'good' && { backgroundColor: warnColor },
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.condText,
-                          item.kind !== 'good' && { color: warnColor },
-                        ]}
-                      >
+                      <StatusIcon icon={look.icon} color={warnColor} size={12} />
+                      <Text style={[styles.condText, { color: warnColor }]}>
                         {item.condition}
                       </Text>
                     </View>
@@ -176,22 +193,36 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Games</Text>
-            <Pressable onPress={() => rootNavigation.navigate('Games')}>
-              <Text style={styles.blockLink}>View ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle} accessibilityRole="header">Games</Text>
+            }
+            action={
+                <>
+                    <Pressable accessibilityRole="button" onPress={() => rootNavigation.navigate('Games')}>
+                      <Text style={styles.blockLink}>View ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <Text style={styles.blockNote}>{gamesNote}</Text>
         </View>
 
         <View style={styles.block}>
-          <View style={styles.blockHead}>
-            <Text style={styles.blockTitle}>Archived members</Text>
-            <Pressable onPress={() => rootNavigation.navigate('ArchivedMembers')}>
-              <Text style={styles.blockLink}>View ›</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.blockHead}
+            title={
+                <Text style={styles.blockTitle} accessibilityRole="header">Archived members</Text>
+            }
+            action={
+                <>
+                    <Pressable accessibilityRole="button" onPress={() => rootNavigation.navigate('ArchivedMembers')}>
+                      <Text style={styles.blockLink}>View ›</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <Text style={styles.blockNote}>Snapshots of members who left, with the option to restore them.</Text>
         </View>
         </ScrollView>
@@ -200,10 +231,11 @@ export default function HomeScreen({ navigation, firstName, lastName, onAvatarPr
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
   },
   flexOne: {
     flex: 1,
@@ -222,73 +254,73 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingBottom: 18,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: t.colors.line,
     marginBottom: 20,
   },
   wordmark: {
     fontFamily: fonts.wordmark,
-    fontSize: 21,
-    color: colors.ink,
+    fontSize: t.font(21),
+    color: t.colors.ink,
   },
   wordmarkSub: {
     fontFamily: fonts.body,
     marginTop: 3,
-    color: colors.inkSoft,
-    fontSize: 11.5,
+    color: t.colors.inkSoft,
+    fontSize: t.font(11.5),
   },
   seasonTag: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 3,
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontFamily: fonts.wordmark,
-    color: colors.paper,
+    color: t.colors.paper,
     fontSize: 14,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     marginBottom: 26,
   },
   statCell: {
-    width: '50%',
-    backgroundColor: colors.surface,
+    width: t.isLarge ? '100%' : '50%',
+    backgroundColor: t.colors.surface,
     padding: 14,
     paddingBottom: 15,
   },
   statCellBorderRight: {
     borderRightWidth: 1,
-    borderRightColor: colors.line,
+    borderRightColor: t.colors.line,
   },
   statCellBorderBottom: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: t.colors.line,
   },
   statNum: {
     fontFamily: fonts.monoMedium,
-    fontSize: 24,
-    color: colors.ink,
+    fontSize: t.font(24),
+    color: t.colors.ink,
   },
   statNumFlag: {
-    color: colors.rust,
+    color: t.colors.rust,
   },
   statLabel: {
     fontFamily: fonts.body,
     marginTop: 2,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
   },
   block: {
     marginBottom: 28,
@@ -301,20 +333,20 @@ const styles = StyleSheet.create({
   },
   blockTitle: {
     fontFamily: fonts.blockTitle,
-    fontSize: 15.5,
-    color: colors.ink,
+    fontSize: t.font(15.5),
+    color: t.colors.ink,
   },
   blockNote: {
     fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.inkSoft,
+    fontSize: t.font(12),
+    color: t.colors.inkSoft,
   },
   // Solid dark button so the block links are easy to spot.
   blockLink: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: colors.white,
-    backgroundColor: colors.ink,
+    fontSize: t.font(12),
+    color: t.colors.white,
+    backgroundColor: t.colors.ink,
     paddingVertical: 6,
     paddingHorizontal: 11,
     overflow: 'hidden',
@@ -325,57 +357,59 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionCard: {
-    width: '31.5%',
+    width: t.isLarge ? '100%' : '31.5%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 9,
     paddingTop: 9,
     paddingBottom: 10,
   },
   sectionName: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
-    lineHeight: 14,
+    fontSize: t.font(11.5),
+    lineHeight: t.font(14),
     minHeight: 28,
-    color: colors.ink,
+    color: t.colors.ink,
   },
   sectionCount: {
     fontFamily: fonts.mono,
-    fontSize: 10,
-    color: colors.inkSoft,
+    fontSize: t.font(10),
+    color: t.colors.inkSoft,
     marginTop: 5,
   },
   invList: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: t.colors.line,
   },
   invRow: {
-    flexDirection: 'row',
+    flexDirection: t.isLarge ? 'column' : 'row',
+    gap: t.isLarge ? 6 : 10,
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: t.isLarge ? 'flex-start' : 'center',
     paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
+    borderBottomColor: t.colors.lineSoft,
   },
   invPiece: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: colors.ink,
+    fontSize: t.font(13),
+    color: t.colors.ink,
   },
   invSizes: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 2,
   },
+  invLeft: { flexShrink: 1 },
   invRight: {
-    alignItems: 'flex-end',
+    alignItems: t.isLarge ? 'flex-start' : 'flex-end',
   },
   invQty: {
     fontFamily: fonts.mono,
-    fontSize: 13,
-    color: colors.ink,
+    fontSize: t.font(13),
+    color: t.colors.ink,
   },
   condRow: {
     flexDirection: 'row',
@@ -383,19 +417,10 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 3,
   },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: colors.ink,
-  },
-  dotWarn: {
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
-  },
   condText: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.ink,
+    fontSize: t.font(10.5),
+    color: t.colors.ink,
   },
 });
+}

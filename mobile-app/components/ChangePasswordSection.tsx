@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View, type FocusEvent } from 'react-native';
-import { colors } from '../constants/colors';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { isValidPassword } from '../constants/validation';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ export default function ChangePasswordSection({
 }: {
   onFocusField?: (event: FocusEvent) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const { changePassword } = useAuth();
   const { isOnline } = useConnection();
   const [isOpen, setIsOpen] = useState(false);
@@ -69,7 +70,7 @@ export default function ChangePasswordSection({
 
   if (!isOpen) {
     return (
-      <Pressable style={styles.toggleButton} onPress={() => setIsOpen(true)}>
+      <Pressable accessibilityRole="button" style={styles.toggleButton} onPress={() => setIsOpen(true)}>
         <Text style={styles.toggleButtonText}>Change password</Text>
       </Pressable>
     );
@@ -78,7 +79,7 @@ export default function ChangePasswordSection({
   return (
     <View style={styles.section}>
       <Text style={styles.label}>Current password</Text>
-      <TextInput
+      <TextInput accessibilityLabel="Current password"
         style={styles.input}
         value={currentPassword}
         onChangeText={setCurrentPassword}
@@ -87,7 +88,7 @@ export default function ChangePasswordSection({
         secureTextEntry
       />
       <Text style={styles.label}>New password</Text>
-      <TextInput
+      <TextInput accessibilityLabel="New password"
         style={styles.input}
         value={newPassword}
         onChangeText={setNewPassword}
@@ -96,7 +97,7 @@ export default function ChangePasswordSection({
         secureTextEntry
       />
       <Text style={styles.label}>Confirm new password</Text>
-      <TextInput
+      <TextInput accessibilityLabel="Confirm new password"
         style={styles.input}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
@@ -104,64 +105,66 @@ export default function ChangePasswordSection({
         autoCapitalize="none"
         secureTextEntry
       />
-      <Pressable style={[styles.saveButton, !isOnline && OFFLINE_DIM]} onPress={handleSave}>
+      <Pressable accessibilityRole="button" style={[styles.saveButton, !isOnline && OFFLINE_DIM]} onPress={handleSave}>
         <Text style={styles.saveButtonText}>Save password</Text>
       </Pressable>
-      <Pressable style={styles.cancelButton} onPress={handleCancel}>
+      <Pressable accessibilityRole="button" style={styles.cancelButton} onPress={handleCancel}>
         <Text style={styles.cancelButtonText}>Cancel</Text>
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   toggleButton: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 10,
   },
-  toggleButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
+  toggleButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
   section: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 14,
     marginTop: 10,
   },
   label: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     marginBottom: 6,
   },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.paper,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
     marginBottom: 14,
   },
   saveButton: {
     width: '100%',
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  saveButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  saveButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
   cancelButton: {
     width: '100%',
     alignItems: 'center',
     paddingVertical: 12,
   },
-  cancelButtonText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
+  cancelButtonText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
 });
+}

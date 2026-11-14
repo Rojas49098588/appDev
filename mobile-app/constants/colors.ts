@@ -1,24 +1,5 @@
-export const colors = {
-  paper: '#E8E6E0',
-  surface: '#F6F5F1',
-  ink: '#22201D',
-  inkSoft: '#6E6960',
-  inkFaint: '#9A9488',
-  line: '#D2CDC2',
-  lineSoft: '#DEDACF',
-  rust: '#AC4A2E',
-  rustTint: '#F1E1DA',
-  wash: '#3F6E82',
-  washTint: '#DDE6E7',
-  // Added for the My Inventory redesign (Interactive Mobile Prototype).
-  white: '#FFFFFF',
-  good: '#397257',
-  amber: '#A36618',
-  amberTint: '#FFF5DF',
-  teal: '#2E7A78',
-  tealDark: '#245F5D',
-  tealTint: '#EDF8F6',
-  backdrop: 'rgba(30, 35, 40, 0.45)',
-  toast: '#20282C',
-  mint: '#9FE2C3',
-};
+// The default palette, for code that hasn't moved to useTheme() yet.
+// Screens should use useTheme()/useThemedStyles() so High contrast works.
+import { DEFAULT_PALETTE } from '../lib/theme.ts';
+
+export const colors = DEFAULT_PALETTE;

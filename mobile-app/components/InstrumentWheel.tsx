@@ -8,8 +8,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
+import { useThemedStyles, type Theme } from '../hooks/useTheme';
 
 const ROW_HEIGHT = 36;
 const VISIBLE_ROWS = 5;
@@ -25,6 +25,7 @@ export default function InstrumentWheel({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const initialIndex = Math.max(0, options.indexOf(value));
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   let scrollRef: ScrollView | null = null;
@@ -67,7 +68,7 @@ export default function InstrumentWheel({
         {options.map((option, index) => {
           const distance = Math.abs(index - activeIndex);
           return (
-            <Pressable key={option} style={styles.row} onPress={() => scrollToIndex(index)}>
+            <Pressable accessibilityRole="button" key={option} style={styles.row} onPress={() => scrollToIndex(index)}>
               <Text
                 style={[
                   styles.rowText,
@@ -85,12 +86,13 @@ export default function InstrumentWheel({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   wheel: {
     height: WHEEL_HEIGHT,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     overflow: 'hidden',
   },
   highlight: {
@@ -101,7 +103,7 @@ const styles = StyleSheet.create({
     height: ROW_HEIGHT,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     zIndex: 1,
   },
   row: {
@@ -111,17 +113,18 @@ const styles = StyleSheet.create({
   },
   rowText: {
     fontFamily: fonts.body,
-    fontSize: 13.5,
-    color: colors.inkFaint,
+    fontSize: t.font(13.5),
+    color: t.colors.inkFaint,
   },
   rowTextNear: {
     fontFamily: fonts.body,
-    fontSize: 14.5,
-    color: colors.inkSoft,
+    fontSize: t.font(14.5),
+    color: t.colors.inkSoft,
   },
   rowTextSelected: {
     fontFamily: fonts.wordmark,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
   },
 });
+}

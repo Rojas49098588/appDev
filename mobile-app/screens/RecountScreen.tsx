@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useInventory } from '../context/InventoryContext';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,7 @@ import { formatShortDate } from '../lib/format';
 import { successBuzz } from '../lib/haptics';
 import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnection';
 import TapeGutter from '../components/TapeGutter';
+import OutlineButton from '../components/OutlineButton';
 import { BackChevronIcon } from '../components/icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Recount'>;
@@ -31,6 +32,8 @@ const whole = (text: string): number | null => (/^\d+$/.test(text.trim()) ? pars
 
 // Wash-day recount (mode 'count') or season totals (mode 'totals') for a counted piece type.
 export default function RecountScreen({ navigation, route }: Props) {
+  const { colors, expanded } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { pieceTypeId, mode } = route.params;
   const { pieceTypes, recountPieceType, setSeasonTotals } = useInventory();
   const { accounts } = useAuth();
@@ -146,10 +149,10 @@ export default function RecountScreen({ navigation, route }: Props) {
           <View style={styles.contentColumn}>
             <ScrollView style={styles.flexOne} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
               <View style={styles.header}>
-                <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+                <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                   <BackChevronIcon color={colors.ink} />
                 </Pressable>
-                <Text style={styles.pageTitle}>
+                <Text style={styles.pageTitle} accessibilityRole="header">
                   {counting ? `Recount ${piece.name}` : `Season totals: ${piece.name}`}
                 </Text>
                 <View style={styles.headerSideButton} />
@@ -172,7 +175,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                         </Text>
                       )}
                       <View style={styles.stepper}>
-                        <Pressable style={styles.stepBtn} onPress={() => step(label, -1)} accessibilityLabel={`One fewer ${label}`}>
+                        <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => step(label, -1)} accessibilityLabel={`One fewer ${label}`}>
                           <Text style={styles.stepText}>−</Text>
                         </Pressable>
                         <TextInput
@@ -182,14 +185,14 @@ export default function RecountScreen({ navigation, route }: Props) {
                           keyboardType="number-pad"
                           accessibilityLabel={`${label} ${counting ? 'count' : 'season total'}`}
                         />
-                        <Pressable style={styles.stepBtn} onPress={() => step(label, 1)} accessibilityLabel={`One more ${label}`}>
+                        <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => step(label, 1)} accessibilityLabel={`One more ${label}`}>
                           <Text style={styles.stepText}>+</Text>
                         </Pressable>
                       </View>
                     </View>
                     <View style={styles.batchLine}>
                       <Text style={styles.batchLabel}>Batch</Text>
-                      <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, -1)} accessibilityLabel={`Smaller ${label} batch`}>
+                      <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => stepBatch(label, -1)} accessibilityLabel={`Smaller ${label} batch`}>
                         <Text style={styles.stepText}>−</Text>
                       </Pressable>
                       <TextInput
@@ -200,16 +203,30 @@ export default function RecountScreen({ navigation, route }: Props) {
                         selectTextOnFocus
                         accessibilityLabel={`${label} batch`}
                       />
-                      <Pressable style={styles.stepBtn} onPress={() => stepBatch(label, 1)} accessibilityLabel={`Bigger ${label} batch`}>
+                      <Pressable accessibilityRole="button" style={styles.stepBtn} onPress={() => stepBatch(label, 1)} accessibilityLabel={`Bigger ${label} batch`}>
                         <Text style={styles.stepText}>+</Text>
                       </Pressable>
-                      <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
-                        <Text style={styles.smallButtonText}>Add</Text>
-                      </Pressable>
-                      <Pressable style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
-                        <Text style={styles.smallButtonText}>Remove</Text>
-                      </Pressable>
+                      {!expanded && (
+                        <>
+                          <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                            <Text style={styles.smallButtonText}>{expanded ? `Add ${batchOf(label)}` : 'Add'}</Text>
+                          </Pressable>
+                          <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                            <Text style={styles.smallButtonText}>{expanded ? `Remove ${batchOf(label)}` : 'Remove'}</Text>
+                          </Pressable>
+                        </>
+                      )}
                     </View>
+                    {expanded && (
+                      <View style={styles.batchButtons}>
+                        <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'add')} accessibilityLabel={`Add batch to ${label}`}>
+                          <Text style={styles.smallButtonText}>{expanded ? `Add ${batchOf(label)}` : 'Add'}</Text>
+                        </Pressable>
+                        <Pressable accessibilityRole="button" style={styles.batchAction} onPress={() => applyBatchTo(label, 'remove')} accessibilityLabel={`Remove batch from ${label}`}>
+                          <Text style={styles.smallButtonText}>{expanded ? `Remove ${batchOf(label)}` : 'Remove'}</Text>
+                        </Pressable>
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -223,13 +240,15 @@ export default function RecountScreen({ navigation, route }: Props) {
                       {summary.missing > 0 ? ` · ${summary.missing} missing` : ''}
                     </Text>
                   </View>
-                  <Pressable onPress={() => navigation.push('Recount', { pieceTypeId, mode: 'totals' })}>
-                    <Text style={[styles.link, styles.centered]}>Change season totals</Text>
-                  </Pressable>
+                  <OutlineButton
+                    label="Change season totals"
+                    style={styles.centeredButton}
+                    onPress={() => navigation.push('Recount', { pieceTypeId, mode: 'totals' })}
+                  />
                 </>
               ) : (
                 <View style={styles.batchRow}>
-                  <TextInput
+                  <TextInput accessibilityLabel="+ Add size or color"
                     style={[styles.textInput, styles.flexOne]}
                     value={newLabel}
                     onChangeText={setNewLabel}
@@ -237,7 +256,7 @@ export default function RecountScreen({ navigation, route }: Props) {
                     placeholderTextColor={colors.inkFaint}
                     onSubmitEditing={addLine}
                   />
-                  <Pressable style={styles.smallButton} onPress={addLine}>
+                  <Pressable accessibilityRole="button" style={styles.smallButton} onPress={addLine}>
                     <Text style={styles.smallButtonText}>Add</Text>
                   </Pressable>
                 </View>
@@ -245,7 +264,7 @@ export default function RecountScreen({ navigation, route }: Props) {
             </ScrollView>
 
             <View style={styles.footer}>
-              <Pressable
+              <Pressable accessibilityRole="button"
                 style={[styles.submitButton, saving && styles.submitButtonDisabled, !isOnline && OFFLINE_DIM]}
                 onPress={handleSave}
                 disabled={saving}
@@ -262,106 +281,104 @@ export default function RecountScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   contentColumn: { flex: 1, flexDirection: 'column' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8 },
   headerSideButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
-  hint: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginBottom: 14, textAlign: 'center' },
-  empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, padding: 24 },
+  pageTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
+  hint: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginBottom: 14, textAlign: 'center' },
+  empty: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, padding: 24 },
   row: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
-    padding: 12,
-    marginBottom: 8,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
+    padding: t.expanded ? 16 : 12,
+    marginBottom: t.expanded ? 16 : 8,
+    borderRadius: t.expanded ? 10 : 0,
   },
-  rowMain: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink, minWidth: 40 },
-  of: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint },
-  ofMissing: { color: colors.amber },
+  rowMain: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
+  label: { fontFamily: t.expanded ? fonts.bodySemiBold : fonts.bodyMedium, fontSize: t.font(t.expanded ? 17 : 14), color: t.colors.ink, minWidth: 40 },
+  of: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkFaint },
+  ofMissing: { color: t.colors.amber },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto' },
   stepBtn: {
-    width: 32,
-    height: 32,
+    minWidth: t.expanded ? 40 : 32,
+    minHeight: t.expanded ? 40 : 32,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepText: { fontFamily: fonts.body, fontSize: 17, color: colors.inkSoft },
+  stepText: { fontFamily: fonts.body, fontSize: t.font(t.expanded ? 20 : 17), color: t.colors.inkSoft },
   countInput: {
-    width: 64,
+    minWidth: t.expanded ? 70 : 64,
     borderWidth: 1,
-    borderColor: colors.line,
-    paddingVertical: 6,
+    borderColor: t.colors.line,
+    paddingVertical: t.expanded ? 9 : 6,
     paddingHorizontal: 8,
     textAlign: 'right',
     fontFamily: fonts.mono,
-    fontSize: 15,
-    color: colors.ink,
+    fontSize: t.font(t.expanded ? 16 : 15),
+    color: t.colors.ink,
   },
-  link: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.wash,
-    textDecorationLine: 'underline',
-    marginTop: 8,
-  },
-  centered: { textAlign: 'center', marginTop: 14 },
+  centeredButton: { alignSelf: 'center', marginTop: 14 },
   batchRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   batchLine: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 10,
-    paddingTop: 10,
+    flexWrap: 'wrap',
+    marginTop: t.expanded ? 14 : 10,
+    paddingTop: t.expanded ? 12 : 10,
     borderTopWidth: 1,
-    borderTopColor: colors.lineSoft,
+    borderTopColor: t.colors.lineSoft,
     borderStyle: 'dashed',
   },
-  batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft },
-  batchInput: { width: 48 },
+  batchLabel: { flex: 1, fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft },
+  batchInput: { minWidth: t.expanded ? 56 : 48 },
+  batchButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   batchAction: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingVertical: 7,
     paddingHorizontal: 9,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   smallButton: {
     borderWidth: 1,
-    borderColor: colors.ink,
+    borderColor: t.colors.ink,
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  smallButtonText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.ink },
+  smallButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(13), color: t.colors.ink },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, paddingHorizontal: 4 },
-  totalLabel: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft },
-  totalValue: { fontFamily: fonts.mono, fontSize: 13, color: colors.ink },
+  totalLabel: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft },
+  totalValue: { fontFamily: fonts.mono, fontSize: t.font(13), color: t.colors.ink },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.surface,
+    borderTopColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingHorizontal: 18,
     paddingTop: 14,
     paddingBottom: 10,
   },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center' },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center' },
   submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitButtonText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
 });
+}

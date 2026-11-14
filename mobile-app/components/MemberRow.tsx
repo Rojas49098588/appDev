@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
 import { fonts } from '../constants/fonts';
 import type { Member } from '../constants/membersData';
 import type { Flag } from '../constants/flagsData';
 import type { Role } from '../navigation/types';
 import { SmallChevronRightIcon } from './icons';
+import { StatusIcon } from './StatusLabel';
+import { statusLook } from '../lib/flagStatus';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 
 export default function MemberRow({
   member,
@@ -17,6 +19,8 @@ export default function MemberRow({
   flags?: Flag[];
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const initials = member.name
     .split(' ')
     .map((part) => part.charAt(0))
@@ -24,9 +28,9 @@ export default function MemberRow({
     .toUpperCase();
 
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <Pressable accessibilityRole="button" style={styles.row} onPress={onPress}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{initials}</Text>
+        <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
       </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>
@@ -39,12 +43,13 @@ export default function MemberRow({
         </View>
         <Text style={styles.section}>{member.section}</Text>
         {flags.map((flag) => {
-          const itemColor = flag.status === 'repair' ? colors.rust : colors.wash;
+          const look = statusLook(flag.status);
+          const itemColor = colors[look.colorKey];
           return (
             <View key={flag.id} style={styles.itemRow}>
-              <View style={[styles.dot, { backgroundColor: itemColor }]} />
+              <StatusIcon icon={look.icon} color={itemColor} size={12} />
               <Text style={[styles.itemText, { color: itemColor }]}>
-                {flag.piece} — {flag.color} — {flag.size}
+                {flag.piece} — {flag.color} — {flag.size} · {look.label}
               </Text>
             </View>
           );
@@ -55,14 +60,15 @@ export default function MemberRow({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 13,
     marginBottom: 8,
   },
@@ -70,14 +76,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontFamily: fonts.wordmark,
     fontSize: 13,
-    color: colors.paper,
+    color: t.colors.paper,
   },
   info: {
     flex: 1,
@@ -89,27 +95,27 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: t.font(13.5),
+    color: t.colors.ink,
   },
   staffBadge: {
     borderWidth: 1,
-    borderColor: colors.ink,
-    backgroundColor: colors.ink,
+    borderColor: t.colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 1,
     paddingHorizontal: 6,
   },
   staffBadgeText: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 9,
+    fontSize: t.font(9),
     letterSpacing: 0.4,
-    color: colors.paper,
+    color: t.colors.paper,
     textTransform: 'uppercase',
   },
   section: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.inkSoft,
+    fontSize: t.font(11),
+    color: t.colors.inkSoft,
     marginTop: 1,
   },
   itemRow: {
@@ -118,14 +124,9 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 6,
   },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 1,
-    transform: [{ rotate: '45deg' }],
-  },
   itemText: {
     fontFamily: fonts.body,
-    fontSize: 11,
+    fontSize: t.font(11),
   },
 });
+}

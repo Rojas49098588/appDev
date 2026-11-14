@@ -1,6 +1,6 @@
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { Combo } from '../lib/models';
 import { CheckIcon } from './icons';
@@ -14,6 +14,8 @@ type Props = {
 };
 
 export default function ComboPickerSheet({ visible, combos, selectedId, onPick, onClose }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   return (
     <Modal
@@ -25,18 +27,18 @@ export default function ComboPickerSheet({ visible, combos, selectedId, onPick, 
       onRequestClose={onClose}
     >
       <View style={styles.root}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
           <View style={styles.backdrop} />
         </Pressable>
         <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Choose a combo</Text>
+          <Text style={styles.title} accessibilityRole="header">Choose a combo</Text>
           <ScrollView style={styles.list}>
             {combos.length === 0 && <Text style={styles.empty}>No combos yet.</Text>}
             {combos.map((c) => {
               const active = c.id === selectedId;
               return (
-                <Pressable
+                <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                   key={c.id}
                   style={[styles.row, active && styles.rowActive]}
                   onPress={() => onPick(c.id)}
@@ -61,11 +63,12 @@ export default function ComboPickerSheet({ visible, combos, selectedId, onPick, 
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -77,12 +80,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 16,
   },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink, marginBottom: 10 },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink, marginBottom: 10 },
   list: { flexGrow: 0 },
-  empty: { fontFamily: fonts.body, fontSize: 13, color: colors.inkFaint, paddingVertical: 12 },
+  empty: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkFaint, paddingVertical: 12 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -90,11 +93,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
+    borderBottomColor: t.colors.lineSoft,
   },
-  rowActive: { backgroundColor: colors.washTint },
-  thumb: { width: 44, height: 58, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  rowActive: { backgroundColor: t.colors.washTint },
+  thumb: { width: 44, height: 58, backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.line },
   rowText: { flex: 1 },
-  rowLabel: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
-  rowSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
+  rowLabel: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
+  rowSub: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 2 },
 });
+}

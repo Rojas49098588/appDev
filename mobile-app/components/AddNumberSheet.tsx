@@ -4,13 +4,13 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
-  StyleSheet,
+  ScrollView, StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { PieceType } from '../lib/models';
 import { normalizeNumber } from '../lib/import/rows';
@@ -23,6 +23,7 @@ import { OFFLINE_DIM, requireOnline, useConnection } from '../hooks/useConnectio
 type Props = { piece: PieceType | null; onClose: () => void };
 
 export default function AddNumberSheet({ piece, onClose }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Keep showing the last type while the modal fades out.
   const last = useRef(piece);
   if (piece) last.current = piece;
@@ -37,7 +38,7 @@ export default function AddNumberSheet({ piece, onClose }: Props) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && <Body key={shown.id} piece={shown} onClose={onClose} />}
@@ -47,6 +48,8 @@ export default function AddNumberSheet({ piece, onClose }: Props) {
 }
 
 function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { isOnline } = useConnection();
   const { addPieceNumber } = useInventory();
@@ -88,52 +91,58 @@ function Body({ piece, onClose }: { piece: PieceType; onClose: () => void }) {
   return (
     <View style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}>
       <View style={styles.handle} />
-      <Text style={styles.title}>Add number to {piece.name}</Text>
-      <TextInput
-        style={styles.input}
-        value={text}
-        onChangeText={setText}
-        placeholder="Number"
-        placeholderTextColor={colors.inkFaint}
-        keyboardType="number-pad"
-        onFocus={() => setNumericFocused(true)}
-        onBlur={() => setNumericFocused(false)}
-        autoFocus
-      />
-      <Text style={styles.label}>Colors</Text>
-      <View style={styles.choiceRow}>
-        {piece.colors.map((c) => {
-          const on = checked.includes(c);
-          return (
-            <Pressable
-              key={c}
-              style={[styles.choice, on && styles.choiceOn]}
-              onPress={() => toggle(c)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-            >
-              <Text style={[styles.choiceText, on && styles.choiceTextOn]}>{c}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <KeyboardDoneBar visible={numericFocused} />
-      <Pressable
-        style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
-        disabled={saving}
-        onPress={save}
-      >
-        <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add number'}</Text>
-      </Pressable>
+      <Text style={styles.title} accessibilityRole="header">Add number to {piece.name}</Text>
+      {/* Scrolls so large text never pushes the controls off the screen. */}
+      <ScrollView keyboardShouldPersistTaps="handled" style={styles.scroll}>
+        <TextInput accessibilityLabel="Number"
+          style={styles.input}
+          value={text}
+          onChangeText={setText}
+          placeholder="Number"
+          placeholderTextColor={colors.inkFaint}
+          keyboardType="number-pad"
+          onFocus={() => setNumericFocused(true)}
+          onBlur={() => setNumericFocused(false)}
+          autoFocus
+        />
+        <Text style={styles.label}>Colors</Text>
+        <View style={styles.choiceRow}>
+          {piece.colors.map((c) => {
+            const on = checked.includes(c);
+            return (
+              <Pressable
+                key={c}
+                style={[styles.choice, on && styles.choiceOn]}
+                onPress={() => toggle(c)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+              >
+                <Text style={[styles.choiceText, on && styles.choiceTextOn]}>{c}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <KeyboardDoneBar visible={numericFocused} />
+        <Pressable accessibilityRole="button"
+          style={[styles.submit, (!isOnline || saving) && OFFLINE_DIM]}
+          disabled={saving}
+          onPress={save}
+        >
+          <Text style={styles.submitText}>{saving ? 'Saving…' : 'Add number'}</Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
+  scroll: { flexGrow: 0 },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
+    maxHeight: '90%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -144,41 +153,42 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 16,
   },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink },
   input: {
     marginTop: 14,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
   },
-  label: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.ink, marginTop: 18 },
+  label: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.ink, marginTop: 18 },
   choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   choice: {
     borderWidth: 2,
-    borderColor: colors.lineSoft,
+    borderColor: t.colors.lineSoft,
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
   },
-  choiceOn: { borderColor: colors.teal, backgroundColor: colors.tealTint },
-  choiceText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.inkSoft },
-  choiceTextOn: { color: colors.tealDark },
+  choiceOn: { borderColor: t.colors.teal, backgroundColor: t.colors.tealTint },
+  choiceText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.inkSoft },
+  choiceTextOn: { color: t.colors.tealDark },
   submit: {
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.wash,
+    backgroundColor: t.colors.wash,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.white },
+  submitText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.white },
 });
+}

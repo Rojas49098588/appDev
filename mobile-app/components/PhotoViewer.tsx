@@ -1,15 +1,17 @@
 import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { CloseIcon } from './icons';
 
 export default function PhotoViewer({ uri, onClose }: { uri: string | null; onClose: () => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={uri !== null} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={styles.root}>
         {uri && <Image source={{ uri }} style={styles.image} resizeMode="contain" accessibilityLabel="Flag photo" />}
-        <Pressable
+        <Pressable accessibilityRole="button"
           style={[styles.close, { top: insets.top + 12 }]}
           onPress={onClose}
           accessibilityLabel="Close photo"
@@ -21,7 +23,8 @@ export default function PhotoViewer({ uri, onClose }: { uri: string | null; onCl
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center' },
   image: { width: '100%', height: '100%' },
   close: {
@@ -35,3 +38,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+}

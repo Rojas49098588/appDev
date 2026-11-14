@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { Flag, FlagStatus } from '../lib/models';
 import type { FlagEdit } from '../context/FlagsContext';
@@ -32,6 +32,7 @@ type Props = {
 };
 
 export default function EditFlagSheet({ flag, colorOptions, onClose, onSave }: Props) {
+  const styles = useThemedStyles(makeStyles);
   // Keep showing the last flag while the modal fades out.
   const last = useRef(flag);
   if (flag) last.current = flag;
@@ -54,7 +55,7 @@ export default function EditFlagSheet({ flag, colorOptions, onClose, onSave }: P
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView style={styles.root} behavior="padding">
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close edit sheet">
+        <Pressable accessibilityRole="button" style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close edit sheet">
           <View style={styles.backdrop} />
         </Pressable>
         {shown && (
@@ -88,6 +89,8 @@ function SheetBody({
   onClose: () => void;
   onSave: Props['onSave'];
 }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { isOnline } = useConnection();
   const [color, setColor] = useState(flag.color);
@@ -113,7 +116,7 @@ function SheetBody({
   };
 
   return (
-    <Pressable
+    <Pressable accessibilityRole="none"
       style={[styles.sheet, { paddingBottom: Math.max(24, insets.bottom + 12) }]}
       onPress={Keyboard.dismiss}
       accessible={false}
@@ -121,12 +124,12 @@ function SheetBody({
       <View style={styles.handle} />
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Edit flag</Text>
+          <Text style={styles.title} accessibilityRole="header">Edit flag</Text>
           <Text style={styles.subtitle}>
             {flag.piece} · Size {flag.size}
           </Text>
         </View>
-        <Pressable style={styles.closeButton} onPress={onClose} accessibilityLabel="Close">
+        <Pressable accessibilityRole="button" style={styles.closeButton} onPress={onClose} accessibilityLabel="Close">
           <CloseIcon color={colors.inkSoft} />
         </Pressable>
       </View>
@@ -171,7 +174,7 @@ function SheetBody({
         </View>
 
         <Text style={styles.label}>Comment</Text>
-        <TextInput
+        <TextInput accessibilityLabel="Comment"
           style={styles.input}
           value={comment}
           onChangeText={setComment}
@@ -180,7 +183,7 @@ function SheetBody({
           multiline
         />
         <Text style={styles.label}>Staff note</Text>
-        <TextInput
+        <TextInput accessibilityLabel="Staff note"
           style={styles.input}
           value={staffNote}
           onChangeText={setStaffNote}
@@ -190,7 +193,7 @@ function SheetBody({
         />
       </ScrollView>
 
-      <Pressable
+      <Pressable accessibilityRole="button"
         style={[styles.submit, (!isOnline || isSaving) && OFFLINE_DIM]}
         disabled={isSaving}
         onPress={save}
@@ -201,11 +204,12 @@ function SheetBody({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, backgroundColor: t.colors.backdrop },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
@@ -217,57 +221,58 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.line,
+    backgroundColor: t.colors.line,
     marginBottom: 20,
   },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   headerText: { flex: 1, paddingTop: 2 },
-  title: { fontFamily: fonts.wordmark, fontSize: 20, color: colors.ink },
-  subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.inkSoft, marginTop: 2 },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(20), color: t.colors.ink },
+  subtitle: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.inkSoft, marginTop: 2 },
   closeButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scroll: { flexGrow: 0 },
-  label: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.ink, marginTop: 20 },
+  label: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.ink, marginTop: 20 },
   choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   choice: {
     borderWidth: 2,
-    borderColor: colors.lineSoft,
+    borderColor: t.colors.lineSoft,
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
   },
-  choiceSelected: { borderColor: colors.teal, backgroundColor: colors.tealTint },
-  choiceText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.inkSoft },
-  choiceTextSelected: { color: colors.tealDark },
+  choiceSelected: { borderColor: t.colors.teal, backgroundColor: t.colors.tealTint },
+  choiceText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.inkSoft },
+  choiceTextSelected: { color: t.colors.tealDark },
   input: {
     marginTop: 8,
     minHeight: 72,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     borderRadius: 14,
-    backgroundColor: colors.white,
+    backgroundColor: t.colors.white,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: t.font(16),
+    color: t.colors.ink,
     textAlignVertical: 'top',
   },
   submit: {
     marginTop: 20,
     minHeight: 52,
     borderRadius: 14,
-    backgroundColor: colors.wash,
+    backgroundColor: t.colors.wash,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  submitText: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.white },
+  submitText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(16), color: t.colors.white },
 });
+}

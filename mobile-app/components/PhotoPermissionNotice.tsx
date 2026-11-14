@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
+import OutlineButton from './OutlineButton';
 import { fonts } from '../constants/fonts';
-import { ImagePlaceholderIcon, SmallChevronRightIcon } from './icons';
+import { ImagePlaceholderIcon } from './icons';
 import { noticeCopy, type PermissionBlock } from '../lib/photoPermission';
 
 type Props = {
@@ -17,6 +18,8 @@ type Props = {
 
 // Shown in place of a dead-end alert when camera or photo library access is off.
 export default function PhotoPermissionNotice({ block, onTryAgain, onDismiss, photoOptional = false }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [showMore, setShowMore] = useState(false);
   const copy = noticeCopy(block, photoOptional);
 
@@ -29,7 +32,7 @@ export default function PhotoPermissionNotice({ block, onTryAgain, onDismiss, ph
     <View style={styles.card} accessibilityRole="alert">
       <View style={styles.headRow}>
         <ImagePlaceholderIcon color={colors.rust} />
-        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.title} accessibilityRole="header">{copy.title}</Text>
       </View>
       <Text style={styles.body}>{copy.body}</Text>
 
@@ -38,18 +41,12 @@ export default function PhotoPermissionNotice({ block, onTryAgain, onDismiss, ph
       </Pressable>
 
       <View style={styles.linkRow}>
-        <Pressable
-          style={styles.learnMore}
+        <OutlineButton
+          label={showMore ? 'Hide details' : 'Learn more ›'}
+          accessibilityLabel={showMore ? 'Hide details' : 'Learn more'}
           onPress={() => setShowMore((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showMore }}
-        >
-          <Text style={styles.linkText}>{showMore ? 'Hide details' : 'Learn more'}</Text>
-          {!showMore ? <SmallChevronRightIcon color={colors.wash} /> : null}
-        </Pressable>
-        <Pressable onPress={onDismiss} accessibilityRole="button" hitSlop={8}>
-          <Text style={styles.dismissText}>Not now</Text>
-        </Pressable>
+        />
+        <OutlineButton label="Not now" onPress={onDismiss} />
       </View>
 
       {showMore ? (
@@ -65,23 +62,22 @@ export default function PhotoPermissionNotice({ block, onTryAgain, onDismiss, ph
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderColor: colors.rust,
-    backgroundColor: colors.rustTint,
+    borderColor: t.colors.rust,
+    backgroundColor: t.colors.rustTint,
     padding: 14,
     marginTop: 8,
   },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  title: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.ink, flexShrink: 1 },
-  body: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink, lineHeight: 18, marginBottom: 12 },
-  button: { backgroundColor: colors.ink, paddingVertical: 11, alignItems: 'center' },
-  buttonText: { fontFamily: fonts.bodySemiBold, fontSize: 13.5, color: colors.white },
+  title: { fontFamily: fonts.bodySemiBold, fontSize: t.font(14), color: t.colors.ink, flexShrink: 1 },
+  body: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.ink, lineHeight: t.font(18), marginBottom: 12 },
+  button: { backgroundColor: t.colors.ink, paddingVertical: 11, alignItems: 'center' },
+  buttonText: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13.5), color: t.colors.white },
   linkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
-  learnMore: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 2 },
-  linkText: { fontFamily: fonts.bodySemiBold, fontSize: 12.5, color: colors.wash },
-  dismissText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
-  more: { borderTopWidth: 1, borderTopColor: colors.line, marginTop: 10, paddingTop: 10, gap: 6 },
-  moreText: { fontFamily: fonts.body, fontSize: 12, color: colors.ink, lineHeight: 17 },
+  more: { borderTopWidth: 1, borderTopColor: t.colors.line, marginTop: 10, paddingTop: 10, gap: 6 },
+  moreText: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.ink, lineHeight: t.font(17) },
 });
+}

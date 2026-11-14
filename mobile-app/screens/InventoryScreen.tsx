@@ -5,7 +5,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import type { InventoryPiece, PieceType } from '../lib/models';
 import TapeGutter from '../components/TapeGutter';
@@ -46,6 +46,8 @@ const FILTER_CHIPS: { key: FilterKey; label: string }[] = [
 ];
 
 export default function InventoryScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [searchText, setSearchText] = useState('');
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [colorTarget, setColorTarget] = useState<PieceType | null>(null);
@@ -175,21 +177,21 @@ export default function InventoryScreen({ navigation }: Props) {
         >
           <View style={styles.header}>
             {navigation.canGoBack() ? (
-              <Pressable style={styles.headerSideButton} onPress={() => navigation.goBack()}>
+              <Pressable accessibilityLabel="Back" accessibilityRole="button" style={styles.headerSideButton} onPress={() => navigation.goBack()}>
                 <BackChevronIcon color={colors.ink} />
               </Pressable>
             ) : (
               <View style={styles.headerSideButton} />
             )}
-            <Text style={styles.pageTitle}>Inventory</Text>
-            <Pressable style={styles.addButton} onPress={handleAddPress}>
+            <Text style={styles.pageTitle} accessibilityRole="header">Inventory</Text>
+            <Pressable accessibilityLabel="Add inventory" accessibilityRole="button" style={styles.addButton} onPress={handleAddPress}>
               <PlusIcon color={colors.paper} />
             </Pressable>
           </View>
 
           <View style={styles.search}>
             <SearchIcon color={colors.inkFaint} />
-            <TextInput
+            <TextInput accessibilityLabel="Search pieces"
               style={styles.searchInput}
               placeholder="Search pieces"
               placeholderTextColor={colors.inkFaint}
@@ -206,7 +208,7 @@ export default function InventoryScreen({ navigation }: Props) {
             style={styles.chipsScroll}
             contentContainerStyle={styles.chipsContent}
           >
-            <Pressable
+            <Pressable accessibilityState={{ selected: !!(activeFilters.size === 0) }} accessibilityRole="button"
               style={[styles.chip, activeFilters.size === 0 && styles.chipActive]}
               onPress={() => setActiveFilters(new Set())}
             >
@@ -221,7 +223,7 @@ export default function InventoryScreen({ navigation }: Props) {
               const isRepair = key === 'repair';
               const isDirty = key === 'dirty';
               return (
-                <Pressable
+                <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                   key={key}
                   style={[
                     styles.chip,
@@ -258,7 +260,7 @@ export default function InventoryScreen({ navigation }: Props) {
             {ASSIGN_CHIPS.map(({ key, label }) => {
               const active = assignFilter === key;
               return (
-                <Pressable
+                <Pressable accessibilityState={{ selected: !!(active) }} accessibilityRole="button"
                   key={key}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setAssignFilter(key)}
@@ -277,7 +279,7 @@ export default function InventoryScreen({ navigation }: Props) {
           </Text>
 
           {pieces.length > 0 && unknown.length > 0 && (
-            <Pressable onPress={showUnknown}>
+            <Pressable accessibilityRole="button" onPress={showUnknown}>
               <Text style={styles.unknownWarning}>
                 {unknown.length} member {unknown.length === 1 ? 'number isn\u2019t' : 'numbers aren\u2019t'} in inventory
               </Text>
@@ -285,7 +287,7 @@ export default function InventoryScreen({ navigation }: Props) {
           )}
 
           {duplicates.length > 0 && (
-            <Pressable onPress={showUnknown}>
+            <Pressable accessibilityRole="button" onPress={showUnknown}>
               <Text style={styles.unknownWarning}>
                 {duplicates.map((d) => `${d.pieceType} ${d.number} is assigned to ${d.members.length} people`).join(' · ')}
               </Text>
@@ -353,10 +355,11 @@ export default function InventoryScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: t.colors.paper,
   },
   flexOne: {
     flex: 1,
@@ -386,14 +389,14 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: fonts.wordmark,
-    fontSize: 18,
-    color: colors.ink,
+    fontSize: t.font(18),
+    color: t.colors.ink,
   },
   addButton: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -402,8 +405,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 9,
     paddingHorizontal: 12,
     marginBottom: 12,
@@ -411,8 +414,8 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.ink,
+    fontSize: t.font(13),
+    color: t.colors.ink,
     padding: 0,
   },
   chipsScroll: {
@@ -426,67 +429,68 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: t.colors.line,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   chipActive: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
+    backgroundColor: t.colors.ink,
+    borderColor: t.colors.ink,
   },
   chipRepair: {
-    borderColor: colors.rust,
+    borderColor: t.colors.rust,
   },
   chipRepairActive: {
-    backgroundColor: colors.rust,
-    borderColor: colors.rust,
+    backgroundColor: t.colors.rust,
+    borderColor: t.colors.rust,
   },
   chipDirty: {
-    borderColor: colors.wash,
+    borderColor: t.colors.wash,
   },
   chipDirtyActive: {
-    backgroundColor: colors.wash,
-    borderColor: colors.wash,
+    backgroundColor: t.colors.wash,
+    borderColor: t.colors.wash,
   },
   chipText: {
     fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.inkSoft,
+    fontSize: t.font(12),
+    color: t.colors.inkSoft,
   },
   chipTextRepair: {
-    color: colors.rust,
+    color: t.colors.rust,
   },
   chipTextDirty: {
-    color: colors.wash,
+    color: t.colors.wash,
   },
   chipTextActive: {
-    color: colors.paper,
+    color: t.colors.paper,
   },
   filterLabel: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.inkFaint,
+    fontSize: t.font(10.5),
+    color: t.colors.inkFaint,
     marginBottom: 5,
   },
   unknownWarning: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.amber,
+    fontSize: t.font(11.5),
+    color: t.colors.amber,
     marginBottom: 10,
   },
   summaryLine: {
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.inkSoft,
+    fontSize: t.font(11.5),
+    color: t.colors.inkSoft,
     marginBottom: 12,
   },
   empty: {
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: colors.inkFaint,
+    fontSize: t.font(12.5),
+    color: t.colors.inkFaint,
   },
   summaryBold: {
     fontFamily: fonts.bodyMedium,
-    color: colors.ink,
+    color: t.colors.ink,
   },
 });
+}

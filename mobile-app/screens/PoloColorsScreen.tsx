@@ -3,7 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { colors } from '../constants/colors';
+import { useTheme, useThemedStyles, type Theme } from '../hooks/useTheme';
 import { fonts } from '../constants/fonts';
 import { useGames } from '../context/GamesContext';
 import { friendlyError } from '../lib/errors';
@@ -26,6 +26,8 @@ const PRESETS: { label: string; hex: string }[] = [
 ];
 
 export default function PoloColorsScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { poloColors, addPoloColor, removePoloColor } = useGames();
   const { isOnline } = useConnection();
   const [name, setName] = useState('');
@@ -85,10 +87,10 @@ export default function PoloColorsScreen({ navigation }: Props) {
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Pressable style={styles.side} onPress={() => navigation.goBack()} accessibilityLabel="Back">
+            <Pressable accessibilityRole="button" style={styles.side} onPress={() => navigation.goBack()} accessibilityLabel="Back">
               <BackChevronIcon color={colors.ink} />
             </Pressable>
-            <Text style={styles.title}>Polo colors</Text>
+            <Text style={styles.title} accessibilityRole="header">Polo colors</Text>
             <View style={styles.side} />
           </View>
 
@@ -97,7 +99,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
               <View key={c.id} style={styles.row}>
                 <View style={[styles.dot, { backgroundColor: c.swatch }]} />
                 <Text style={styles.rowName}>{c.name}</Text>
-                <Pressable
+                <Pressable accessibilityRole="button"
                   style={styles.removeButton}
                   onPress={() => confirmRemove(c.id, c.name)}
                   accessibilityLabel={`Remove ${c.name}`}
@@ -110,7 +112,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
 
           <View style={styles.field}>
             <Text style={styles.label}>Add a color</Text>
-            <TextInput
+            <TextInput accessibilityLabel="Color name"
               style={styles.textInput}
               value={name}
               onChangeText={setName}
@@ -135,7 +137,7 @@ export default function PoloColorsScreen({ navigation }: Props) {
                 );
               })}
             </View>
-            <Pressable
+            <Pressable accessibilityRole="button"
               style={[styles.submitButton, isSaving && styles.submitDisabled, !isOnline && OFFLINE_DIM]}
               onPress={handleAdd}
               disabled={isSaving}
@@ -149,36 +151,37 @@ export default function PoloColorsScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 28 },
   header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 14 },
   side: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: 18, color: colors.ink },
+  title: { flex: 1, textAlign: 'center', fontFamily: fonts.wordmark, fontSize: t.font(18), color: t.colors.ink },
   field: { marginBottom: 22 },
-  label: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 7 },
+  label: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 7 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: t.colors.line,
   },
-  dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: colors.line, marginRight: 12 },
-  rowName: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
+  dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: t.colors.line, marginRight: 12 },
+  rowName: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
   removeButton: { paddingVertical: 6, paddingHorizontal: 8 },
-  removeText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft },
+  removeText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft },
   textInput: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 12,
     paddingHorizontal: 13,
     fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.ink,
+    fontSize: t.font(14),
+    color: t.colors.ink,
   },
   swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14, marginBottom: 18 },
   swatchRing: {
@@ -190,9 +193,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  swatchRingSelected: { borderColor: colors.ink },
-  swatchDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: colors.line },
-  submitButton: { backgroundColor: colors.ink, paddingVertical: 14, alignItems: 'center' },
+  swatchRingSelected: { borderColor: t.colors.ink },
+  swatchDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: t.colors.line },
+  submitButton: { backgroundColor: t.colors.ink, paddingVertical: 14, alignItems: 'center' },
   submitDisabled: { opacity: 0.6 },
-  submitText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.paper },
+  submitText: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.paper },
 });
+}

@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MemberTabParamList } from '../../navigation/types';
-import { colors } from '../../constants/colors';
+import { useThemedStyles, type Theme } from '../../hooks/useTheme';
 import { fonts } from '../../constants/fonts';
 import type { Combo } from '../../constants/combosData';
 import { useCombos } from '../../context/CombosContext';
@@ -12,6 +12,7 @@ import { shownCourt, shownFootball, sportLabel } from '../../lib/games';
 import { formatClock, formatGameDate } from '../../lib/format';
 import type { Game, PoloColor } from '../../lib/models';
 import TapeGutter from '../../components/TapeGutter';
+import TitleRow from '../../components/TitleRow';
 import SegmentTabs from '../../components/SegmentTabs';
 
 type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
@@ -21,6 +22,7 @@ type Props = BottomTabScreenProps<MemberTabParamList, 'GameDay'> & {
 };
 
 export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   const { games, today } = useGames();
   const { combos } = useCombos();
@@ -32,12 +34,19 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
       <View style={styles.appBody}>
         <TapeGutter />
         <ScrollView style={styles.flexOne} contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Game day</Text>
-            <Pressable style={styles.avatar} onPress={onAvatarPress}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </Pressable>
-          </View>
+          <TitleRow
+            style={styles.header}
+            title={
+                <Text style={styles.title} accessibilityRole="header">Game day</Text>
+            }
+            action={
+                <>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Your profile and settings" style={styles.avatar} onPress={onAvatarPress}>
+                      <Text style={styles.avatarText} maxFontSizeMultiplier={1}>{initials}</Text>
+                    </Pressable>
+                </>
+            }
+          />
           <View style={styles.tabs}>
             <SegmentTabs options={['Football', 'BB / VB']} value={tab} onChange={setTab} />
           </View>
@@ -53,6 +62,7 @@ export default function GameDayScreen({ firstName, lastName, onAvatarPress }: Pr
 }
 
 function EmptyState({ title, sub }: { title: string; sub: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.emptyBox}>
       <Text style={styles.emptyTitle}>{title}</Text>
@@ -62,6 +72,7 @@ function EmptyState({ title, sub }: { title: string; sub: string }) {
 }
 
 function PoloDots({ polo }: { polo: PoloColor[] }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.poloRow}>
       {polo.map((p) => (
@@ -75,6 +86,7 @@ function PoloDots({ polo }: { polo: PoloColor[] }) {
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.fact}>
       <Text style={styles.factLabel}>{label}</Text>
@@ -84,6 +96,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 function FootballTab({ game, combos }: { game: Game | null; combos: Combo[] }) {
+  const styles = useThemedStyles(makeStyles);
   if (!game) {
     return <EmptyState title="No upcoming game yet" sub="Staff will post the next game's details here" />;
   }
@@ -131,6 +144,7 @@ function FootballTab({ game, combos }: { game: Game | null; combos: Combo[] }) {
 }
 
 function CourtTab({ list }: { list: Game[] }) {
+  const styles = useThemedStyles(makeStyles);
   if (list.length === 0) {
     return <EmptyState title="No upcoming game yet" sub="The next basketball or volleyball game will show here" />;
   }
@@ -166,6 +180,7 @@ function CourtTab({ list }: { list: Game[] }) {
 }
 
 function ComboSection({ title, combo }: { title: string; combo: Combo }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -192,6 +207,7 @@ function ComboSection({ title, combo }: { title: string; combo: Combo }) {
 }
 
 function EmptySlot({ title }: { title: string }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -200,8 +216,9 @@ function EmptySlot({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.paper },
+function makeStyles(t: Theme) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.colors.paper },
   flexOne: { flex: 1 },
   appBody: { flex: 1, flexDirection: 'row' },
   content: { padding: 18, paddingBottom: 28 },
@@ -211,107 +228,109 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  title: { fontFamily: fonts.wordmark, fontSize: 24, color: colors.ink },
+  title: { fontFamily: fonts.wordmark, fontSize: t.font(24), color: t.colors.ink },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontFamily: fonts.wordmark, fontSize: 14, color: colors.paper },
+  avatarText: { fontFamily: fonts.wordmark, fontSize: 14, color: t.colors.paper },
   tabs: { marginTop: 8, marginBottom: 16 },
-  gameLine: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginBottom: 14 },
+  gameLine: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginBottom: 14 },
   emptyBox: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 20,
     alignItems: 'center',
   },
-  emptyTitle: { fontFamily: fonts.blockTitle, fontSize: 15, color: colors.ink, marginBottom: 4 },
-  emptySub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.inkSoft, textAlign: 'center' },
-  factsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  emptyTitle: { fontFamily: fonts.blockTitle, fontSize: t.font(15), color: t.colors.ink, marginBottom: 4 },
+  emptySub: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.inkSoft, textAlign: 'center' },
+  factsRow: { flexDirection: t.isLarge ? 'column' : 'row', gap: 10, marginBottom: 10 },
   fact: {
-    flex: 1,
+    flex: t.isLarge ? 0 : 1,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 12,
   },
   factLabel: {
     fontFamily: fonts.body,
-    fontSize: 10.5,
-    color: colors.inkFaint,
+    fontSize: t.font(10.5),
+    color: t.colors.inkFaint,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  factValue: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.ink },
+  factValue: { fontFamily: fonts.bodyMedium, fontSize: t.font(14), color: t.colors.ink },
   factMono: { fontFamily: fonts.monoMedium },
   poloCard: { flex: 0, marginBottom: 24 },
   courtPolo: { flex: 0 },
   poloRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   poloItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: colors.line },
-  poloNote: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 8 },
-  comingSoon: { fontFamily: fonts.body, fontSize: 13, color: colors.inkFaint, fontStyle: 'italic' },
+  dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: t.colors.line },
+  poloNote: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkSoft, marginTop: 8 },
+  comingSoon: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkFaint, fontStyle: 'italic' },
   courtCard: { marginBottom: 28 },
-  sportLabel: { fontFamily: fonts.bodySemiBold, fontSize: 11, letterSpacing: 1, color: colors.inkSoft },
-  courtLine: { fontFamily: fonts.body, fontSize: 13, color: colors.inkSoft, marginTop: 2, marginBottom: 12 },
+  sportLabel: { fontFamily: fonts.bodySemiBold, fontSize: t.font(11), letterSpacing: 1, color: t.colors.inkSoft },
+  courtLine: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.inkSoft, marginTop: 2, marginBottom: 12 },
   groupBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.ink,
+    backgroundColor: t.colors.ink,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 10,
   },
-  groupK: { fontFamily: fonts.body, fontSize: 10.5, letterSpacing: 1, color: colors.inkFaint },
-  groupWord: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: colors.white, marginTop: 2 },
-  groupNum: { fontFamily: fonts.wordmark, fontSize: 44, color: colors.white },
-  hint: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkFaint, marginTop: 10 },
+  // Light text on the dark block (inkFaint is now too dark here).
+  groupK: { fontFamily: fonts.body, fontSize: t.font(10.5), letterSpacing: 1, color: t.colors.lineSoft },
+  groupWord: { fontFamily: fonts.bodySemiBold, fontSize: t.font(13), color: t.colors.white, marginTop: 2 },
+  groupNum: { fontFamily: fonts.wordmark, fontSize: t.font(44), color: t.colors.white },
+  hint: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkFaint, marginTop: 10 },
   section: { marginBottom: 28 },
   lastSection: { marginBottom: 4 },
-  sectionTitle: { fontFamily: fonts.blockTitle, fontSize: 17, color: colors.ink, marginBottom: 3 },
-  sectionSub: { fontFamily: fonts.mono, fontSize: 11.5, color: colors.inkSoft, marginBottom: 12 },
+  sectionTitle: { fontFamily: fonts.blockTitle, fontSize: t.font(17), color: t.colors.ink, marginBottom: 3 },
+  sectionSub: { fontFamily: fonts.mono, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 12 },
   // Portrait, like the Catalogue and combo detail photos (3:4).
   photoBox: {
     width: '100%',
     aspectRatio: 3 / 4,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
-  photoCaption: { fontFamily: fonts.body, fontSize: 12, color: colors.inkFaint },
+  photoCaption: { fontFamily: fonts.body, fontSize: t.font(12), color: t.colors.inkFaint },
   photoBoxImage: { width: '100%', height: '100%' },
-  componentsLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.inkSoft, marginBottom: 8 },
+  componentsLabel: { fontFamily: fonts.body, fontSize: t.font(11.5), color: t.colors.inkSoft, marginBottom: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
-  chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.ink },
+  chipText: { fontFamily: fonts.body, fontSize: t.font(12.5), color: t.colors.ink },
   instructionsCard: {
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surface,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface,
     padding: 14,
   },
-  instructionsText: { fontFamily: fonts.body, fontSize: 13, color: colors.ink, lineHeight: 19 },
+  instructionsText: { fontFamily: fonts.body, fontSize: t.font(13), color: t.colors.ink, lineHeight: t.font(19) },
   instructionsMeta: {
     borderTopWidth: 1,
-    borderTopColor: colors.lineSoft,
+    borderTopColor: t.colors.lineSoft,
     marginTop: 12,
     paddingTop: 10,
   },
-  instructionsMetaText: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
+  instructionsMetaText: { fontFamily: fonts.body, fontSize: t.font(11), color: t.colors.inkFaint },
 });
+}
